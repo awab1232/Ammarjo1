@@ -4,6 +4,7 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as Sentry from '@sentry/node';
 import { AppModule } from './app.module';
 import { enforceProductionSafetyOrThrow, logProductionEnvWarnings } from './config/env.validation';
+import { SentryExceptionFilter } from './common/sentry-exception.filter';
 
 function initSentry(): void {
   const dsn = process.env.SENTRY_DSN?.trim();
@@ -72,7 +73,43 @@ async function bootstrap() {
     );
     process.exit(1);
   }
-  console.log('BOOT OK');
+  app.use((req: { method: string; originalUrl?: string; path?: string; firebaseUid?: string }, res: { on: (event: string, cb: () => void) => void; statusCode: number }, next: () => void) => {
+    const startedAt = Date.now();
+    const span = (Sentry as unknown as {
+      startInactiveSpan?: (ctx: { name: string; op: string }) => { end: () => void } | undefined;
+    }).startInactiveSpan?.({
+      name: `${req.method} ${req.originalUrl ?? req.path ?? ''}`,
+      op: 'http.server',
+    });
+    res.on('finish', () => {
+      const durationMs = Date.now() - startedAt;
+      try {
+        Sentry.addBreadcrumb({
+          category: 'http',
+          level: 'info',
+          message: `${req.method} ${req.originalUrl ?? req.path ?? ''}`,
+          data: {
+            method: req.method,
+            path: req.originalUrl ?? req.path ?? '',
+            statusCode: res.statusCode,
+            durationMs,
+            userId: req.firebaseUid ?? null,
+          },
+        });
+      } catch (e) {
+        console.error(
+          JSON.stringify({
+            kind: 'sentry_capture_failed',
+            error: e instanceof Error ? e.message : String(e),
+          }),
+        );
+      }
+      try {
+        span?.end();
+      } catch {}
+    });
+    next();
+  });
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
@@ -80,14 +117,17 @@ async function bootstrap() {
       transform: true,
     }),
   );
+  app.useGlobalFilters(new SentryExceptionFilter());
   app.enableCors({ origin: true });
-  // app.setGlobalPrefix(...) temporarily disabled to keep /health and / reachable directly.
+  const globalPrefix = process.env.GLOBAL_PREFIX?.trim() || process.env.API_PREFIX?.trim();
+  if (globalPrefix) {
+    app.setGlobalPrefix(globalPrefix);
+    console.log('Global prefix:', globalPrefix);
+  }
   // Railway (and most PaaS platforms) inject PORT at runtime.
   const port = Number(process.env.PORT) || 3000;
   await app.listen(port, '0.0.0.0');
   console.log("Server running on port", port);
-  console.log("FORCE DEPLOY");
-  console.log("DOCKER FIX DEPLOY");
   console.log(
     JSON.stringify({
       ts: new Date().toISOString(),
