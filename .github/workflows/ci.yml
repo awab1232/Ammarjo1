@@ -22,7 +22,11 @@ jobs:
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.22.2'
+          # pubspec.yaml requires Dart SDK ^3.10.8, which only ships with
+          # Flutter >= 3.36 (stable channel as of 2026). Don't pin a
+          # specific Flutter version or CI drifts behind the lockfile.
+          channel: stable
+          cache: true
 
       - name: Flutter version
         run: flutter --version
