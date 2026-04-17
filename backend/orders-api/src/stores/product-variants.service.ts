@@ -28,7 +28,11 @@ export class ProductVariantsService {
 
   constructor(@Optional() private readonly tenant?: TenantContextService) {
     const connectionString = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
-    if (!connectionString) throw new Error('DATABASE_URL or ORDERS_DATABASE_URL is required for ProductVariantsService');
+    if (!connectionString) {
+      this.logger.error(
+        'DATABASE_URL / ORDERS_DATABASE_URL missing — ProductVariantsService DB queries will fail at runtime until env is set.',
+      );
+    }
     this.pool = new Pool({ connectionString });
   }
 

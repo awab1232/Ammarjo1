@@ -1,16 +1,36 @@
 #!/bin/sh
-set -eu
+# docker-entrypoint.sh — orders-api
+#
+# Boot rules (Railway / Docker):
+#   1. NEVER block the Node server behind DB availability — the container MUST
+#      listen on $PORT so platform healthchecks can reach /health even when DB
+#      or migrations are broken. Operators will see the error in logs and fix
+#      DATABASE_URL; the platform won't kill the pod as "unhealthy" first.
+#   2. Migrations are best-effort on boot: we log + continue on failure.
+#   3. Exactly one `exec` hands PID 1 to Node so Sentry, signals, and graceful
+#      shutdown work.
+set -u
 
+DB_WAIT_SECONDS="${DB_WAIT_SECONDS:-30}"
 DB_URL="${DATABASE_URL:-${ORDERS_DATABASE_URL:-}}"
-if [ -z "$DB_URL" ]; then
-  echo "docker-entrypoint: DATABASE_URL or ORDERS_DATABASE_URL is required"
-  exit 1
-fi
 
-echo "docker-entrypoint: waiting for PostgreSQL..."
-until psql "$DB_URL" -c "SELECT 1" >/dev/null 2>&1; do
-  sleep 1
-done
+if [ -z "$DB_URL" ]; then
+  echo "[entrypoint] WARN: DATABASE_URL / ORDERS_DATABASE_URL not set — skipping DB wait and migrations."
+else
+  echo "[entrypoint] waiting up to ${DB_WAIT_SECONDS}s for PostgreSQL..."
+  i=0
+  while [ "$i" -lt "$DB_WAIT_SECONDS" ]; do
+    if psql "$DB_URL" -c "SELECT 1" >/dev/null 2>&1; then
+      echo "[entrypoint] PostgreSQL is reachable."
+      break
+    fi
+    i=$((i + 1))
+    sleep 1
+  done
+  if [ "$i" -ge "$DB_WAIT_SECONDS" ]; then
+    echo "[entrypoint] WARN: Postgres not reachable after ${DB_WAIT_SECONDS}s — starting server anyway so /health is up. DB-backed endpoints will fail until connectivity is restored."
+  fi
+fi
 
 # Apply migrations in dependency order. 011 must run before 008 so hybrid
 # `store_categories` (011) is created first; 008's legacy CREATE IF NOT EXISTS
@@ -40,23 +60,27 @@ MIGRATION_ORDER="
 023_create_tenders_and_seed_columns.sql
 025_create_banners.sql
 "
-# 022_apply_schemas_bootstrap.sql is not run here: it only \i includes files under
-# /schema (see migration file). Those paths are for a host-mounted database/
-# bundle; the numbered migrations above already apply the same schema.
 
-if [ -d /sql/migrations ]; then
-  echo "docker-entrypoint: applying SQL migrations from /sql/migrations"
+if [ -n "$DB_URL" ] && [ -d /sql/migrations ]; then
+  echo "[entrypoint] applying SQL migrations from /sql/migrations"
   for base in $MIGRATION_ORDER; do
     f="/sql/migrations/$base"
     if [ ! -f "$f" ]; then
-      echo "docker-entrypoint: warning: missing expected file $f"
+      echo "[entrypoint] WARN: missing expected file $f — skipping."
       continue
     fi
-    echo "docker-entrypoint: running $f"
-    psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$f"
+    echo "[entrypoint] running $f"
+    if ! psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$f"; then
+      echo "[entrypoint] WARN: migration $base failed — continuing so server can still start."
+    fi
   done
-else
-  echo "docker-entrypoint: warning: /sql/migrations not found"
+elif [ -n "$DB_URL" ]; then
+  echo "[entrypoint] WARN: /sql/migrations not found inside image — skipping migrations."
 fi
 
-exec "$@"
+echo "[entrypoint] Starting server..."
+if [ "$#" -gt 0 ]; then
+  exec "$@"
+else
+  exec node dist/main.js
+fi

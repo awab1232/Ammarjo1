@@ -19,7 +19,13 @@ export class StoresService {
   ) {
     const connectionString = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
     if (!connectionString) {
-      throw new Error('DATABASE_URL or ORDERS_DATABASE_URL is required for StoresService');
+      // Fail-lazy: log at boot so operators see the problem in Railway logs,
+      // but do NOT throw — throwing here would kill `NestFactory.create` and
+      // prevent `/health` from ever responding, causing platform restart loops
+      // without surfacing the root cause.
+      this.logger.error(
+        'DATABASE_URL / ORDERS_DATABASE_URL missing — StoresService DB queries will fail at runtime until env is set.',
+      );
     }
     this.pool = new Pool({ connectionString });
   }

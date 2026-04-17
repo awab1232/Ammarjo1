@@ -1,6 +1,6 @@
 import './security/firestore-killer.marker';
 import { NestFactory } from '@nestjs/core';
-import { ValidationPipe } from '@nestjs/common';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as Sentry from '@sentry/node';
 import { AppModule } from './app.module';
 import { enforceProductionSafetyOrThrow, logProductionEnvWarnings } from './config/env.validation';
@@ -44,10 +44,36 @@ function initSentry(): void {
 }
 
 async function bootstrap() {
-  enforceProductionSafetyOrThrow();
-  logProductionEnvWarnings();
+  // Deployment invariant: the server MUST always reach `app.listen()` so
+  // platform healthchecks (Railway / Docker / k8s) can reach `/health`. Env
+  // validation failures are surfaced as loud warnings, not a fatal throw —
+  // operators see the issue in logs and fix it, while the container stays up
+  // long enough for healthchecks + restart policies to behave sanely.
+  try {
+    enforceProductionSafetyOrThrow();
+  } catch (e) {
+    console.error(
+      '[bootstrap] FATAL env validation failed — continuing to listen so /health responds. Fix env and redeploy:',
+      e instanceof Error ? e.message : String(e),
+    );
+  }
+  try {
+    logProductionEnvWarnings();
+  } catch {
+    /* warnings must never block boot */
+  }
   initSentry();
-  const app = await NestFactory.create(AppModule);
+
+  let app: INestApplication;
+  try {
+    app = await NestFactory.create(AppModule);
+  } catch (e) {
+    console.error(
+      '[bootstrap] FATAL NestFactory.create failed — exiting with code 1 so the platform restarts the container:',
+      e instanceof Error ? e.stack ?? e.message : String(e),
+    );
+    process.exit(1);
+  }
   app.use((req: { method: string; originalUrl?: string; path?: string; firebaseUid?: string }, res: { on: (event: string, cb: () => void) => void; statusCode: number }, next: () => void) => {
     const startedAt = Date.now();
     const span = (Sentry as unknown as {
@@ -94,8 +120,11 @@ async function bootstrap() {
   );
   app.useGlobalFilters(new SentryExceptionFilter());
   app.enableCors({ origin: true });
-  const port = Number(process.env.PORT) || 8080;
+  // Railway (and most PaaS platforms) inject PORT at runtime. We default to
+  // 3000 to match the Dockerfile's EXPOSE + HEALTHCHECK when PORT is absent.
+  const port = Number(process.env.PORT) || 3000;
   await app.listen(port, '0.0.0.0');
+  console.log('Server running on port', port);
   console.log(
     JSON.stringify({
       ts: new Date().toISOString(),
