@@ -70,21 +70,17 @@ class _AdminFeaturedStoresSectionState extends State<AdminFeaturedStoresSection>
         }
 
         final List<Map<String, dynamic>> stores;
-        switch (state) {
-          case FeatureSuccess<List<Map<String, dynamic>>>(:final data):
-            stores = data;
-          case FeatureFailure<List<Map<String, dynamic>>>(:final message):
-            return _errorState(context, message, _reload);
-          case FeatureMissingBackend<List<Map<String, dynamic>>>():
-          case FeatureAdminNotWired<List<Map<String, dynamic>>>():
-          case FeatureAdminMissingEndpoint<List<Map<String, dynamic>>>():
-          case FeatureCriticalPublicDataFailure<List<Map<String, dynamic>>>():
-            state.logIfNotSuccess('admin_featured_stores');
-            return _errorState(
-              context,
-              'خدمة المتاجر غير متاحة حالياً',
-              _reload,
-            );
+        if (state is FeatureSuccess<List<Map<String, dynamic>>>) {
+          stores = state.data;
+        } else if (state is FeatureFailure<List<Map<String, dynamic>>>) {
+          return _errorState(context, state.message, _reload);
+        } else {
+          state.logIfNotSuccess('admin_featured_stores');
+          return _errorState(
+            context,
+            'خدمة المتاجر غير متاحة حالياً',
+            _reload,
+          );
         }
 
         if (stores.isEmpty) {

@@ -79,10 +79,9 @@ class _BoostRequestsTabState extends State<_BoostRequestsTab> {
       future: StoreOwnerRepository.fetchBoostRequests(widget.storeId),
       builder: (context, snap) {
         final state = snap.data;
-        final rows = switch (state) {
-          FeatureSuccess<List<Map<String, dynamic>>>(:final data) => data,
-          _ => const <Map<String, dynamic>>[],
-        };
+        final rows = state is FeatureSuccess<List<Map<String, dynamic>>>
+            ? state.data
+            : const <Map<String, dynamic>>[];
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
