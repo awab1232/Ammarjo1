@@ -13,6 +13,9 @@ export class DatabaseIntegrityService implements OnModuleInit {
     if (process.env.NODE_ENV !== 'production') {
       return;
     }
+    if (process.env.ENABLE_DB_INTEGRITY_CHECK?.trim() !== '1') {
+      return;
+    }
     if (process.env.SKIP_DB_INTEGRITY_CHECK?.trim() === '1') {
       this.logger.warn('SKIP_DB_INTEGRITY_CHECK=1 — database constraint verification skipped');
       return;

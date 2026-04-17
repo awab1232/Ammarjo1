@@ -1,6 +1,6 @@
-/** Outbox is on when DATABASE_URL (or ORDERS_DATABASE_URL) is set and DOMAIN_EVENTS_OUTBOX is not "0". */
+/** Outbox is on only when DOMAIN_EVENTS_OUTBOX=1 and a DB URL exists. */
 export function isEventOutboxEnabled(): boolean {
-  if (process.env.DOMAIN_EVENTS_OUTBOX?.trim() === '0') {
+  if (process.env.DOMAIN_EVENTS_OUTBOX?.trim() !== '1') {
     return false;
   }
   const url = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();

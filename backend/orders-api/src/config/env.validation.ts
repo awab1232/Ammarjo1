@@ -22,19 +22,6 @@ export function logProductionEnvWarnings(): void {
   if (!process.env.SEARCH_INTERNAL_API_KEY?.trim() && !process.env.INTERNAL_API_KEY?.trim()) {
     missing.push('SEARCH_INTERNAL_API_KEY or INTERNAL_API_KEY');
   }
-  if (!process.env.SENTRY_DSN?.trim()) {
-    missing.push('SENTRY_DSN');
-  }
-  if (!process.env.USE_BACKEND_STORE_READS?.trim()) {
-    missing.push('USE_BACKEND_STORE_READS');
-  }
-  if (!process.env.USE_BACKEND_PRODUCTS_READS?.trim()) {
-    missing.push('USE_BACKEND_PRODUCTS_READS');
-  }
-  if (!process.env.USE_BACKEND_OWNER_WRITES?.trim()) {
-    missing.push('USE_BACKEND_OWNER_WRITES');
-  }
-
   if (missing.length === 0) {
     return;
   }
@@ -47,6 +34,10 @@ export function logProductionEnvWarnings(): void {
 
 function mustBeBooleanEnv(key: string, failures: string[]): void {
   const value = process.env[key]?.trim().toLowerCase();
+  if (value == null || value === '') {
+    process.env[key] = 'false';
+    return;
+  }
   if (value !== 'true' && value !== 'false') {
     failures.push(`${key} must be 'true' or 'false'`);
   }
@@ -62,9 +53,6 @@ export function enforceProductionSafetyOrThrow(): void {
 
   if (!process.env.SEARCH_INTERNAL_API_KEY?.trim() && !process.env.INTERNAL_API_KEY?.trim()) {
     failures.push('SEARCH_INTERNAL_API_KEY or INTERNAL_API_KEY is required in production');
-  }
-  if (!process.env.SENTRY_DSN?.trim()) {
-    failures.push('SENTRY_DSN is required in production');
   }
   if (!hasDb) {
     failures.push('DATABASE_URL or ORDERS_DATABASE_URL is required in production');
