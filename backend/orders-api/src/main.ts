@@ -87,6 +87,7 @@ async function bootstrap() {
   await app.listen(port, '0.0.0.0');
   console.log("Server running on port", port);
   console.log("FORCE DEPLOY");
+  console.log("DOCKER FIX DEPLOY");
   console.log(
     JSON.stringify({
       ts: new Date().toISOString(),
