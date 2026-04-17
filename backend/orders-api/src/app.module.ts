@@ -32,6 +32,7 @@ import { TendersModule } from './tenders/tenders.module';
 import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { CartModule } from './cart/cart.module';
+import { TelegramBotModule } from './telegram/telegram-bot.module';
 import { BlogController } from './blog/blog.controller';
 import { HomeController } from './home/home.controller';
 import { HomeService } from './home/home.service';
@@ -64,6 +65,7 @@ import { AppController } from './app.controller';
     EventsHandlersModule,
     EventsInternalModule,
     OpsDashboardModule,
+    TelegramBotModule,
   ],
   controllers: [AppController, HealthController, InternalHealthController, BlogController, HomeController],
   providers: [
