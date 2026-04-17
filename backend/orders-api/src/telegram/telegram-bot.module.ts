@@ -3,6 +3,7 @@ import { ClaudeClientService } from './claude-client.service';
 import { TelegramApiService } from './telegram-api.service';
 import { TelegramBotController } from './telegram-bot.controller';
 import { TelegramBotService } from './telegram-bot.service';
+import { TelegramSchemaService } from './telegram-schema.service';
 import { TelegramSqlService } from './telegram-sql.service';
 
 /**
@@ -13,7 +14,13 @@ import { TelegramSqlService } from './telegram-sql.service';
  */
 @Module({
   controllers: [TelegramBotController],
-  providers: [ClaudeClientService, TelegramApiService, TelegramSqlService, TelegramBotService],
+  providers: [
+    ClaudeClientService,
+    TelegramApiService,
+    TelegramSqlService,
+    TelegramSchemaService,
+    TelegramBotService,
+  ],
   exports: [TelegramBotService],
 })
 export class TelegramBotModule {}

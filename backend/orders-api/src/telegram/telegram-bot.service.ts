@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ClaudeClientService } from './claude-client.service';
 import { TelegramApiService } from './telegram-api.service';
+import { TelegramSchemaService } from './telegram-schema.service';
 import { TelegramSqlService } from './telegram-sql.service';
 import {
   isChatAllowed,
@@ -70,6 +71,7 @@ export class TelegramBotService {
     private readonly claude: ClaudeClientService,
     private readonly telegram: TelegramApiService,
     private readonly sql: TelegramSqlService,
+    private readonly schema: TelegramSchemaService,
   ) {}
 
   async handleUpdate(update: TelegramUpdate): Promise<void> {
@@ -103,6 +105,17 @@ export class TelegramBotService {
       await this.telegram.sendMessage(
         chatId,
         had ? 'تم إلغاء العملية المعلّقة.' : 'لا توجد عملية معلّقة للإلغاء.',
+        msg.message_id,
+      );
+      return;
+    }
+    if (text === '/schema' || text === '/refresh_schema' || text === '/refresh-schema') {
+      this.schema.invalidate();
+      const s = await this.schema.getSchemaForPrompt();
+      this.audit('schema_refreshed', { chatId, userId });
+      await this.telegram.sendMessage(
+        chatId,
+        ['تم تحديث قائمة الجداول:', '', truncate(s, 3500)].join('\n'),
         msg.message_id,
       );
       return;
@@ -172,7 +185,7 @@ export class TelegramBotService {
   ): Promise<BotReply> {
     const messages: ClaudeMessage[] = [{ role: 'user', content: userText }];
     const tools = this.buildTools(chatId);
-    const system = this.buildSystemPrompt(chatId);
+    const system = await this.buildSystemPrompt(chatId);
 
     for (let i = 0; i < this.cfg.maxToolIterations; i++) {
       const response: ClaudeMessagesResponse = await this.claude.createMessage({
@@ -435,9 +448,29 @@ export class TelegramBotService {
     return out;
   }
 
-  private buildSystemPrompt(chatId: number): string {
+  private async buildSystemPrompt(chatId: number): Promise<string> {
     const canWrite = this.sql.isWriteEnabled() && this.sql.isChatAllowed(chatId);
     const canRead = this.sql.isEnabled() && this.sql.isChatAllowed(chatId);
+
+    // Fetch the live schema once per TTL window. If introspection fails we
+    // fall through to a descriptive note and still let Claude try.
+    let schemaBlock = '';
+    if (canRead) {
+      try {
+        const schema = await this.schema.getSchemaForPrompt();
+        schemaBlock = [
+          '',
+          'LIVE DATABASE SCHEMA (use these names verbatim — do not invent tables/columns):',
+          schema,
+          '',
+        ].join('\n');
+      } catch (e) {
+        this.logger.warn(
+          `[TelegramBot] schema injection failed: ${e instanceof Error ? e.message : String(e)}`,
+        );
+      }
+    }
+
     const lines: string[] = [
       'You are the Ammarjo database agent, powered by Claude, responding inside a Telegram chat.',
       'Always answer in the same language the user used. Prefer Arabic if the user wrote Arabic.',
@@ -450,9 +483,9 @@ export class TelegramBotService {
         : 'Write-SQL tooling is disabled for this chat — politely refuse modification requests.',
       'If the user\'s intent is unclear, ask a short clarifying question instead of guessing a query.',
       'If you cannot map the request to a safe SQL statement, reply with "لم أفهم الأمر" (or English equivalent).',
-      'NEVER invent table or column names. If you are unsure which schema exists, run a SELECT against information_schema first (for example, information_schema.tables) before proposing a write.',
+      'The schema block below is authoritative. If a table the user asks about is not listed, say so plainly rather than inventing a name.',
     ];
-    return lines.join(' ');
+    return lines.join(' ') + schemaBlock;
   }
 
   private renderConfirmationPrompt(p: PendingWrite): string {
@@ -490,7 +523,7 @@ export class TelegramBotService {
         ? 'قبل أي تعديل سأعرض عليك تأكيداً — اكتب "نعم" للتنفيذ أو "لا" للإلغاء.'
         : 'هذا الحساب يملك صلاحية القراءة فقط.',
       '',
-      'الأوامر: /start • /help • /cancel',
+      'الأوامر: /start • /help • /cancel • /schema (إعادة تحميل أسماء الجداول)',
     ].join('\n');
   }
 

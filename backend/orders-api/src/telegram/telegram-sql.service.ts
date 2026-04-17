@@ -107,6 +107,78 @@ export class TelegramSqlService {
   }
 
   /* ------------------------------------------------------------------ */
+  /* SCHEMA INTROSPECTION (internal, trusted SQL only)                   */
+  /* ------------------------------------------------------------------ */
+
+  /**
+   * Fetch every column of every base table in the `public` schema.
+   *
+   * This bypasses [sanitizeSelectSql]'s LIMIT wrap because the query is
+   * hard-coded, read-only, and MUST return many rows to be useful. It still
+   * runs inside a `READ ONLY` transaction with a `statement_timeout` so a
+   * pathological schema can never hang the bot.
+   */
+  async fetchPublicSchemaRows(): Promise<{
+    ok: boolean;
+    rows?: Array<{
+      table_name: string;
+      column_name: string;
+      data_type: string;
+      is_nullable: string;
+      ordinal_position: number;
+    }>;
+    error?: string;
+  }> {
+    const client = await this.acquireReadClient();
+    if (!client) {
+      return { ok: false, error: 'database_unavailable' };
+    }
+    try {
+      await client.query('BEGIN READ ONLY');
+      // A slightly more generous timeout — the query is almost always fast, but
+      // very large public schemas can take a moment on cold pools.
+      await client.query(
+        `SET LOCAL statement_timeout = ${Math.max(this.cfg.sqlStatementTimeoutMs, 10_000)}`,
+      );
+      const res = await client.query(
+        `SELECT
+           c.table_name,
+           c.column_name,
+           c.data_type,
+           c.is_nullable,
+           c.ordinal_position
+         FROM information_schema.columns c
+         JOIN information_schema.tables t
+           ON t.table_schema = c.table_schema
+          AND t.table_name   = c.table_name
+         WHERE c.table_schema = 'public'
+           AND t.table_type  = 'BASE TABLE'
+         ORDER BY c.table_name, c.ordinal_position`,
+      );
+      await client.query('COMMIT');
+      const rows = (res.rows as Array<{
+        table_name: string;
+        column_name: string;
+        data_type: string;
+        is_nullable: string;
+        ordinal_position: number;
+      }>) ?? [];
+      return { ok: true, rows };
+    } catch (e) {
+      try {
+        await client.query('ROLLBACK');
+      } catch {
+        /* ignore rollback errors */
+      }
+      const msg = e instanceof Error ? e.message : String(e);
+      this.logger.warn(`[TelegramSql] schema fetch failed: ${msg}`);
+      return { ok: false, error: sanitizeDbError(msg) };
+    } finally {
+      client.release();
+    }
+  }
+
+  /* ------------------------------------------------------------------ */
   /* WRITE PATH                                                          */
   /* ------------------------------------------------------------------ */
 
