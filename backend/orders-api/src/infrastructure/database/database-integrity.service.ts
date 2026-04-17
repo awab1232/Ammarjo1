@@ -8,6 +8,7 @@ import { Pool } from 'pg';
 @Injectable()
 export class DatabaseIntegrityService implements OnModuleInit {
   private readonly logger = new Logger(DatabaseIntegrityService.name);
+  private readonly strictMode = process.env.ENFORCE_DB_INTEGRITY_ON_BOOT?.trim() === '1';
 
   async onModuleInit(): Promise<void> {
     if (process.env.NODE_ENV !== 'production') {
@@ -24,12 +25,14 @@ export class DatabaseIntegrityService implements OnModuleInit {
 
     const pool = new Pool({ connectionString: url, max: 1 });
     const client = await pool.connect();
+    let hasIntegrityFailures = false;
     try {
       const constraintNames = ['fk_orders_user_firebase', 'fk_products_store'] as const;
       for (const name of constraintNames) {
         const r = await client.query(`SELECT 1 FROM pg_constraint WHERE conname = $1 LIMIT 1`, [name]);
         if (r.rows.length === 0) {
-          throw new Error(`[DatabaseIntegrity] Missing constraint ${name} — apply sql/production-constraints.sql`);
+          hasIntegrityFailures = true;
+          this.handleFailure(`Missing constraint ${name} — apply sql/production-constraints.sql`);
         }
       }
       const indexNames = ['uq_users_email_normalized', 'uq_product_variants_product_sku'] as const;
@@ -39,15 +42,26 @@ export class DatabaseIntegrityService implements OnModuleInit {
           [name],
         );
         if (r.rows.length === 0) {
-          throw new Error(
-            `[DatabaseIntegrity] Missing index ${name} — apply sql/production-constraints.sql and sql/production-hardening-indexes.sql`,
+          hasIntegrityFailures = true;
+          this.handleFailure(
+            `Missing index ${name} — apply sql/production-constraints.sql and sql/production-hardening-indexes.sql`,
           );
         }
       }
-      this.logger.log('Database integrity checks passed (constraints + indexes)');
+      if (!hasIntegrityFailures) {
+        this.logger.log('Database integrity checks passed (constraints + indexes)');
+      }
     } finally {
       client.release();
       await pool.end();
     }
+  }
+
+  private handleFailure(details: string): void {
+    const message = `[DatabaseIntegrity] ${details}`;
+    if (this.strictMode) {
+      throw new Error(message);
+    }
+    this.logger.error(`${message} (non-fatal: set ENFORCE_DB_INTEGRITY_ON_BOOT=1 to fail fast)`);
   }
 }
