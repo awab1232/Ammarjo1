@@ -11,6 +11,7 @@ RUN npm ci
 
 COPY nest-cli.json tsconfig.json ./
 COPY src ./src
+COPY scripts ./scripts
 RUN npm run build && rm -rf node_modules
 
 # -------- runner ---------
