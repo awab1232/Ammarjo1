@@ -4,16 +4,11 @@ import { Controller, Get } from '@nestjs/common';
 export class AppController {
   @Get()
   root() {
-    return { status: 'API running' };
+    return 'OK';
   }
 
   @Get('health')
   health() {
-    return { ok: true };
-  }
-
-  @Get('api/health')
-  apiHealth() {
-    return { ok: true };
+    return 'OK';
   }
 }

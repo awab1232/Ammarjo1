@@ -1,14 +1,8 @@
-import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { APP_GUARD, ModuleRef } from '@nestjs/core';
-import type { NextFunction, Request, Response } from 'express';
+import { Module } from '@nestjs/common';
 import { ArchitectureModule } from './architecture/architecture.module';
 import { ApiGatewayModule } from './gateway/api-gateway.module';
-import { ApiGatewayMiddleware } from './gateway/api-gateway.middleware';
 import { InfrastructureModule } from './infrastructure/infrastructure.module';
 import { IdentityModule } from './identity/identity.module';
-import { TenantContextGuard } from './identity/tenant-context.guard';
-import { RbacGuard } from './identity/rbac.guard';
-import { ApiPolicyGuard } from './gateway/api-policy.guard';
 import { HealthController } from './health/health.controller';
 import { InternalHealthController } from './health/internal-health.controller';
 import { EventsCoreModule } from './events/events-core.module';
@@ -66,20 +60,6 @@ import { AppController } from './app.controller';
     OpsDashboardModule,
   ],
   controllers: [AppController, HealthController, InternalHealthController, BlogController, HomeController],
-  providers: [
-    HomeService,
-    { provide: APP_GUARD, useClass: TenantContextGuard },
-    { provide: APP_GUARD, useClass: ApiPolicyGuard },
-    { provide: APP_GUARD, useClass: RbacGuard },
-  ],
+  providers: [HomeService],
 })
-export class AppModule implements NestModule {
-  constructor(private readonly moduleRef: ModuleRef) {}
-
-  configure(consumer: MiddlewareConsumer): void {
-    const apiGateway = this.moduleRef.get(ApiGatewayMiddleware, { strict: false });
-    consumer
-      .apply((req: Request, res: Response, next: NextFunction) => apiGateway.use(req, res, next))
-      .forRoutes('*');
-  }
-}
+export class AppModule {}
