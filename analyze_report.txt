@@ -1,0 +1,112 @@
+﻿Analyzing opensource-ecommerce-mobile-app-main...               
+
+  error - Undefined name 'e' - lib\core\config\gemini_connection_validation.dart:144:17 - undefined_identifier
+  error - Undefined name 'e' - lib\core\firebase\app_check_bootstrap.dart:34:55 - undefined_identifier
+  error - Undefined name 'st' - lib\core\firebase\app_check_bootstrap.dart:34:59 - undefined_identifier
+  error - Undefined name 'e' - lib\core\firebase\chat_firebase_sync.dart:31:46 - undefined_identifier
+  error - Undefined name 'st' - lib\core\firebase\chat_firebase_sync.dart:31:50 - undefined_identifier
+  error - Undefined name 'e' - lib\core\firebase\fcm_bootstrap.dart:36:36 - undefined_identifier
+  error - Undefined name 'st' - lib\core\firebase\fcm_bootstrap.dart:36:40 - undefined_identifier
+  error - Undefined name 'e' - lib\core\firebase\firebase_chat_auth.dart:32:11 - undefined_identifier
+  error - Undefined name 'e' - lib\core\firebase\firebase_chat_auth.dart:32:41 - undefined_identifier
+  error - Undefined name 'e2' - lib\core\firebase\firebase_chat_auth.dart:37:53 - undefined_identifier
+  error - Undefined name 'st' - lib\core\firebase\firebase_chat_auth.dart:37:58 - undefined_identifier
+  error - Undefined name 'e' - lib\core\firebase\firebase_chat_auth.dart:41:45 - undefined_identifier
+  error - Undefined name 'e' - lib\core\firebase\phone_auth_bootstrap.dart:22:19 - undefined_identifier
+  error - Undefined name 'e' - lib\core\firebase\phone_auth_service.dart:103:49 - undefined_identifier
+   info - Empty catch block - lib\core\monitoring\sentry_safe.dart:10:15 - empty_catches
+   info - Empty catch block - lib\core\monitoring\sentry_safe.dart:20:15 - empty_catches
+   info - Empty catch block - lib\core\monitoring\sentry_safe.dart:26:15 - empty_catches
+  error - Undefined name 'e' - lib\core\security\runtime_safety_enforcer.dart:40:88 - undefined_identifier
+  error - Undefined name 'st' - lib\core\security\runtime_safety_enforcer.dart:40:92 - undefined_identifier
+  error - Undefined name 'e' - lib\core\security\runtime_safety_enforcer.dart:44:75 - undefined_identifier
+  error - Undefined name 'st' - lib\core\security\runtime_safety_enforcer.dart:44:79 - undefined_identifier
+   info - Empty catch block - lib\core\seo\seo_service.dart:124:17 - empty_catches
+   info - Empty catch block - lib\core\services\auth_service.dart:63:17 - empty_catches
+  error - Undefined name 'e' - lib\core\services\auth_service.dart:80:48 - undefined_identifier
+warning - A value for optional parameter 'stackTrace' isn't ever given - lib\core\services\backend_orders_client.dart:38:17 - unused_element_parameter
+  error - Undefined name 'e' - lib\core\services\failed_mirror_dlq_observability.dart:33:65 - undefined_identifier
+  error - Undefined name 'st' - lib\core\services\failed_mirror_dlq_observability.dart:33:69 - undefined_identifier
+  error - Undefined name 'e' - lib\core\services\notification_service.dart:22:62 - undefined_identifier
+  error - Undefined name 'st' - lib\core\services\notification_service.dart:22:66 - undefined_identifier
+warning - The value of the local variable 'e' isn't used - lib\core\services\product_service.dart:160:18 - unused_local_variable
+  error - Undefined name 'e' - lib\core\startup\staging_startup_guard.dart:48:84 - undefined_identifier
+  error - Undefined name 'st' - lib\core\startup\staging_startup_guard.dart:48:88 - undefined_identifier
+   info - Empty catch block - lib\core\utils\image_compress.dart:15:15 - empty_catches
+   info - Empty catch block - lib\core\utils\store_product_discount.dart:20:17 - empty_catches
+  error - Undefined name 'e' - lib\core\utils\stream_first_event_timeout.dart:41:29 - undefined_identifier
+  error - Undefined name 'st' - lib\core\utils\stream_first_event_timeout.dart:41:32 - undefined_identifier
+  error - Undefined name 'e' - lib\features\communication\data\unified_chat_repository.dart:90:145 - undefined_identifier
+  error - Undefined name 'st' - lib\features\communication\data\unified_chat_repository.dart:90:149 - undefined_identifier
+  error - Undefined name 'e' - lib\features\communication\data\unified_chat_repository.dart:111:81 - undefined_identifier
+  error - Undefined name 'st' - lib\features\communication\data\unified_chat_repository.dart:111:85 - undefined_identifier
+   info - Empty catch block - lib\features\communication\data\unified_chat_repository.dart:328:21 - empty_catches
+   info - Empty catch block - lib\features\communication\data\unified_chat_repository.dart:383:17 - empty_catches
+  error - Undefined name 'e' - lib\features\communication\data\unified_chat_repository.dart:428:77 - undefined_identifier
+  error - Undefined name 'st' - lib\features\communication\data\unified_chat_repository.dart:428:81 - undefined_identifier
+warning - The value of the local variable 'e' isn't used - lib\features\communication\domain\marketplace_listing_chat_models.dart:86:18 - unused_local_variable
+  error - Undefined name 'e' - lib\features\reviews\data\reviews_repository.dart:200:74 - undefined_identifier
+  error - Undefined name 'st' - lib\features\reviews\data\reviews_repository.dart:200:78 - undefined_identifier
+  error - Undefined name 'e' - lib\features\reviews\presentation\widgets\reviews_section.dart:95:44 - undefined_identifier
+  error - Undefined name 'st' - lib\features\reviews\presentation\widgets\reviews_section.dart:95:48 - undefined_identifier
+  error - Undefined name 'e' - lib\features\reviews\presentation\widgets\reviews_section.dart:133:51 - undefined_identifier
+  error - Undefined name 'st' - lib\features\reviews\presentation\widgets\reviews_section.dart:133:55 - undefined_identifier
+warning - The value of the local variable 'e' isn't used - lib\features\store\domain\construction_calculator_models.dart:19:18 - unused_local_variable
+   info - Empty catch block - lib\features\store\domain\favorite_product.dart:24:17 - empty_catches
+  error - Undefined name 'e' - lib\features\store\presentation\ai\gemini_image_analyze.dart:46:56 - undefined_identifier
+  error - Undefined name 'stackTrace' - lib\features\store\presentation\ai\gemini_image_analyze.dart:47:20 - undefined_identifier
+  error - Undefined name 'httpErr' - lib\features\store\presentation\ai\gemini_image_analyze.dart:61:59 - undefined_identifier
+  error - Undefined name 'httpSt' - lib\features\store\presentation\ai\gemini_image_analyze.dart:62:22 - undefined_identifier
+  error - Undefined name 'e' - lib\features\store\presentation\ai\gemini_store_chat.dart:73:60 - undefined_identifier
+  error - Undefined name 'stackTrace' - lib\features\store\presentation\ai\gemini_store_chat.dart:74:20 - undefined_identifier
+  error - Undefined name 'httpErr' - lib\features\store\presentation\ai\gemini_store_chat.dart:86:53 - undefined_identifier
+  error - Undefined name 'httpSt' - lib\features\store\presentation\ai\gemini_store_chat.dart:87:22 - undefined_identifier
+  error - Undefined name 'e' - lib\features\store\presentation\controllers\cart_controller.dart:293:41 - undefined_identifier
+  error - Undefined name 'e' - lib\features\store\presentation\controllers\cart_controller.dart:293:76 - undefined_identifier
+  error - Undefined name 'e' - lib\features\store\presentation\controllers\cart_controller.dart:328:41 - undefined_identifier
+  error - Undefined name 'e' - lib\features\store\presentation\controllers\cart_controller.dart:328:76 - undefined_identifier
+  error - Undefined name 'e' - lib\features\store\presentation\controllers\cart_controller.dart:387:38 - undefined_identifier
+  error - Undefined name 'e' - lib\features\store\presentation\controllers\filter_controller.dart:73:38 - undefined_identifier
+  error - Undefined name 'e' - lib\features\store\presentation\controllers\filter_controller.dart:119:38 - undefined_identifier
+  error - Undefined name 'e' - lib\features\store\presentation\controllers\search_controller.dart:75:38 - undefined_identifier
+  error - Undefined name 'e' - lib\features\store\presentation\controllers\search_controller.dart:130:38 - undefined_identifier
+   info - Empty catch block - lib\features\store\presentation\controllers\user_controller.dart:186:19 - empty_catches
+  error - Undefined name 'e' - lib\features\store\presentation\pages\ai_assistant_page.dart:91:30 - undefined_identifier
+  error - Undefined name 'e' - lib\features\store\presentation\pages\ai_assistant_page.dart:94:32 - undefined_identifier
+  error - Undefined name 'e' - lib\features\store\presentation\pages\ai_assistant_page.dart:98:41 - undefined_identifier
+  error - Undefined name 'st' - lib\features\store\presentation\pages\ai_assistant_page.dart:99:22 - undefined_identifier
+  error - Undefined name 'e' - lib\features\store\presentation\pages\ai_chat_tab.dart:133:67 - undefined_identifier
+  error - Undefined name 'e' - lib\features\store\presentation\pages\ai_vision_tab.dart:116:26 - undefined_identifier
+  error - Undefined name 'e' - lib\features\store\presentation\pages\ai_vision_tab.dart:121:13 - undefined_identifier
+  error - Undefined name 'e' - lib\features\store\presentation\pages\ai_vision_tab.dart:121:32 - undefined_identifier
+  error - Undefined name 'e' - lib\features\store\presentation\pages\ai_vision_tab.dart:130:28 - undefined_identifier
+  error - Undefined name 'e' - lib\features\store\presentation\pages\ai_vision_tab.dart:158:103 - undefined_identifier
+   info - Empty catch block - lib\features\store\presentation\pages\ai_vision_tab.dart:345:15 - empty_catches
+  error - Undefined name 'e' - lib\features\store\presentation\pages\change_password_page.dart:61:66 - undefined_identifier
+  error - Undefined name 'e' - lib\features\store\presentation\pages\change_password_page.dart:67:34 - undefined_identifier
+  error - Undefined name 'e' - lib\features\store\presentation\pages\customer_delivery_settings_page.dart:155:50 - undefined_identifier
+  error - Undefined name 'e' - lib\features\store\presentation\pages\register_page.dart:123:47 - undefined_identifier
+  error - Undefined name 'e' - lib\features\store\presentation\pages\register_page.dart:129:34 - undefined_identifier
+  error - Undefined name 'e' - lib\features\store\presentation\pages\wallet_screen.dart:103:33 - undefined_identifier
+   info - Empty catch block - lib\features\stores\domain\store_request_model.dart:36:17 - empty_catches
+  error - Undefined name 'e' - lib\features\stores\presentation\apply_store_page.dart:189:32 - undefined_identifier
+  error - Undefined name 'e' - lib\features\stores\presentation\store_detail_page.dart:174:47 - undefined_identifier
+  error - Undefined name 'st' - lib\features\stores\presentation\store_detail_page.dart:174:51 - undefined_identifier
+  error - Undefined name 'e' - lib\features\stores\presentation\store_detail_page.dart:178:57 - undefined_identifier
+  error - Undefined name 'e' - lib\features\stores\presentation\stores_list_page.dart:96:45 - undefined_identifier
+  error - Undefined name 'e' - lib\features\stores\presentation\stores_list_page.dart:130:49 - undefined_identifier
+  error - Undefined name 'e' - lib\features\support\presentation\open_support_chat.dart:71:52 - undefined_identifier
+  error - Undefined name 'e' - lib\features\support\presentation\support_chat_page.dart:49:58 - undefined_identifier
+  error - Undefined name 'st' - lib\features\support\presentation\support_chat_page.dart:49:62 - undefined_identifier
+  error - Undefined name 'e' - lib\features\support\presentation\support_chat_page.dart:85:51 - undefined_identifier
+  error - Undefined name 'e' - lib\features\support\presentation\support_chat_page.dart:128:45 - undefined_identifier
+  error - Undefined name 'st' - lib\features\support\presentation\support_chat_page.dart:128:49 - undefined_identifier
+  error - Undefined name 'e' - lib\features\support\presentation\support_chat_page.dart:131:51 - undefined_identifier
+
+flutter : 102 issues found. (ran in 16.8s)
+At C:\Users\user\AppData\Local\Temp\ps-script-5a284499-7ea5-4d11-a760-16997f965b6f.ps1:83 char:1
++ flutter analyze 2>&1 | Out-File -FilePath analyze_report.txt -Encodin ...
++ ~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (102 issues found. (ran in 16.8s):String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 

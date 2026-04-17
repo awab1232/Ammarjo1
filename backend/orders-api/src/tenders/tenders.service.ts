@@ -1,0 +1,403 @@
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+  ServiceUnavailableException,
+} from '@nestjs/common';
+import { Pool, type PoolClient } from 'pg';
+
+import { logAuditJson } from '../common/audit-log';
+
+export interface CreateTenderInput {
+  customerUid: string;
+  category: string;
+  description: string;
+  city: string;
+  userName: string;
+  storeTypeId?: string | null;
+  storeTypeKey?: string | null;
+  storeTypeName?: string | null;
+  imageBase64?: string | null;
+  imageUrl?: string | null;
+}
+
+export interface SubmitOfferInput {
+  tenderId: string;
+  storeId: string;
+  storeName: string;
+  storeOwnerUid: string;
+  price: number;
+  note: string;
+}
+
+/**
+ * Customer-facing tenders service (public `/tenders` routes).
+ *
+ * Owns two tables:
+ *  - `tenders`        — the tender request itself (one per customer + category).
+ *  - `tender_offers`  — store replies for a given tender.
+ *
+ * Mutations are routed through `withClient` so schema bootstrap runs once per
+ * process against the shared `DATABASE_URL` pool.
+ */
+@Injectable()
+export class TendersService {
+  private readonly pool: Pool | null;
+  private tablesReady = false;
+
+  constructor() {
+    const url = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
+    this.pool = url
+      ? new Pool({
+          connectionString: url,
+          max: Number(process.env.TENDERS_PG_POOL_MAX || 4),
+          idleTimeoutMillis: 30_000,
+        })
+      : null;
+  }
+
+  private requireDb(): Pool {
+    if (!this.pool) throw new ServiceUnavailableException('tenders database not configured');
+    return this.pool;
+  }
+
+  private async withClient<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
+    const client = await this.requireDb().connect();
+    try {
+      await this.ensureTables(client);
+      return await fn(client);
+    } finally {
+      client.release();
+    }
+  }
+
+  private async ensureTables(client: PoolClient): Promise<void> {
+    if (this.tablesReady) return;
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS tenders (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        customer_uid text NOT NULL,
+        customer_name text NOT NULL DEFAULT '',
+        category text NOT NULL DEFAULT '',
+        description text NOT NULL DEFAULT '',
+        city text NOT NULL DEFAULT '',
+        image_url text,
+        image_base64 text,
+        store_type_id uuid,
+        store_type_key text,
+        store_type_name text,
+        status text NOT NULL DEFAULT 'open',
+        accepted_offer_id uuid,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS idx_tenders_customer ON tenders (customer_uid, updated_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_tenders_status_type ON tenders (status, store_type_id, updated_at DESC);
+
+      CREATE TABLE IF NOT EXISTS tender_offers (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        tender_id uuid NOT NULL REFERENCES tenders(id) ON DELETE CASCADE,
+        store_id text NOT NULL DEFAULT '',
+        store_name text NOT NULL DEFAULT '',
+        store_owner_uid text NOT NULL DEFAULT '',
+        price numeric(12,2) NOT NULL DEFAULT 0,
+        note text NOT NULL DEFAULT '',
+        status text NOT NULL DEFAULT 'pending',
+        created_at timestamptz NOT NULL DEFAULT now(),
+        updated_at timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS idx_tender_offers_tender ON tender_offers (tender_id, updated_at DESC);
+    `);
+    this.tablesReady = true;
+  }
+
+  private rowToTender(row: Record<string, unknown>): Record<string, unknown> {
+    return {
+      id: row['id'],
+      customerUid: row['customer_uid'],
+      userName: row['customer_name'],
+      category: row['category'],
+      description: row['description'],
+      city: row['city'],
+      imageUrl: row['image_url'],
+      storeTypeId: row['store_type_id'],
+      storeTypeKey: row['store_type_key'],
+      storeTypeName: row['store_type_name'],
+      status: row['status'],
+      acceptedOfferId: row['accepted_offer_id'],
+      createdAt: row['created_at'],
+      updatedAt: row['updated_at'],
+    };
+  }
+
+  private rowToOffer(row: Record<string, unknown>): Record<string, unknown> {
+    return {
+      id: row['id'],
+      tenderId: row['tender_id'],
+      storeId: row['store_id'],
+      storeName: row['store_name'],
+      storeOwnerUid: row['store_owner_uid'],
+      price: Number(row['price']),
+      note: row['note'],
+      status: row['status'],
+      createdAt: row['created_at'],
+      updatedAt: row['updated_at'],
+    };
+  }
+
+  async create(input: CreateTenderInput): Promise<Record<string, unknown>> {
+    if (!input.customerUid.trim()) throw new BadRequestException('missing_customer');
+    if (!input.category.trim() && !input.description.trim()) {
+      throw new BadRequestException('category_or_description_required');
+    }
+    return this.withClient(async (client) => {
+      const q = await client.query(
+        `INSERT INTO tenders
+           (customer_uid, customer_name, category, description, city,
+            image_url, image_base64, store_type_id, store_type_key, store_type_name)
+         VALUES ($1,$2,$3,$4,$5,$6,$7, NULLIF($8,'')::uuid, NULLIF($9,''), NULLIF($10,''))
+         RETURNING id::text, customer_uid, customer_name, category, description, city,
+                   image_url, store_type_id::text AS store_type_id, store_type_key, store_type_name,
+                   status, accepted_offer_id::text AS accepted_offer_id, created_at, updated_at`,
+        [
+          input.customerUid.trim(),
+          (input.userName || '').trim(),
+          input.category.trim(),
+          input.description.trim(),
+          input.city.trim(),
+          input.imageUrl?.trim() || null,
+          input.imageBase64?.trim() || null,
+          input.storeTypeId?.trim() || '',
+          input.storeTypeKey?.trim() || '',
+          input.storeTypeName?.trim() || '',
+        ],
+      );
+      logAuditJson('audit', {
+        action: 'tender_created',
+        tenderId: q.rows[0]?.['id'],
+        customerUid: input.customerUid.trim(),
+      });
+      return this.rowToTender(q.rows[0] as Record<string, unknown>);
+    });
+  }
+
+  async listMine(customerUid: string, limit = 50): Promise<{ items: Record<string, unknown>[] }> {
+    if (!customerUid.trim()) return { items: [] };
+    const lim = Math.min(200, Math.max(1, limit));
+    return this.withClient(async (client) => {
+      const q = await client.query(
+        `SELECT id::text, customer_uid, customer_name, category, description, city,
+                image_url, store_type_id::text AS store_type_id, store_type_key, store_type_name,
+                status, accepted_offer_id::text AS accepted_offer_id, created_at, updated_at
+         FROM tenders
+         WHERE customer_uid = $1
+         ORDER BY updated_at DESC
+         LIMIT $2`,
+        [customerUid.trim(), lim],
+      );
+      return { items: (q.rows as Record<string, unknown>[]).map((r) => this.rowToTender(r)) };
+    });
+  }
+
+  /**
+   * Open feed for stores: returns open tenders targeted at a given store-type
+   * (by id or key). Callers pass the store's own type so targeting is symmetric
+   * with `_notifyTargetedStores` on the client side.
+   */
+  async listOpenForStore(params: {
+    storeTypeId?: string;
+    storeTypeKey?: string;
+    city?: string;
+    limit?: number;
+  }): Promise<{ items: Record<string, unknown>[] }> {
+    const lim = Math.min(200, Math.max(1, params.limit ?? 50));
+    const sid = (params.storeTypeId ?? '').trim();
+    const skey = (params.storeTypeKey ?? '').trim().toLowerCase();
+    const city = (params.city ?? '').trim();
+    return this.withClient(async (client) => {
+      const where: string[] = [`status = 'open'`];
+      const vals: unknown[] = [];
+      let n = 1;
+      if (sid) {
+        where.push(`store_type_id = $${n++}::uuid`);
+        vals.push(sid);
+      } else if (skey) {
+        where.push(`lower(store_type_key) = $${n++}`);
+        vals.push(skey);
+      }
+      if (city) {
+        where.push(`(city = '' OR city = $${n++})`);
+        vals.push(city);
+      }
+      vals.push(lim);
+      const q = await client.query(
+        `SELECT id::text, customer_uid, customer_name, category, description, city,
+                image_url, store_type_id::text AS store_type_id, store_type_key, store_type_name,
+                status, accepted_offer_id::text AS accepted_offer_id, created_at, updated_at
+         FROM tenders
+         WHERE ${where.join(' AND ')}
+         ORDER BY updated_at DESC
+         LIMIT $${n}`,
+        vals,
+      );
+      return { items: (q.rows as Record<string, unknown>[]).map((r) => this.rowToTender(r)) };
+    });
+  }
+
+  async getById(id: string): Promise<Record<string, unknown>> {
+    if (!id.trim()) throw new BadRequestException('missing_tender_id');
+    return this.withClient(async (client) => {
+      const q = await client.query(
+        `SELECT id::text, customer_uid, customer_name, category, description, city,
+                image_url, store_type_id::text AS store_type_id, store_type_key, store_type_name,
+                status, accepted_offer_id::text AS accepted_offer_id, created_at, updated_at
+         FROM tenders WHERE id = $1::uuid`,
+        [id.trim()],
+      );
+      if (q.rows.length === 0) throw new NotFoundException('tender_not_found');
+      return this.rowToTender(q.rows[0] as Record<string, unknown>);
+    });
+  }
+
+  async listOffers(tenderId: string): Promise<{ items: Record<string, unknown>[] }> {
+    if (!tenderId.trim()) throw new BadRequestException('missing_tender_id');
+    return this.withClient(async (client) => {
+      const q = await client.query(
+        `SELECT id::text, tender_id::text, store_id, store_name, store_owner_uid,
+                price, note, status, created_at, updated_at
+         FROM tender_offers
+         WHERE tender_id = $1::uuid
+         ORDER BY created_at ASC`,
+        [tenderId.trim()],
+      );
+      return { items: (q.rows as Record<string, unknown>[]).map((r) => this.rowToOffer(r)) };
+    });
+  }
+
+  async submitOffer(input: SubmitOfferInput): Promise<Record<string, unknown>> {
+    if (!input.tenderId.trim()) throw new BadRequestException('missing_tender_id');
+    if (!input.storeId.trim()) throw new BadRequestException('missing_store_id');
+    if (!Number.isFinite(input.price) || input.price < 0) throw new BadRequestException('invalid_price');
+    return this.withClient(async (client) => {
+      const sel = await client.query(`SELECT status FROM tenders WHERE id = $1::uuid`, [input.tenderId.trim()]);
+      if (sel.rows.length === 0) throw new NotFoundException('tender_not_found');
+      if (String(sel.rows[0]['status']) !== 'open') throw new BadRequestException('tender_closed');
+      const q = await client.query(
+        `INSERT INTO tender_offers (tender_id, store_id, store_name, store_owner_uid, price, note)
+         VALUES ($1::uuid, $2, $3, $4, $5, $6)
+         RETURNING id::text, tender_id::text, store_id, store_name, store_owner_uid,
+                   price, note, status, created_at, updated_at`,
+        [
+          input.tenderId.trim(),
+          input.storeId.trim(),
+          input.storeName.trim(),
+          input.storeOwnerUid.trim(),
+          input.price,
+          input.note.trim(),
+        ],
+      );
+      await client.query(`UPDATE tenders SET updated_at = NOW() WHERE id = $1::uuid`, [input.tenderId.trim()]);
+      logAuditJson('audit', {
+        action: 'tender_offer_submitted',
+        tenderId: input.tenderId.trim(),
+        offerId: q.rows[0]?.['id'],
+        storeId: input.storeId.trim(),
+      });
+      return this.rowToOffer(q.rows[0] as Record<string, unknown>);
+    });
+  }
+
+  async patchOffer(
+    customerUid: string,
+    tenderId: string,
+    offerId: string,
+    body: { status?: string },
+  ): Promise<Record<string, unknown>> {
+    const status = (body.status ?? '').trim().toLowerCase();
+    if (!status) throw new BadRequestException('missing_status');
+    const allowed = new Set(['accepted', 'rejected', 'withdrawn']);
+    if (!allowed.has(status)) throw new BadRequestException('invalid_status');
+
+    return this.withClient(async (client) => {
+      const tSel = await client.query(
+        `SELECT customer_uid, status FROM tenders WHERE id = $1::uuid`,
+        [tenderId.trim()],
+      );
+      if (tSel.rows.length === 0) throw new NotFoundException('tender_not_found');
+      if (String(tSel.rows[0]['customer_uid']) !== customerUid.trim()) {
+        throw new BadRequestException('not_tender_owner');
+      }
+
+      const oSel = await client.query(
+        `SELECT id::text FROM tender_offers WHERE id = $1::uuid AND tender_id = $2::uuid`,
+        [offerId.trim(), tenderId.trim()],
+      );
+      if (oSel.rows.length === 0) throw new NotFoundException('offer_not_found');
+
+      const upd = await client.query(
+        `UPDATE tender_offers SET status = $1, updated_at = NOW()
+         WHERE id = $2::uuid AND tender_id = $3::uuid
+         RETURNING id::text, tender_id::text, store_id, store_name, store_owner_uid,
+                   price, note, status, created_at, updated_at`,
+        [status, offerId.trim(), tenderId.trim()],
+      );
+
+      if (status === 'accepted') {
+        await client.query(
+          `UPDATE tenders SET status = 'closed', accepted_offer_id = $1::uuid, updated_at = NOW()
+           WHERE id = $2::uuid`,
+          [offerId.trim(), tenderId.trim()],
+        );
+        await client.query(
+          `UPDATE tender_offers SET status = 'rejected', updated_at = NOW()
+           WHERE tender_id = $1::uuid AND id <> $2::uuid AND status = 'pending'`,
+          [tenderId.trim(), offerId.trim()],
+        );
+      }
+
+      logAuditJson('audit', {
+        action: 'tender_offer_patched',
+        tenderId: tenderId.trim(),
+        offerId: offerId.trim(),
+        status,
+      });
+      return this.rowToOffer(upd.rows[0] as Record<string, unknown>);
+    });
+  }
+
+  /** Customer-initiated tender lifecycle (close/delete). */
+  async patchTenderStatus(
+    customerUid: string,
+    tenderId: string,
+    body: { status?: string },
+  ): Promise<{ ok: true }> {
+    const status = (body.status ?? '').trim().toLowerCase();
+    if (!status) throw new BadRequestException('missing_status');
+    if (!['closed', 'cancelled'].includes(status)) throw new BadRequestException('invalid_status');
+    return this.withClient(async (client) => {
+      const sel = await client.query(`SELECT customer_uid FROM tenders WHERE id = $1::uuid`, [tenderId.trim()]);
+      if (sel.rows.length === 0) throw new NotFoundException('tender_not_found');
+      if (String(sel.rows[0]['customer_uid']) !== customerUid.trim()) {
+        throw new BadRequestException('not_tender_owner');
+      }
+      await client.query(
+        `UPDATE tenders SET status = $1, updated_at = NOW() WHERE id = $2::uuid`,
+        [status, tenderId.trim()],
+      );
+      return { ok: true as const };
+    });
+  }
+
+  async deleteTender(customerUid: string, tenderId: string): Promise<{ ok: true }> {
+    return this.withClient(async (client) => {
+      const sel = await client.query(`SELECT customer_uid FROM tenders WHERE id = $1::uuid`, [tenderId.trim()]);
+      if (sel.rows.length === 0) throw new NotFoundException('tender_not_found');
+      if (String(sel.rows[0]['customer_uid']) !== customerUid.trim()) {
+        throw new BadRequestException('not_tender_owner');
+      }
+      await client.query(`DELETE FROM tenders WHERE id = $1::uuid`, [tenderId.trim()]);
+      logAuditJson('audit', { action: 'tender_deleted', tenderId: tenderId.trim() });
+      return { ok: true as const };
+    });
+  }
+}

@@ -1,0 +1,57 @@
+# docker-compose is for LOCAL development only.
+# Railway / Fly / Render will build the backend directly from
+# `backend/orders-api/Dockerfile` and will NOT read this file.
+#
+# Usage:
+#   docker compose up -d            # start postgres + backend
+#   docker compose logs -f backend  # follow server logs
+#   docker compose down             # stop (data persists in volume)
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: app_db
+      POSTGRES_USER: app_user
+      POSTGRES_PASSWORD: app_pass
+      # Ensure Arabic / UTF-8 text is stored and returned without mojibake.
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8 --locale=C.UTF-8"
+      LANG: "C.UTF-8"
+      LC_ALL: "C.UTF-8"
+      PGCLIENTENCODING: "UTF8"
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app_user -d app_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  backend:
+    build:
+      context: ./backend/orders-api
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      NODE_ENV: staging
+      PORT: "3000"
+      # Enforce UTF-8 at every layer of the backend <-> DB pipeline.
+      LANG: "C.UTF-8"
+      LC_ALL: "C.UTF-8"
+      PGCLIENTENCODING: "UTF8"
+      DATABASE_URL: postgres://app_user:app_pass@postgres:5432/app_db
+      ORDERS_DATABASE_URL: postgres://app_user:app_pass@postgres:5432/app_db
+      # The public URL the backend advertises for any absolute links it
+      # emits (e.g. banner deep-links). Override in prod via Railway vars.
+      PUBLIC_BASE_URL: "http://localhost:3000"
+    ports:
+      - "3000:3000"
+
+volumes:
+  postgres_data:

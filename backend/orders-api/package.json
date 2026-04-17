@@ -1,0 +1,56 @@
+{
+  "name": "ammarjo-orders-api",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Orders REST API (shadow / parallel to Firebase) — NestJS, Cloud Run–ready",
+  "scripts": {
+    "build": "nest build",
+    "start": "nest start",
+    "start:dev": "nest start --watch",
+    "start:prod": "node dist/main",
+    "start:staging": "NODE_ENV=staging node dist/main.js",
+    "test:staging-env": "ts-node scripts/verify-production-readiness.ts",
+    "test:staging-outbox": "ts-node scripts/verify-outbox.ts",
+    "start:staging:bootstrap": "ts-node scripts/start-staging.ts",
+    "test:staging-db-check": "ts-node scripts/staging-db-check.ts",
+    "test:staging-e2e": "ts-node scripts/staging-e2e.ts",
+    "test:staging-health": "ts-node scripts/staging-health.ts",
+    "verify:production-readiness": "npx tsx scripts/verify-production-readiness.ts",
+    "verify:outbox": "npx tsx scripts/verify-outbox.ts",
+    "verify:final-launch-gate": "npx tsx scripts/final-launch-gate.ts",
+    "smoke:api": "bash scripts/smoke-test-api.sh",
+    "verify:flutter-backend": "bash scripts/flutter-backend-check.sh",
+    "verify:e2e-service-request": "bash scripts/e2e-service-request-flow.sh",
+    "seed:store-domain:dry-run": "npx tsx scripts/seed-store-domain.ts dry-run",
+    "seed:store-domain": "npx tsx scripts/seed-store-domain.ts run",
+    "validate:store-domain": "npx tsx scripts/validate-store-domain.ts",
+    "reindex:algolia": "ts-node scripts/reindex-algolia.ts",
+    "backfill:product-variants": "ts-node scripts/backfill-product-variants.ts"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.0.0",
+    "@nestjs/core": "^11.0.0",
+    "@nestjs/platform-express": "^11.0.0",
+    "@sentry/node": "^10.48.0",
+    "@sentry/tracing": "^7.120.4",
+    "algoliasearch": "^4.24.0",
+    "class-transformer": "^0.5.1",
+    "class-validator": "^0.14.1",
+    "firebase-admin": "^13.0.0",
+    "ioredis": "^5.4.2",
+    "pg": "^8.13.1",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.1"
+  },
+  "devDependencies": {
+    "@nestjs/cli": "^11.0.0",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.11.10",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

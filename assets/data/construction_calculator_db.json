@@ -1,0 +1,193 @@
+{
+  "construction_calculator_db": {
+    "metadata": {
+      "region": "Jordan (Primary), Saudi Arabia, Egypt",
+      "standard": "Jordanian National Building Codes & Unified Arab Code",
+      "data_sources": ["Jaffar Shop Jordan", "National Paints", "Quds Paints", "Golden Paints (GCI)", "Manaseer Group"],
+      "last_updated": "2026-04-03"
+    },
+    "categories": [
+      {
+        "id": "skeleton_works",
+        "name_ar": "قسم العظم والخرسانة",
+        "items": [
+          {
+            "id": "concrete_reinforced",
+            "name_ar": "خرسانة مسلحة (م3)",
+            "unit": "m3",
+            "components": [
+              { "material": "Cement", "quantity": 7, "unit": "Bag (50kg)" },
+              { "material": "Sand", "quantity": 0.4, "unit": "m3" },
+              { "material": "Gravel", "quantity": 0.8, "unit": "m3" },
+              { "material": "Water", "quantity": 175, "unit": "Liter" }
+            ],
+            "waste_factor": 0.05,
+            "expert_tip": "يُنصح بصب الخرسانة في درجات حرارة بين 5-35 درجة مئوية، واستخدام الهزاز الميكانيكي لضمان عدم وجود تعشيش."
+          },
+          {
+            "id": "reinforcement_steel",
+            "name_ar": "حديد تسليح (متوسط العناصر)",
+            "unit": "m3 of concrete",
+            "components": [
+              { "material": "Steel Rebar", "quantity": 100, "unit": "kg" }
+            ],
+            "waste_factor": 0.05,
+            "expert_tip": "تأكد من نظافة الحديد من الصدأ القشري والزيوت قبل الصب، واستخدم الكراسي البلاستيكية لضمان الغطاء الخرساني."
+          },
+          {
+            "id": "brick_walls_10cm",
+            "name_ar": "جدران طوب (سماكة 10 سم)",
+            "unit": "m2",
+            "components": [
+              { "material": "Bricks (20x40x10)", "quantity": 12.5, "unit": "Piece" },
+              { "material": "Cement", "quantity": 0.2, "unit": "Bag (50kg)" },
+              { "material": "Sand", "quantity": 0.025, "unit": "m3" }
+            ],
+            "waste_factor": 0.07,
+            "expert_tip": "يجب رش الطوب بالماء قبل البناء لضمان عدم امتصاص ماء المونة، مما يحسن قوة الالتصاق."
+          }
+        ]
+      },
+      {
+        "id": "tile_adhesives_jordan",
+        "name_ar": "لواصق البلاط (الأردن)",
+        "items": [
+          {
+            "id": "quds_adhesive_101",
+            "name_ar": "لاصق بلاط القدس 101",
+            "unit": "m2",
+            "available_sizes": [
+              { "size": "Bag (20kg)", "coverage": 7.0, "unit": "m2" }
+            ],
+            "waste_factor": 0.05,
+            "expert_tip": "مناسب للسيراميك والبورسلان، يتميز بقوة التصاق عالية ومقاومة للانزلاق."
+          },
+          {
+            "id": "manaseer_shield_taw106",
+            "name_ar": "لاصق بلاط المناصير (شيلد TAW 106)",
+            "unit": "m2",
+            "available_sizes": [
+              { "size": "Bag (20kg)", "coverage": 6.25, "unit": "m2" }
+            ],
+            "waste_factor": 0.05,
+            "expert_tip": "لاصق إسمنتي أبيض ممتاز للسيراميك والبلاط صغير الحجم في التطبيقات الداخلية."
+          }
+        ]
+      },
+      {
+        "id": "national_paints_section",
+        "name_ar": "دهانات ناشونال (الأردن)",
+        "items": [
+          {
+            "id": "national_top_emulsion",
+            "name_ar": "دهان أملشن توب (National Top)",
+            "unit": "m2",
+            "available_sizes": [
+              { "size": "Gallon (3.6L)", "coverage": 11.5, "unit": "m2 (2 coats)" },
+              { "size": "Drum (18L)", "coverage": 57.5, "unit": "m2 (2 coats)" }
+            ],
+            "waste_factor": 0.07,
+            "expert_tip": "يتميز بمقاومة عالية للفطريات والبكتيريا، مثالي للاستخدام الداخلي والخارجي."
+          },
+          {
+            "id": "national_final_silk",
+            "name_ar": "دهان أملشن فاينال سلك (Vinyl Silk)",
+            "unit": "m2",
+            "available_sizes": [
+              { "size": "Gallon (3.6L)", "coverage": 13.0, "unit": "m2 (2 coats)" },
+              { "size": "Drum (18L)", "coverage": 65.0, "unit": "m2 (2 coats)" }
+            ],
+            "waste_factor": 0.05,
+            "expert_tip": "قابل للغسل بشكل ممتاز ويعطي ملمساً حريرياً، يُنصح به لغرف المعيشة."
+          }
+        ]
+      },
+      {
+        "id": "golden_paints_section",
+        "name_ar": "دهانات جولدن (Golden Paints)",
+        "items": [
+          {
+            "id": "golden_extra_emulsion",
+            "name_ar": "جولدن اكسترا (Golden Extra)",
+            "unit": "m2",
+            "available_sizes": [
+              { "size": "Gallon (3.6L)", "coverage": 13.5, "unit": "m2 (2 coats)" },
+              { "size": "Drum (18L)", "coverage": 67.5, "unit": "m2 (2 coats)" }
+            ],
+            "waste_factor": 0.06,
+            "expert_tip": "دهان أملشن مطفي عالي الجودة، يمتاز ببياض فريد ومعدل فرد ممتاز."
+          },
+          {
+            "id": "golden_super_emulsion",
+            "name_ar": "إملشن سوبر جولدن",
+            "unit": "m2",
+            "available_sizes": [
+              { "size": "Gallon (3.6L)", "coverage": 11.0, "unit": "m2 (2 coats)" }
+            ],
+            "waste_factor": 0.07,
+            "expert_tip": "خيار اقتصادي بجودة جيدة، مقاوم للعفن ومناسب للجدران الداخلية."
+          }
+        ]
+      },
+      {
+        "id": "quds_paints_section",
+        "name_ar": "دهانات القدس (Quds Paints)",
+        "items": [
+          {
+            "id": "quds_fine_emulsion",
+            "name_ar": "أملشن فاين (Fine Emulsion)",
+            "unit": "m2",
+            "available_sizes": [
+              { "size": "Gallon (3.6L)", "coverage": 13.0, "unit": "m2 (2 coats)" },
+              { "size": "Drum (18L)", "coverage": 65.0, "unit": "m2 (2 coats)" }
+            ],
+            "waste_factor": 0.06,
+            "expert_tip": "يجتاز أعلى المواصفات والمقاييس، يوفر تغطية ممتازة وسهولة في التطبيق."
+          },
+          {
+            "id": "quds_super_silk",
+            "name_ar": "سوبر سلك (Super Silk)",
+            "unit": "m2",
+            "available_sizes": [
+              { "size": "Gallon (3.6L)", "coverage": 14.0, "unit": "m2 (2 coats)" }
+            ],
+            "waste_factor": 0.05,
+            "expert_tip": "دهان حريري فاخر قابل للغسل، يعطي ملمساً ناعماً جداً للجدران."
+          }
+        ]
+      },
+      {
+        "id": "plumbing_and_electrical",
+        "name_ar": "التمديدات الصحية والكهربائية",
+        "items": [
+          {
+            "id": "ppr_pipes",
+            "name_ar": "أنابيب تغذية PPR (أخضر)",
+            "unit": "Meter",
+            "components": [
+              { "material": "PPR Pipe", "quantity": 1, "unit": "Meter" }
+            ],
+            "waste_factor": 0.05,
+            "expert_tip": "يجب إجراء فحص الضغط (Pressure Test) للأنابيب قبل إغلاق القصارة."
+          }
+        ]
+      },
+      {
+        "id": "insulation_and_outdoor",
+        "name_ar": "العزل والمواد الخارجية",
+        "items": [
+          {
+            "id": "waterproofing_rolls",
+            "name_ar": "عزل مائي (رولات زفتة)",
+            "unit": "m2",
+            "components": [
+              { "material": "Bitumen Rolls", "quantity": 1.1, "unit": "m2" }
+            ],
+            "waste_factor": 0.10,
+            "expert_tip": "يجب أن يكون التداخل بين الرولات لا يقل عن 10 سم."
+          }
+        ]
+      }
+    ]
+  }
+}

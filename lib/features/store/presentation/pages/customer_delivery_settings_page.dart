@@ -1,0 +1,303 @@
+﻿import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
+
+import '../../../../core/data/repositories/user_repository.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/app_bar_back_button.dart';
+import '../../domain/saved_checkout_info.dart';
+import '../store_controller.dart';
+
+/// Ã˜ÂªÃ˜Â¹Ã˜Â¯Ã™Å Ã™â€ž Ã˜Â¨Ã™Å Ã˜Â§Ã™â€ Ã˜Â§Ã˜Âª Ã˜Â§Ã™â€žÃ˜ÂªÃ™Ë†Ã˜ÂµÃ™Å Ã™â€ž Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â­Ã™ÂÃ™Ë†Ã˜Â¸Ã˜Â© Ã™â€¦Ã˜Â­Ã™â€žÃ™Å Ã˜Â§Ã™â€¹ (Ã™â€¡Ã˜Â§Ã˜ÂªÃ™ÂÃ˜Å’ Ã˜Â¹Ã™â€ Ã™Ë†Ã˜Â§Ã™â€ Ã˜Å’ Ã™â€¦Ã˜Â¯Ã™Å Ã™â€ Ã˜Â©).
+class CustomerDeliverySettingsPage extends StatefulWidget {
+  const CustomerDeliverySettingsPage({super.key});
+
+  @override
+  State<CustomerDeliverySettingsPage> createState() => _CustomerDeliverySettingsPageState();
+}
+
+class _CustomerDeliverySettingsPageState extends State<CustomerDeliverySettingsPage> {
+  final _formKey = GlobalKey<FormState>();
+  late final TextEditingController _firstName;
+  late final TextEditingController _lastName;
+  late final TextEditingController _email;
+  late final TextEditingController _phone;
+  late final TextEditingController _address;
+  late final TextEditingController _city;
+  late final TextEditingController _country;
+  bool _loading = true;
+  bool _geoBusy = false;
+  String? _locationText;
+
+  @override
+  void initState() {
+    super.initState();
+    _firstName = TextEditingController();
+    _lastName = TextEditingController();
+    _email = TextEditingController();
+    _phone = TextEditingController();
+    _address = TextEditingController();
+    _city = TextEditingController();
+    _country = TextEditingController(text: 'JO');
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final store = context.read<StoreController>();
+      final saved = await store.getSavedCheckoutInfo();
+      final p = store.profile;
+      if (saved != null) {
+        _firstName.text = saved.firstName;
+        _lastName.text = saved.lastName;
+        _email.text = saved.email;
+        _phone.text = saved.phone;
+        _address.text = saved.address1;
+        _city.text = saved.city;
+        _country.text = saved.country.isNotEmpty ? saved.country : 'JO';
+      }
+      if (p != null) {
+        if (_email.text.trim().isEmpty) _email.text = p.email;
+        if (_firstName.text.trim().isEmpty && (p.fullName ?? '').trim().isNotEmpty) {
+          final parts = p.fullName!.trim().split(RegExp(r'\s+'));
+          if (parts.isNotEmpty) _firstName.text = parts.first;
+          if (parts.length > 1) _lastName.text = parts.sublist(1).join(' ');
+        }
+      }
+      if (mounted) {
+        setState(() => _loading = false);
+      }
+    });
+    _loadSavedGeo();
+  }
+
+  Future<void> _loadSavedGeo() async {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) return;
+    final doc = await BackendUserRepository.instance.fetchUserDocument(uid);
+    final lat = doc?['deliveryLat'];
+    final lng = doc?['deliveryLng'];
+    if (lat is num && lng is num && mounted) {
+      setState(() {
+        _locationText = '${lat.toStringAsFixed(5)}, ${lng.toStringAsFixed(5)}';
+      });
+    }
+  }
+
+  Future<void> _pickLocationOnMap() async {
+    setState(() => _geoBusy = true);
+    try {
+      final serviceEnabled = await Geolocator.isLocationServiceEnabled();
+      if (!serviceEnabled) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Ã™Å Ã˜Â±Ã˜Â¬Ã™â€° Ã˜ÂªÃ™ÂÃ˜Â¹Ã™Å Ã™â€ž Ã˜Â®Ã˜Â¯Ã™â€¦Ã˜Â© Ã˜Â§Ã™â€žÃ™â€¦Ã™Ë†Ã™â€šÃ˜Â¹.', style: GoogleFonts.tajawal())),
+          );
+        }
+        return;
+      }
+      var perm = await Geolocator.checkPermission();
+      if (perm == LocationPermission.denied) {
+        perm = await Geolocator.requestPermission();
+      }
+      if (perm == LocationPermission.denied) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Ã˜ÂªÃ™â€¦ Ã˜Â±Ã™ÂÃ˜Â¶ Ã˜Â¥Ã˜Â°Ã™â€  Ã˜Â§Ã™â€žÃ™â€¦Ã™Ë†Ã™â€šÃ˜Â¹.', style: GoogleFonts.tajawal())),
+          );
+        }
+        return;
+      }
+      if (perm == LocationPermission.deniedForever) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Ã˜Â¥Ã˜Â°Ã™â€  Ã˜Â§Ã™â€žÃ™â€¦Ã™Ë†Ã™â€šÃ˜Â¹ Ã™â€¦Ã˜Â±Ã™ÂÃ™Ë†Ã˜Â¶ Ã˜Â¨Ã˜Â´Ã™Æ’Ã™â€ž Ã˜Â¯Ã˜Â§Ã˜Â¦Ã™â€¦. Ã™ÂÃ˜Â¹Ã™â€˜Ã™â€žÃ™â€¡ Ã™â€¦Ã™â€  Ã˜Â¥Ã˜Â¹Ã˜Â¯Ã˜Â§Ã˜Â¯Ã˜Â§Ã˜Âª Ã˜Â§Ã™â€žÃ™â€¦Ã˜ÂªÃ˜ÂµÃ™ÂÃ˜Â­.', style: GoogleFonts.tajawal())),
+          );
+        }
+        return;
+      }
+      final pos = await Geolocator.getCurrentPosition(
+        locationSettings: const LocationSettings(
+          accuracy: LocationAccuracy.high,
+        ),
+      ).timeout(
+        const Duration(seconds: 10),
+        onTimeout: () => throw StateError('Ã˜Â§Ã™â€ Ã˜ÂªÃ™â€¡Ã˜Âª Ã™â€¦Ã™â€¡Ã™â€žÃ˜Â© Ã˜ÂªÃ˜Â­Ã˜Â¯Ã™Å Ã˜Â¯ Ã˜Â§Ã™â€žÃ™â€¦Ã™Ë†Ã™â€šÃ˜Â¹'),
+      );
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Ã˜Â³Ã˜Â¬Ã™â€˜Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â¯Ã˜Â®Ã™Ë†Ã™â€ž Ã™â€žÃ˜Â­Ã™ÂÃ˜Â¸ Ã˜Â§Ã™â€žÃ™â€¦Ã™Ë†Ã™â€šÃ˜Â¹.', style: GoogleFonts.tajawal())),
+          );
+        }
+        return;
+      }
+      final locStr = '${pos.latitude}, ${pos.longitude}';
+      await BackendUserRepository.instance.updateUserFields(uid, {
+        'deliveryLat': pos.latitude,
+        'deliveryLng': pos.longitude,
+        'deliveryLocation': locStr,
+      });
+      if (mounted) {
+        setState(() {
+          _locationText = '${pos.latitude.toStringAsFixed(5)}, ${pos.longitude.toStringAsFixed(5)}';
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ã˜ÂªÃ™â€¦ Ã˜ÂªÃ˜Â­Ã˜Â¯Ã™Å Ã˜Â¯ Ã™â€¦Ã™Ë†Ã™â€šÃ˜Â¹Ã™Æ’', style: GoogleFonts.tajawal()),
+            backgroundColor: Colors.green.shade700,
+          ),
+        );
+      }
+    } on Object {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Ã˜Â®Ã˜Â·Ã˜Â£ Ã™ÂÃ™Å  Ã˜ÂªÃ˜Â­Ã˜Â¯Ã™Å Ã˜Â¯ Ã˜Â§Ã™â€žÃ™â€¦Ã™Ë†Ã™â€šÃ˜Â¹: unexpected error', style: GoogleFonts.tajawal()),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _geoBusy = false);
+    }
+  }
+
+  @override
+  void dispose() {
+    _firstName.dispose();
+    _lastName.dispose();
+    _email.dispose();
+    _phone.dispose();
+    _address.dispose();
+    _city.dispose();
+    _country.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, _) {
+        return Scaffold(
+      backgroundColor: AppColors.background,
+      appBar: AppBar(
+        backgroundColor: AppColors.background,
+        elevation: 0,
+        leading: const AppBarBackButton(),
+        title: Text('Ã˜ÂªÃ˜Â¹Ã˜Â¯Ã™Å Ã™â€ž Ã™â€¦Ã™Æ’Ã˜Â§Ã™â€  Ã˜Â§Ã™â€žÃ˜ÂªÃ™Ë†Ã˜ÂµÃ™Å Ã™â€ž', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+      ),
+      body: _loading
+          ? const Center(child: CircularProgressIndicator(color: AppColors.orange))
+          : Form(
+              key: _formKey,
+              child: ListView(
+                padding: const EdgeInsets.all(16),
+                children: [
+                  Text(
+                    'Ã˜ÂªÃ™ÂÃ˜Â³Ã˜ÂªÃ˜Â®Ã˜Â¯Ã™â€¦ Ã™â€¡Ã˜Â°Ã™â€¡ Ã˜Â§Ã™â€žÃ˜Â¨Ã™Å Ã˜Â§Ã™â€ Ã˜Â§Ã˜Âª Ã˜ÂªÃ™â€žÃ™â€šÃ˜Â§Ã˜Â¦Ã™Å Ã˜Â§Ã™â€¹ Ã˜Â¹Ã™â€ Ã˜Â¯ Ã˜Â¥Ã˜ÂªÃ™â€¦Ã˜Â§Ã™â€¦ Ã˜Â§Ã™â€žÃ˜Â·Ã™â€žÃ˜Â¨. Ã™â€žÃ˜Â§ Ã˜ÂªÃ™ÂÃ˜Â±Ã˜Â³Ã™â€ž Ã˜Â¥Ã™â€žÃ™â€° Ã˜Â§Ã™â€žÃ˜Â®Ã˜Â§Ã˜Â¯Ã™â€¦ Ã˜Â¥Ã™â€žÃ˜Â§ Ã˜Â¹Ã™â€ Ã˜Â¯ Ã˜ÂªÃ˜Â£Ã™Æ’Ã™Å Ã˜Â¯ Ã˜Â§Ã™â€žÃ˜Â·Ã™â€žÃ˜Â¨.',
+                    style: GoogleFonts.tajawal(color: AppColors.textSecondary, height: 1.4),
+                  ),
+                  const SizedBox(height: 16),
+                  ElevatedButton.icon(
+                    icon: _geoBusy
+                        ? const SizedBox(
+                            width: 22,
+                            height: 22,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                          )
+                        : const Icon(Icons.map_outlined, color: Colors.white),
+                    label: Text('Ã˜ÂªÃ˜Â­Ã˜Â¯Ã™Å Ã˜Â¯ Ã™â€¦Ã™Ë†Ã™â€šÃ˜Â¹Ã™Å  Ã˜Â¹Ã™â€žÃ™â€° Ã˜Â§Ã™â€žÃ˜Â®Ã˜Â±Ã™Å Ã˜Â·Ã˜Â©', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF6B00),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
+                    ),
+                    onPressed: _geoBusy ? null : _pickLocationOnMap,
+                  ),
+                  if (_locationText != null) ...[
+                    const SizedBox(height: 8),
+                    Text(
+                      'Ã˜Â¢Ã˜Â®Ã˜Â± Ã˜Â¥Ã˜Â­Ã˜Â¯Ã˜Â§Ã˜Â«Ã™Å Ã˜Â§Ã˜Âª Ã™â€¦Ã˜Â­Ã™ÂÃ™Ë†Ã˜Â¸Ã˜Â©: $_locationText',
+                      textAlign: TextAlign.right,
+                      style: GoogleFonts.tajawal(fontSize: 13, color: AppColors.textSecondary),
+                    ),
+                  ],
+                  const SizedBox(height: 16),
+                  _tf(_firstName, 'Ã˜Â§Ã™â€žÃ˜Â§Ã˜Â³Ã™â€¦ Ã˜Â§Ã™â€žÃ˜Â£Ã™Ë†Ã™â€ž'),
+                  _tf(_lastName, 'Ã˜Â§Ã˜Â³Ã™â€¦ Ã˜Â§Ã™â€žÃ˜Â¹Ã˜Â§Ã˜Â¦Ã™â€žÃ˜Â©'),
+                  _tf(_email, 'Ã˜Â§Ã™â€žÃ˜Â¨Ã˜Â±Ã™Å Ã˜Â¯ (Ã˜Â§Ã˜Â®Ã˜ÂªÃ™Å Ã˜Â§Ã˜Â±Ã™Å )', required: false, email: true),
+                  _tf(_phone, 'Ã˜Â±Ã™â€šÃ™â€¦ Ã˜Â§Ã™â€žÃ˜Â¬Ã™Ë†Ã˜Â§Ã™â€ž'),
+                  _tf(_address, 'Ã˜Â§Ã™â€žÃ˜Â¹Ã™â€ Ã™Ë†Ã˜Â§Ã™â€  Ã˜Â§Ã™â€žÃ˜ÂªÃ™ÂÃ˜ÂµÃ™Å Ã™â€žÃ™Å '),
+                  _tf(_city, 'Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â¯Ã™Å Ã™â€ Ã˜Â©'),
+                  _tf(_country, 'Ã˜Â±Ã™â€¦Ã˜Â² Ã˜Â§Ã™â€žÃ˜Â¯Ã™Ë†Ã™â€žÃ˜Â©'),
+                  const SizedBox(height: 20),
+                  FilledButton(
+                    style: FilledButton.styleFrom(
+                      backgroundColor: AppColors.orange,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                    ),
+                    onPressed: () async {
+                      if (!(_formKey.currentState?.validate() ?? false)) return;
+                      final store = context.read<StoreController>();
+                      await store.saveDeliveryInfo(
+                        SavedCheckoutInfo(
+                          firstName: _firstName.text.trim(),
+                          lastName: _lastName.text.trim(),
+                          email: _email.text.trim(),
+                          phone: _phone.text.trim(),
+                          address1: _address.text.trim(),
+                          city: _city.text.trim(),
+                          country: _country.text.trim().isNotEmpty ? _country.text.trim() : 'JO',
+                        ),
+                      );
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Ã˜ÂªÃ™â€¦ Ã˜Â§Ã™â€žÃ˜Â­Ã™ÂÃ˜Â¸.', style: GoogleFonts.tajawal())),
+                      );
+                      Navigator.of(context).pop();
+                    },
+                    child: Text('Ã˜Â­Ã™ÂÃ˜Â¸', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+                  ),
+                ],
+              ),
+            ),
+        );
+      },
+    );
+  }
+
+  Widget _tf(TextEditingController c, String label, {bool required = true, bool email = false}) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: TextFormField(
+        controller: c,
+        textDirection: TextDirection.rtl,
+        keyboardType: email ? TextInputType.emailAddress : TextInputType.text,
+        validator: (v) {
+          if (!required) {
+            if (email && v != null && v.trim().isNotEmpty) {
+              final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(v.trim());
+              return ok ? null : 'Ã˜ÂµÃ™Å Ã˜ÂºÃ˜Â© Ã˜Â¨Ã˜Â±Ã™Å Ã˜Â¯ Ã˜ÂºÃ™Å Ã˜Â± Ã˜ÂµÃ˜Â­Ã™Å Ã˜Â­Ã˜Â©';
+            }
+            return null;
+          }
+          if (v == null || v.trim().isEmpty) return 'Ã™â€¦Ã˜Â·Ã™â€žÃ™Ë†Ã˜Â¨';
+          if (email) {
+            final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(v.trim());
+            return ok ? null : 'Ã˜ÂµÃ™Å Ã˜ÂºÃ˜Â© Ã˜Â¨Ã˜Â±Ã™Å Ã˜Â¯ Ã˜ÂºÃ™Å Ã˜Â± Ã˜ÂµÃ˜Â­Ã™Å Ã˜Â­Ã˜Â©';
+          }
+          return null;
+        },
+        decoration: InputDecoration(
+          labelText: label,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          filled: true,
+          fillColor: Colors.white,
+        ),
+      ),
+    );
+  }
+}
+

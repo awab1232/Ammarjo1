@@ -1,0 +1,1004 @@
+rules_version = '2';
+
+// الدوال المخصّصة يجب أن تُعرَّف هنا (تحت match /databases/.../documents) وليس داخل match فرعي،
+// حتى يبقى الكائن العام `request` متاحاً داخلها (انظر وثائق Custom functions في Firebase).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function emailLower() {
+      return request.auth.token.email != null
+        ? request.auth.token.email.lower()
+        : '';
+    }
+
+    function isStaticAdmin() {
+      return signedIn() && emailLower() in ['awabaloran@gmail.com'];
+    }
+
+    function userDocPath(uid) {
+      return /databases/$(database)/documents/users/$(uid);
+    }
+
+    function isAdminFromUserDoc() {
+      return signedIn()
+        && exists(userDocPath(request.auth.uid))
+        && (
+          get(userDocPath(request.auth.uid)).data.isAdmin == true
+          || get(userDocPath(request.auth.uid)).data.role == 'admin'
+          // full_admin: قراءة الطلبات الجذرية ولوحة المؤشرات
+          || get(userDocPath(request.auth.uid)).data.role == 'full_admin'
+        );
+    }
+
+    function isAdminUser() {
+      return isStaticAdmin() || isAdminFromUserDoc();
+    }
+
+    function isFullAdminUser() {
+      return signedIn() && (
+        isStaticAdmin() ||
+        (
+          exists(userDocPath(request.auth.uid)) &&
+          get(userDocPath(request.auth.uid)).data.role == 'full_admin'
+        )
+      );
+    }
+
+    /// موظفو لوحة الإدارة الذين يُسمح لهم بقراءة `orders` الجذرية و`wholesale_orders` و`commissions` و`audit_logs` (تقارير/KPIs).
+    function isStaffDashboardUser() {
+      return signedIn() && (
+        isStaticAdmin() ||
+        (
+          exists(userDocPath(request.auth.uid)) &&
+          (
+            get(userDocPath(request.auth.uid)).data.role in ['full_admin', 'support', 'finance', 'viewer'] ||
+            get(userDocPath(request.auth.uid)).data.isAdmin == true
+          )
+        )
+      );
+    }
+
+    function isAdmin() {
+      return isAdminUser();
+    }
+
+    function isAuth() {
+      return signedIn();
+    }
+
+    function chatParticipantUidOnly(data) {
+      return signedIn() && (
+        request.auth.uid == data.buyer_id ||
+        request.auth.uid == data.seller_id ||
+        (data.participants is list && request.auth.uid in data.participants)
+      );
+    }
+
+    /// بريد المستخدم من وثيقة Firestore (مهم عند تسجيل الدخول بالهاتف دون email في رمز JWT).
+    function userDocEmailLowerForChat() {
+      return exists(userDocPath(request.auth.uid))
+        && get(userDocPath(request.auth.uid)).data.email is string
+        ? get(userDocPath(request.auth.uid)).data.email.lower()
+        : '';
+    }
+
+    function userDocContactEmailLowerForChat() {
+      return exists(userDocPath(request.auth.uid))
+        && get(userDocPath(request.auth.uid)).data.contactEmail is string
+        ? get(userDocPath(request.auth.uid)).data.contactEmail.lower()
+        : '';
+    }
+
+    function legacyUnifiedChatReader(data) {
+      return signedIn() && (
+        (data.participants is list && request.auth.uid in data.participants) ||
+        request.auth.uid == data.buyer_id ||
+        request.auth.uid == data.seller_id ||
+        (data.otherPartyId is string && data.otherPartyId == request.auth.uid) ||
+        (
+          data.participantEmails is list &&
+          emailLower() != '' &&
+          emailLower() in data.participantEmails
+        ) ||
+        (
+          data.participantEmails is list &&
+          userDocEmailLowerForChat() != '' &&
+          userDocEmailLowerForChat() in data.participantEmails
+        ) ||
+        (
+          data.participantEmails is list &&
+          userDocContactEmailLowerForChat() != '' &&
+          userDocContactEmailLowerForChat() in data.participantEmails
+        )
+      );
+    }
+
+    function normalizedUnifiedChatType(data) {
+      let raw = data.type is string
+        ? data.type
+        : (data.kind is string ? data.kind : '');
+      return raw in ['store_customer', 'home_store_customer', 'technician_customer', 'support']
+        ? raw
+        : (
+          raw in ['user_store', 'store', 'used_market', 'market', 'used']
+            ? 'store_customer'
+            : (
+              raw in ['technician', 'technician_request']
+                ? 'technician_customer'
+                : ''
+            )
+        );
+    }
+
+    function normalizedUnifiedCustomerId(data) {
+      return data.customerId is string && data.customerId != ''
+        ? data.customerId
+        : (data.buyer_id is string ? data.buyer_id : '');
+    }
+
+    function normalizedUnifiedTechnicianId(data) {
+      return data.technicianId is string && data.technicianId != ''
+        ? data.technicianId
+        : (data.seller_id is string ? data.seller_id : '');
+    }
+
+    function normalizedUnifiedStoreParticipantId(data) {
+      return data.seller_id is string ? data.seller_id : '';
+    }
+
+    function unifiedChatReader(data) {
+      let t = normalizedUnifiedChatType(data);
+      let customerId = normalizedUnifiedCustomerId(data);
+      let inParticipants = data.participants is list && request.auth.uid in data.participants;
+      return signedIn() && (
+        (t == '' && legacyUnifiedChatReader(data))
+        || (
+          t != '' && inParticipants && (
+            (
+              (t == 'store_customer' || t == 'home_store_customer') && (
+                request.auth.uid == customerId
+                || request.auth.uid == normalizedUnifiedStoreParticipantId(data)
+                || (data.storeId is string && data.storeId != '' && ownsStoreDoc(data.storeId))
+              )
+            )
+            || (
+              t == 'technician_customer' && (
+                request.auth.uid == customerId || request.auth.uid == normalizedUnifiedTechnicianId(data)
+              )
+            )
+            || (
+              t == 'support' && (request.auth.uid == customerId || isAdminUser())
+            )
+          )
+        )
+      );
+    }
+
+    function unifiedChatCreateAllowed() {
+      let t = normalizedUnifiedChatType(request.resource.data);
+      let customerId = normalizedUnifiedCustomerId(request.resource.data);
+      let inParticipants = request.resource.data.participants is list
+        && request.auth.uid in request.resource.data.participants;
+      return signedIn()
+        && inParticipants
+        && t != ''
+        && customerId != ''
+        && (
+          (
+            (t == 'store_customer' || t == 'home_store_customer')
+            && request.resource.data.storeId is string
+            && request.resource.data.storeId != ''
+            && request.resource.data.participants.size() == 2
+            && (
+              request.auth.uid == customerId
+              || request.auth.uid == normalizedUnifiedStoreParticipantId(request.resource.data)
+              || ownsStoreDoc(request.resource.data.storeId)
+            )
+          )
+          || (
+            t == 'technician_customer'
+            && normalizedUnifiedTechnicianId(request.resource.data) != ''
+            && request.resource.data.participants.size() == 2
+            && (
+              request.auth.uid == customerId
+              || request.auth.uid == normalizedUnifiedTechnicianId(request.resource.data)
+            )
+          )
+          || (
+            t == 'support'
+            && request.resource.data.participants.size() <= 2
+            && (request.auth.uid == customerId || isAdminUser())
+          )
+        );
+    }
+
+    function recipientIsAdminOrStaff(userId) {
+      return exists(userDocPath(userId))
+        && (
+          get(userDocPath(userId)).data.isAdmin == true
+          || get(userDocPath(userId)).data.role in ['admin', 'full_admin', 'support', 'finance', 'viewer']
+        );
+    }
+
+    /// حقول إشعار In-App قبل دمج createdAt من الخادم.
+    function notificationPayloadWellFormed() {
+      return request.resource.data.title is string
+        && request.resource.data.title.size() <= 400
+        && request.resource.data.body is string
+        && request.resource.data.body.size() <= 4000
+        && request.resource.data.type is string
+        && request.resource.data.isRead == false;
+    }
+
+    /// كتابة إشعار إلى `userId` من مستخدم آخر — أنواع متوافقة مع [UserNotificationsRepository].
+    function crossUserNotificationCreateAllowed(userId) {
+      return signedIn()
+        && notificationPayloadWellFormed()
+        && request.auth.uid != userId
+        && (
+          (
+            request.resource.data.type == 'new_tender'
+            && request.resource.data.referenceId is string
+            && exists(/databases/$(database)/documents/tenders/$(request.resource.data.referenceId))
+            && get(/databases/$(database)/documents/tenders/$(request.resource.data.referenceId)).data.userId == request.auth.uid
+          )
+          || (
+            request.resource.data.type == 'tender_offer'
+            && request.resource.data.referenceId is string
+            && exists(/databases/$(database)/documents/tenders/$(request.resource.data.referenceId))
+            && get(/databases/$(database)/documents/tenders/$(request.resource.data.referenceId)).data.userId == userId
+          )
+          || (
+            request.resource.data.type == 'new_order'
+            && request.resource.data.referenceId is string
+            && exists(/databases/$(database)/documents/orders/$(request.resource.data.referenceId))
+            && (
+              get(/databases/$(database)/documents/orders/$(request.resource.data.referenceId)).data.customerUid == request.auth.uid
+              || get(/databases/$(database)/documents/orders/$(request.resource.data.referenceId)).data.customerId == request.auth.uid
+            )
+            && get(/databases/$(database)/documents/orders/$(request.resource.data.referenceId)).data.storeId is string
+            && exists(/databases/$(database)/documents/stores/$(get(/databases/$(database)/documents/orders/$(request.resource.data.referenceId)).data.storeId))
+            && get(/databases/$(database)/documents/stores/$(get(/databases/$(database)/documents/orders/$(request.resource.data.referenceId)).data.storeId)).data.ownerId == userId
+          )
+          || (
+            request.resource.data.type == 'order_status_update'
+            && request.resource.data.referenceId is string
+            && exists(/databases/$(database)/documents/orders/$(request.resource.data.referenceId))
+            && (
+              get(/databases/$(database)/documents/orders/$(request.resource.data.referenceId)).data.customerUid == userId
+              || get(/databases/$(database)/documents/orders/$(request.resource.data.referenceId)).data.customerId == userId
+            )
+            && get(/databases/$(database)/documents/orders/$(request.resource.data.referenceId)).data.storeId is string
+            && ownsStoreDoc(get(/databases/$(database)/documents/orders/$(request.resource.data.referenceId)).data.storeId)
+          )
+          || (
+            request.resource.data.type == 'order_status'
+            && request.resource.data.orderId is string
+            && exists(/databases/$(database)/documents/orders/$(request.resource.data.orderId))
+            && (
+              get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.customerUid == userId
+              || get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.customerId == userId
+            )
+            && get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.storeId is string
+            && ownsStoreDoc(get(/databases/$(database)/documents/orders/$(request.resource.data.orderId)).data.storeId)
+          )
+          || (
+            request.resource.data.type == 'wholesale_new_order'
+            && request.resource.data.referenceId is string
+            && exists(/databases/$(database)/documents/wholesale_orders/$(request.resource.data.referenceId))
+            && get(/databases/$(database)/documents/wholesale_orders/$(request.resource.data.referenceId)).data.storeOwnerId == request.auth.uid
+            && get(/databases/$(database)/documents/wholesale_orders/$(request.resource.data.referenceId)).data.wholesalerId is string
+            && exists(/databases/$(database)/documents/wholesalers/$(get(/databases/$(database)/documents/wholesale_orders/$(request.resource.data.referenceId)).data.wholesalerId))
+            && get(/databases/$(database)/documents/wholesalers/$(get(/databases/$(database)/documents/wholesale_orders/$(request.resource.data.referenceId)).data.wholesalerId)).data.ownerId == userId
+          )
+          || (
+            request.resource.data.type == 'used_market_message'
+            && !('referenceId' in request.resource.data)
+          )
+          || (
+            request.resource.data.type == 'support_chat'
+            && recipientIsAdminOrStaff(userId)
+          )
+          || (
+            request.resource.data.type == 'new_order'
+            && recipientIsAdminOrStaff(userId)
+            && !('referenceId' in request.resource.data)
+          )
+        );
+    }
+
+    function ownsUsedItem() {
+      return resource.data.seller_id == request.auth.uid
+        || (
+          (resource.data.seller_id == null || resource.data.seller_id == '')
+          && resource.data.ownerEmail == emailLower()
+        );
+    }
+
+    function serviceRequestReadAllowed() {
+      let d = resource.data;
+      return emailLower() != '' && (
+        d.customerEmail == emailLower() ||
+        d.assignedTechnicianEmail == emailLower()
+      );
+    }
+
+    function serviceRequestWriteAllowed() {
+      let d = resource.data;
+      return emailLower() != '' && (
+        d.customerEmail == emailLower() ||
+        d.assignedTechnicianEmail == emailLower()
+      );
+    }
+
+    function ownsStoreDoc(storeId) {
+      return signedIn()
+        && exists(/databases/$(database)/documents/stores/$(storeId))
+        && get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid;
+    }
+
+    /// مطابقة لطلب المستخدم — يُستخدم مع حقول الطلب (قد تكون `customerId` أو `customerUid`).
+    function isOwner(uid) {
+      return isAuth() && uid != null && request.auth.uid == uid;
+    }
+
+    /// مالك المتجر لـ [storeId] (يتحقق من وجود المستند قبل get).
+    function isStoreOwnerOf(storeId) {
+      return isAuth() && storeId != null
+        && exists(/databases/$(database)/documents/stores/$(storeId))
+        && get(/databases/$(database)/documents/stores/$(storeId)).data.ownerId == request.auth.uid;
+    }
+
+    match /product_categories/{catId} {
+      allow read: if true;
+      allow write: if isAdminUser();
+    }
+
+    match /home_banners/{bid} {
+      allow read: if true;
+      allow write: if isAdminUser();
+    }
+
+    match /marketplace_banners/{bid} {
+      allow read: if true;
+      allow write: if isAdminUser();
+    }
+
+    match /technician_banners/{bid} {
+      allow read: if true;
+      allow write: if isAdminUser();
+    }
+
+    match /tech_specialties/{sid} {
+      allow read: if true;
+      allow write: if isAdminUser();
+    }
+
+    match /store_settings/{docId} {
+      allow read: if true;
+      allow write: if isAdminUser();
+    }
+
+    /// إعدادات البريد والنظام — `admin_email_settings_section`، `EmailService`.
+    match /app_settings/{docId} {
+      allow read: if isStaffDashboardUser() || isAdminUser();
+      allow write: if isFullAdminUser() || isAdminUser();
+    }
+
+    match /migration_hub/{document=**} {
+      allow read: if true;
+      allow write: if isAdminUser();
+    }
+
+    match /users/{userDocId} {
+      allow read: if signedIn();
+      allow create: if signedIn()
+        && userDocId == request.auth.uid
+        && request.resource.data.uid == request.auth.uid;
+      allow update: if signedIn() && (
+        isAdminUser() ||
+        (
+          (userDocId == request.auth.uid || resource.data.uid == request.auth.uid) &&
+          !request.resource.data.diff(resource.data).affectedKeys().hasAny(['loyaltyPoints', 'pointsAwardedOrders', 'pointsHistory'])
+        )
+      );
+      allow delete: if signedIn() && (
+        userDocId == request.auth.uid ||
+        resource.data.uid == request.auth.uid ||
+        isAdminUser()
+      );
+    }
+
+    /// إشعارات داخل ملف المستخدم — يُكتب من [UserNotificationsRepository] بالتوازي مع `notifications/.../userNotifications`.
+    match /users/{userId}/notifications/{nid} {
+      allow read: if signedIn() && request.auth.uid == userId;
+      allow create: if (
+          (
+            (signedIn() && request.auth.uid == userId) || isAdminUser()
+          )
+          && request.resource.data.title is string
+          && request.resource.data.body is string
+          && request.resource.data.type is string
+          && request.resource.data.isRead == false
+        )
+        || crossUserNotificationCreateAllowed(userId);
+      allow update, delete: if signedIn() && request.auth.uid == userId;
+    }
+
+    /// تفضيلات واجهة لوحة الإدارة (ترتيب أعمدة الطلبات، إلخ) — `admin_orders_section`.
+    match /adminPreferences/{uid} {
+      allow read, write: if signedIn() && request.auth.uid == uid;
+    }
+
+    /// إشعارات مركزية للوحة الإدارة — `AdminNotificationRepository`.
+    match /admin_notifications/{notificationId} {
+      allow read: if signedIn() && isStaffDashboardUser();
+      allow create: if signedIn()
+        && request.resource.data.message is string
+        && request.resource.data.type is string
+        && request.resource.data.isRead == false
+        && request.resource.data.targetRole is string;
+      allow update: if signedIn() && isStaffDashboardUser()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['isRead']);
+      allow delete: if isAdminUser();
+    }
+
+    /// مدونة الويب — `blog_page`، `admin_blog_banners_section`.
+    match /blog_posts/{postId} {
+      allow read: if true;
+      allow write: if isAdminUser();
+    }
+
+    match /blog_banners/{bannerId} {
+      allow read: if true;
+      allow write: if isAdminUser();
+    }
+
+    /// كوبونات واستخدامها — `CouponRepository`، `FirebaseOrdersRepository`.
+    match /coupons/{couponId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isFullAdminUser() || isAdminUser();
+    }
+
+    match /coupon_usage/{usageId} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update, delete: if false;
+    }
+
+    // ملخص الطلب للعميل؛ لوحة الأدمن تُحدّثه عند تغيير الحالة (batch مع orders الجذرية).
+    match /users/{userId}/orders/{orderId} {
+      allow read: if request.auth != null && request.auth.uid == userId;
+      allow write: if request.auth != null && (
+        request.auth.uid == userId ||
+        isAdminUser()
+      );
+    }
+
+    // مفضّلة المتجر — المستخدم يملك وثائقه فقط.
+    match /users/{userId}/favorites/{productId} {
+      allow read, write: if signedIn() && request.auth.uid == userId;
+    }
+
+    // سلة جملة اختيارية على السحابة.
+    match /users/{userId}/wholesaleCart/{docId} {
+      allow read, write: if signedIn() && request.auth.uid == userId;
+    }
+
+    /// تجميع تقييمات منتج الكتالوج الجذري — يُحدَّث من [ReviewsRepository] بعد مراجعة.
+    function productCatalogAggregateOnly() {
+      return signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['averageRating', 'totalReviews', 'rating', 'reviewCount', 'updatedAt'])
+        && (!('rating' in request.resource.data) || request.resource.data.rating is number)
+        && (!('reviewCount' in request.resource.data) || request.resource.data.reviewCount is int);
+    }
+
+    match /products/{productId} {
+      allow read: if true;
+      allow create, delete: if isAdminUser();
+      allow update: if isAdminUser() || productCatalogAggregateOnly();
+    }
+
+    match /marketplace_categories/{catId} {
+      allow read: if true;
+      allow create, update, delete: if isAdminUser();
+    }
+
+    match /store_categories/{docId} {
+      allow read: if true;
+      allow write: if isAdminUser();
+    }
+
+    match /used_items/{itemId} {
+      allow read: if true;
+      allow create: if signedIn()
+        && request.resource.data.seller_id == request.auth.uid;
+      allow update, delete: if signedIn() && (ownsUsedItem() || isAdminUser());
+
+      match /comments/{commentId} {
+        allow read: if true;
+        allow create: if signedIn()
+          && request.resource.data.authorId == request.auth.uid;
+        allow delete: if signedIn() && (
+          resource.data.authorId == request.auth.uid ||
+          isAdminUser()
+        );
+        allow update: if false;
+      }
+    }
+
+    match /reports/{reportId} {
+      allow read: if signedIn() && isAdminUser();
+      allow create: if signedIn()
+        && request.resource.data.reporterId == request.auth.uid
+        && request.resource.data.status == 'pending';
+      allow update, delete: if signedIn() && isAdminUser();
+    }
+
+    // تحديث ملخص التقييم على مستند المتجر: يُسمح فقط بحقول rating (number) و reviewCount (int).
+    // أي عميل موثّق يمكنه تطبيق هذا التحديث إذا كان diff يطابق القيد (انظر FirestoreEntityRatings.submitStoreRating).
+    function storeRatingAggregateOnly() {
+      return signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating', 'reviewCount'])
+        && request.resource.data.rating is number
+        && request.resource.data.rating >= 0
+        && request.resource.data.rating <= 5
+        && request.resource.data.reviewCount is int
+        && request.resource.data.reviewCount >= 0;
+    }
+
+    function technicianRatingAggregateOnly() {
+      return signedIn()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['rating', 'reviewCount'])
+        && request.resource.data.rating is number
+        && request.resource.data.rating >= 0
+        && request.resource.data.rating <= 5
+        && request.resource.data.reviewCount is int
+        && request.resource.data.reviewCount >= 0;
+    }
+
+    match /technicians/{techId} {
+      allow read: if true;
+      allow create, delete: if isAdminUser();
+      allow update: if isAdminUser() || technicianRatingAggregateOnly();
+
+      match /ratings/{ratingUserId} {
+        allow read: if true;
+        allow create, update: if signedIn()
+          && request.auth.uid == ratingUserId
+          && (!('email' in get(/databases/$(database)/documents/technicians/$(techId)).data)
+            || get(/databases/$(database)/documents/technicians/$(techId)).data.email == null
+            || get(/databases/$(database)/documents/technicians/$(techId)).data.email.lower() != emailLower())
+          && request.resource.data.rating is int
+          && request.resource.data.rating >= 1
+          && request.resource.data.rating <= 5
+          && request.resource.data.userName is string
+          && request.resource.data.userName.size() <= 200;
+        allow delete: if signedIn() && request.auth.uid == ratingUserId;
+      }
+    }
+
+    match /technician_requests/{rid} {
+      allow read: if signedIn() && (
+        isAdmin() ||
+        resource.data.email == emailLower()
+      );
+      allow create: if signedIn()
+        && request.resource.data.email == emailLower();
+      allow update, delete: if signedIn() && isAdmin();
+    }
+
+    match /service_requests/{rid} {
+      allow read: if signedIn() && (
+        serviceRequestReadAllowed() ||
+        isAdminUser() ||
+        resource.data.customerId == request.auth.uid
+      );
+      allow create: if signedIn()
+        && request.resource.data.customerEmail == emailLower();
+      allow update: if signedIn() && (serviceRequestWriteAllowed() || isAdminUser());
+      allow delete: if signedIn() && isAdminUser();
+    }
+
+    match /technician_notifications/{nid} {
+      allow read: if signedIn()
+        && resource.data.technicianEmail == emailLower();
+      allow create: if signedIn()
+        && request.resource.data.technicianEmail is string;
+      allow update, delete: if signedIn()
+        && resource.data.technicianEmail == emailLower();
+    }
+
+    match /transactions/{tid} {
+      allow read: if signedIn()
+        && emailLower() in resource.data.participantEmails;
+      allow create: if signedIn() && (
+        emailLower() in request.resource.data.participantEmails ||
+        (isAdminUser() && request.resource.data.type == 'admin_adjustment')
+      );
+      allow update, delete: if false;
+    }
+
+    /// طلبات جذرية — إنشاء من السلة، قراءة للعميل وصاحب المتجر والإدارة، تحديث للحالة والعمولة.
+    function orderRootCustomer() {
+      return signedIn() && (
+        resource.data.customerUid == request.auth.uid ||
+        resource.data.customerId == request.auth.uid
+      );
+    }
+
+    function orderRootStoreOwner() {
+      return signedIn()
+        && resource.data.storeId is string
+        && resource.data.storeId != ''
+        && resource.data.storeId != 'ammarjo'
+        && ownsStoreDoc(resource.data.storeId);
+    }
+
+    match /orders/{orderId} {
+      allow read: if signedIn() && (
+        isAdminUser() ||
+        orderRootCustomer() ||
+        orderRootStoreOwner()
+      );
+      allow create: if signedIn() && (
+        request.resource.data.customerUid == request.auth.uid ||
+        request.resource.data.customerId == request.auth.uid
+      );
+      allow update: if signedIn() && (
+        isAdminUser() ||
+        orderRootCustomer() ||
+        orderRootStoreOwner()
+      );
+      allow delete: if isAdminUser();
+    }
+
+    // محادثات موحّدة: القراءة فقط لمن UID ضمن participants (أو أدمن).
+    // الإنشاء: مستخدم مسجّل؛ يُفضّل أن يكون request.auth.uid ضمن participants المُنشأة من العميل.
+    // الرسائل: القراءة/الإنشاء فقط إذا كان UID ضمن participants محادثة الأب (انظر get).
+    match /unified_chats/{chatId} {
+      // السماح بقراءة مسار غير موجود (get قبل الإنشاء/التحقق) — وإلا يرفض Firestore و`ensureChat` يفشل.
+      allow read: if isAdmin()
+        || !exists(/databases/$(database)/documents/unified_chats/$(chatId))
+        || unifiedChatReader(resource.data);
+      // إنشاء محادثة موحّدة: نوع مدعوم + عزل أطراف حسب النوع.
+      allow create: if unifiedChatCreateAllowed();
+      allow update: if (request.auth != null && unifiedChatReader(resource.data)) || isAdmin();
+      allow delete: if isAdmin();
+
+      match /messages/{messageId} {
+        allow read: if unifiedChatReader(
+            get(/databases/$(database)/documents/unified_chats/$(chatId)).data
+          ) || isAdmin();
+        allow create: if request.auth != null &&
+          unifiedChatReader(
+            get(/databases/$(database)/documents/unified_chats/$(chatId)).data
+          ) &&
+          request.resource.data.senderId == request.auth.uid;
+        allow update, delete: if isAdmin();
+      }
+    }
+
+    match /firebase_uid_by_email/{email} {
+      allow read: if request.auth != null;
+      allow write: if request.auth != null &&
+        request.auth.token.email != null &&
+        request.auth.token.email.lower() == email;
+    }
+
+    match /stores/{storeId} {
+      allow read: if true;
+      allow create, delete: if isAdminUser();
+      allow update: if isAdminUser() || ownsStoreDoc(storeId) || storeRatingAggregateOnly();
+
+      match /ratings/{ratingUserId} {
+        allow read: if isAuth();
+        allow write: if isAuth() && request.auth.uid == ratingUserId;
+      }
+
+      match /products/{pid} {
+        allow read: if true;
+        allow create, update, delete: if ownsStoreDoc(storeId) || isAdminUser();
+      }
+      match /categories/{cid} {
+        allow read: if true;
+        allow create, update, delete: if ownsStoreDoc(storeId) || isAdminUser();
+      }
+      match /offers/{oid} {
+        allow read: if true;
+        allow create, update, delete: if ownsStoreDoc(storeId) || isAdminUser();
+      }
+      match /orders/{orderId} {
+        allow read: if signedIn() && (
+          ownsStoreDoc(storeId) ||
+          isAdminUser() ||
+          resource.data.customerUid == request.auth.uid
+        );
+        allow create: if signedIn();
+        allow update: if ownsStoreDoc(storeId) || isAdminUser();
+        allow delete: if isAdminUser();
+      }
+    }
+
+    /// كتابة العمولات من التطبيق: `CommissionService` (صاحب المتجر عند التسليم) والإدارة.
+    function commissionWriteAllowed() {
+      return isAdmin() || isStoreOwnerOf(storeId);
+    }
+
+    match /commissions/{storeId} {
+      allow read: if isStaffDashboardUser() || isStoreOwnerOf(storeId);
+      allow write: if commissionWriteAllowed();
+
+      match /orders/{orderId} {
+        allow read: if isStaffDashboardUser() || isStoreOwnerOf(storeId);
+        allow write: if commissionWriteAllowed();
+      }
+
+      match /payments/{paymentId} {
+        allow read: if isStaffDashboardUser() || isStoreOwnerOf(storeId);
+        allow write: if commissionWriteAllowed();
+      }
+
+      /// سجل عمولة المناقصات — يُنشأ عند قبول العميل للعرض (`TenderRepository.acceptOffer`).
+      match /tenders/{tenderCommissionId} {
+        allow read: if isStaffDashboardUser() || isStoreOwnerOf(storeId);
+        allow create: if signedIn()
+          && request.resource.data.storeId == storeId
+          && request.resource.data.tenderId is string
+          && exists(/databases/$(database)/documents/tenders/$(request.resource.data.tenderId))
+          && get(/databases/$(database)/documents/tenders/$(request.resource.data.tenderId)).data.userId == request.auth.uid;
+        allow update, delete: if isAdminUser() || isStoreOwnerOf(storeId);
+      }
+    }
+
+    // استخدام {srDocId} بدلاً من {requestId} — بعض المحررات تُفسّر البادئة `request` كاسم محجوز فيزيد تحذيراً خاطئاً.
+    match /store_requests/{srDocId} {
+      allow read: if isAdmin() || (signedIn() && resource.data.applicantId == request.auth.uid);
+      allow create: if isAuth() && request.resource.data.applicantId == request.auth.uid;
+      allow update, delete: if isAdmin();
+    }
+
+    match /notifications/{userId}/userNotifications/{nid} {
+      allow read: if (signedIn() && request.auth.uid == userId) || isAdminUser();
+      allow create: if (
+          (
+            (signedIn() && request.auth.uid == userId) || isAdminUser()
+          )
+          && request.resource.data.title is string
+          && request.resource.data.body is string
+          && request.resource.data.type is string
+          && request.resource.data.isRead == false
+        )
+        || crossUserNotificationCreateAllowed(userId);
+      allow update: if (signedIn() && request.auth.uid == userId) || isAdminUser();
+      allow delete: if (signedIn() && request.auth.uid == userId) || isAdminUser();
+    }
+
+    match /support_chats/{chatId} {
+      allow read: if signedIn() && (
+        resource.data.userId == request.auth.uid ||
+        isAdminUser()
+      );
+      allow create: if signedIn()
+        && request.resource.data.type == 'support'
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.customerId == request.auth.uid
+        && request.resource.data.status == 'open'
+        && request.resource.data.userName is string;
+      allow update: if signedIn() && (
+        isAdminUser() ||
+        (
+          resource.data.userId == request.auth.uid &&
+          request.resource.data.userId == resource.data.userId &&
+          request.resource.data.customerId == resource.data.customerId
+        )
+      );
+
+      match /messages/{messageId} {
+        allow read: if signedIn() && (
+          get(/databases/$(database)/documents/support_chats/$(chatId)).data.userId == request.auth.uid ||
+          isAdminUser()
+        );
+        allow create: if signedIn()
+          && get(/databases/$(database)/documents/support_chats/$(chatId)).data.status == 'open'
+          && request.resource.data.senderId == request.auth.uid
+          && request.resource.data.text is string
+          && request.resource.data.senderName is string;
+        allow update, delete: if false;
+      }
+    }
+
+    match /tenders/{tenderId} {
+      allow read: if isAuth();
+      allow create: if isAuth();
+      allow update: if isAuth() && (
+        resource.data.userId == request.auth.uid ||
+        isAdmin()
+      );
+      allow delete: if isAdmin();
+
+      match /offers/{offerId} {
+        allow read: if isAuth() && (
+          get(/databases/$(database)/documents/tenders/$(tenderId)).data.userId == request.auth.uid ||
+          resource.data.storeOwnerId == request.auth.uid ||
+          isAdmin()
+        );
+        // فقط صاحب المتجر يضيف عرضاً باسمه (يمنع تزييف storeId لعرض غيره).
+        allow create: if signedIn()
+          && request.resource.data.storeOwnerId == request.auth.uid
+          && request.resource.data.storeId is string
+          && request.resource.data.storeName is string
+          && request.resource.data.price is number
+          && request.resource.data.status == 'pending';
+        allow update: if isAdmin() ||
+          get(/databases/$(database)/documents/tenders/$(tenderId)).data.userId == request.auth.uid;
+        allow delete: if isAdmin();
+      }
+    }
+
+    // ========== B2B - تجار الجملة ==========
+    /// مالك سجل تاجر الجملة (للتحقق من طلبات wholesale_orders).
+    function wholesalerOwnerId(wholesalerId) {
+      return exists(/databases/$(database)/documents/wholesalers/$(wholesalerId))
+        ? get(/databases/$(database)/documents/wholesalers/$(wholesalerId)).data.ownerId
+        : null;
+    }
+
+    function isWholesalerOwner(wholesalerId) {
+      return signedIn()
+        && wholesalerOwnerId(wholesalerId) == request.auth.uid;
+    }
+
+    match /wholesalers/{wholesalerId} {
+      allow read: if signedIn();
+
+      // إنشاء: المالك نفسه، أو أي مشرف (موافقة الأدمن تنشئ ownerId = مقدّم الطلب).
+      allow create: if signedIn() && (
+        request.resource.data.ownerId == request.auth.uid ||
+        isAdminUser()
+      );
+      allow update, delete: if signedIn() && (
+        resource.data.ownerId == request.auth.uid ||
+        isAdminUser()
+      );
+
+      // أقسام المنتجات داخل تاجر الجملة
+      match /categories/{categoryId} {
+        allow read: if signedIn();
+        allow create, update, delete: if signedIn() && (
+          get(/databases/$(database)/documents/wholesalers/$(wholesalerId)).data.ownerId == request.auth.uid ||
+          isAdminUser()
+        );
+      }
+
+      // منتجات تاجر الجملة (subcollection)
+      match /products/{productId} {
+        allow read: if signedIn();
+        allow create, update, delete: if signedIn() && (
+          get(/databases/$(database)/documents/wholesalers/$(wholesalerId)).data.ownerId == request.auth.uid ||
+          isAdminUser()
+        );
+      }
+    }
+
+    match /wholesaler_requests/{requestId} {
+      allow read: if signedIn();
+      allow create: if signedIn() && (
+        request.resource.data.applicantId == request.auth.uid ||
+        isAdminUser()
+      );
+      allow update, delete: if signedIn() && (
+        resource.data.applicantId == request.auth.uid ||
+        isAdminUser()
+      );
+    }
+
+    /// تجميع عمولات الجملة — يحدّثها عميل الطلب (صاحب المتجر) عند [createWholesaleOrder] والمشرفون.
+    match /wholesale_commissions/{wholesalerId} {
+      allow read: if signedIn() && (
+        isStaffDashboardUser() ||
+        isWholesalerOwner(wholesalerId)
+      );
+      allow create, update: if signedIn();
+      allow delete: if isAdminUser();
+    }
+
+    /// دفعات مسجّلة على عمولة تاجر الجملة (لوحة الأدمن).
+    match /wholesale_commissions/{wholesalerId}/payments/{paymentId} {
+      allow read: if signedIn() && (
+        isStaffDashboardUser() ||
+        isWholesalerOwner(wholesalerId)
+      );
+      allow create, update, delete: if isAdminUser();
+    }
+
+    match /wholesale_orders/{orderId} {
+      // قراءة: أطراف الطلب أو مسؤولو لوحة التحليلات (دعم/مالية/…).
+      allow read: if signedIn() && (
+        resource.data.storeOwnerId == request.auth.uid ||
+        (
+          resource.data.wholesalerId != null &&
+          exists(/databases/$(database)/documents/wholesalers/$(resource.data.wholesalerId)) &&
+          get(/databases/$(database)/documents/wholesalers/$(resource.data.wholesalerId)).data.ownerId == request.auth.uid
+        ) ||
+        isStaffDashboardUser()
+      );
+
+      // كتابة: صاحب المتجر الطالب (create)؛ تحديث الحالة: المشتري أو تاجر الجملة أو المشرف.
+      allow create: if signedIn() && (
+        request.resource.data.storeOwnerId == request.auth.uid ||
+        isAdminUser()
+      );
+      allow update, delete: if signedIn() && (
+        resource.data.storeOwnerId == request.auth.uid ||
+        (
+          resource.data.wholesalerId is string &&
+          resource.data.wholesalerId.size() > 0 &&
+          isWholesalerOwner(resource.data.wholesalerId)
+        ) ||
+        isAdminUser()
+      );
+    }
+
+    /// أقسام عامة لصفحة سوق الجملة (اختياري — لوحة الأدمن).
+    match /wholesale_categories/{catId} {
+      allow read: if signedIn();
+      allow write: if isAdminUser();
+    }
+
+    /// طلبات إنشاء حساسات يدوية (لوحة الأدمن).
+    match /pending_wholesalers/{docId} {
+      allow read, write: if isAdminUser();
+    }
+
+    // ========== العروض والخصومات (Promotions) ==========
+    match /audit_logs/{logId} {
+      allow read: if isStaffDashboardUser();
+      allow create: if signedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.action is string
+        && request.resource.data.targetType is string
+        && request.resource.data.targetId is string;
+      allow update, delete: if false;
+    }
+
+    match /promotions/{promotionId} {
+      allow read: if signedIn();
+      allow create, update, delete: if isFullAdminUser();
+    }
+
+    match /promotion_usage/{usageId} {
+      allow read: if signedIn();
+      allow create: if signedIn();
+      allow update, delete: if false;
+    }
+
+    match /points/{userId} {
+      allow read: if signedIn() && (
+        request.auth.uid == userId ||
+        isStaffDashboardUser()
+      );
+      allow create, update: if signedIn() && (
+        request.auth.uid == userId ||
+        isFullAdminUser()
+      );
+      allow delete: if isFullAdminUser();
+    }
+
+    match /reviews/{reviewId} {
+      // deprecated - migrated to Postgres ratings_reviews
+      // Legacy read-only path during migration.
+      allow read: if signedIn();
+      allow create, update, delete: if false;
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

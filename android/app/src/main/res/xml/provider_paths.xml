@@ -1,0 +1,17 @@
+<!--
+  ~   Webkul Software.
+  ~   @package Ammar Store Application Code.
+  ~   @Category Ammar Store
+  ~   @author Webkul <support@webkul.com>
+  ~   @Copyright (c) Webkul Software Private Limited (https://webkul.com)
+  ~   @license https://store.webkul.com/license.html
+  ~   @link https://store.webkul.com/license.html
+  -->
+
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <external-path
+        name="external_files"
+        path="." />
+</paths>
+
+

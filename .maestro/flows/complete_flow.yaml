@@ -1,0 +1,30 @@
+appId: com.webkul.Ammar StoreApp.iOS
+---
+- launchApp
+- assertVisible:
+    text: "Home"
+- assertVisible:
+    text: "Popular Products"
+- assertVisible:
+    text: "Categories"
+- tapOn:
+    text: "Categories"
+- assertVisible:
+    text: "Electronics"
+- assertVisible:
+    text: "Furniture"
+- assertVisible:
+    text: "Fashion"
+- tapOn:
+    text: "Home"
+- assertVisible:
+    text: "Popular Products"
+- tapOn:
+    text: "Cart"
+- assertVisible:
+    text: "Your cart is empty"
+- tapOn:
+    text: "Account"
+- assertVisible:
+    text: "Account"
+

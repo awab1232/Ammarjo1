@@ -1,0 +1,241 @@
+﻿import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+
+import '../../../../core/contracts/feature_state.dart';
+import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/web_image_url.dart';
+import '../../../../core/widgets/empty_state_widget.dart';
+import '../../data/wholesale_repository.dart';
+import '../../domain/wholesaler_model.dart';
+import 'wholesaler_detail_page.dart';
+import 'wholesaler_products_market_page.dart';
+
+class WholesaleMarketplacePage extends StatefulWidget {
+  const WholesaleMarketplacePage({super.key});
+
+  @override
+  State<WholesaleMarketplacePage> createState() => _WholesaleMarketplacePageState();
+}
+
+class _WholesaleMarketplacePageState extends State<WholesaleMarketplacePage> {
+  static const int _pageSize = 10;
+  final TextEditingController _search = TextEditingController();
+  final List<WholesalerModel> _stores = <WholesalerModel>[];
+  bool _loading = false;
+  bool _loadingMore = false;
+  bool _hasMore = true;
+  String? _nextCursor;
+  String _cat = 'all';
+
+  @override
+  void initState() {
+    super.initState();
+    _reload();
+  }
+
+  @override
+  void dispose() {
+    _search.dispose();
+    super.dispose();
+  }
+
+  Future<void> _reload() async {
+    setState(() {
+      _loading = true;
+      _stores.clear();
+      _nextCursor = null;
+      _hasMore = true;
+    });
+    try {
+      final resultState = await WholesaleRepository.instance.getWholesalers(limit: _pageSize);
+      final result = switch (resultState) {
+        FeatureSuccess(:final data) => data,
+        FeatureFailure(:final message) => throw StateError(message),
+        _ => throw StateError('FAILED_TO_LOAD_WHOLESALERS'),
+      };
+      if (!mounted) return;
+      setState(() {
+        _stores.addAll(result.items);
+        _nextCursor = result.nextCursor;
+        _hasMore = _nextCursor != null;
+      });
+    } on Object {
+      debugPrint('[WholesaleMarketplace] _reload failed.');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø³ÙˆÙ‚ Ø§Ù„Ø¬Ù…Ù„Ø©.', style: GoogleFonts.tajawal())),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _loadMore() async {
+    if (_loadingMore || !_hasMore || _nextCursor == null) return;
+    setState(() => _loadingMore = true);
+    try {
+      final resultState = await WholesaleRepository.instance.getWholesalers(
+        limit: _pageSize,
+        cursor: _nextCursor,
+      );
+      final result = switch (resultState) {
+        FeatureSuccess(:final data) => data,
+        FeatureFailure(:final message) => throw StateError(message),
+        _ => throw StateError('FAILED_TO_LOAD_WHOLESALERS'),
+      };
+      if (!mounted) return;
+      setState(() {
+        _stores.addAll(result.items);
+        _nextCursor = result.nextCursor;
+        _hasMore = _nextCursor != null;
+      });
+    } on Object {
+      debugPrint('[WholesaleMarketplace] _loadMore failed.');
+    } finally {
+      if (mounted) setState(() => _loadingMore = false);
+    }
+  }
+
+  List<WholesalerModel> _filtered() {
+    final term = _search.text.trim().toLowerCase();
+    final list = _stores.where((w) {
+      final passSearch = term.isEmpty || w.name.toLowerCase().contains(term) || w.category.toLowerCase().contains(term);
+      final passCat = _cat == 'all' || w.category == _cat;
+      return passSearch && passCat;
+    }).toList();
+    list.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    return list;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null) {
+      return Scaffold(
+        appBar: AppBar(title: Text('Ø³ÙˆÙ‚ Ø§Ù„Ø¬Ù…Ù„Ø©', style: GoogleFonts.tajawal())),
+        body: Center(child: Text('Ø³Ø¬Ù‘Ù„ Ø§Ù„Ø¯Ø®ÙˆÙ„ ÙƒØµØ§Ø­Ø¨ Ù…ØªØ¬Ø±', style: GoogleFonts.tajawal())),
+      );
+    }
+    final rows = _filtered();
+    final categories = <String>{for (final d in _stores) d.category}.where((e) => e.isNotEmpty).toList()..sort();
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('Ø³ÙˆÙ‚ Ø§Ù„Ø¬Ù…Ù„Ø©', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+      ),
+      body: RefreshIndicator(
+        onRefresh: _reload,
+        color: AppColors.primaryOrange,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            SizedBox(
+              height: kIsWeb ? 44 : 52,
+              child: ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: EdgeInsets.fromLTRB(12, kIsWeb ? 4 : 8, 12, kIsWeb ? 6 : 8),
+                itemCount: 1 + categories.length,
+                separatorBuilder: (_, _) => SizedBox(width: kIsWeb ? 6 : 8),
+                itemBuilder: (context, i) {
+                  if (i == 0) {
+                    final sel = _cat == 'all';
+                    return FilterChip(
+                      label: Text('Ø§Ù„ÙƒÙ„', style: GoogleFonts.tajawal(fontSize: kIsWeb ? 12 : 14, fontWeight: sel ? FontWeight.w800 : FontWeight.w500)),
+                      selected: sel,
+                      onSelected: (_) => setState(() => _cat = 'all'),
+                      selectedColor: AppColors.primaryOrange.withValues(alpha: 0.25),
+                    );
+                  }
+                  final c = categories[i - 1];
+                  final sel = _cat == c;
+                  return FilterChip(
+                    label: Text(c, style: GoogleFonts.tajawal(fontSize: kIsWeb ? 12 : 14, fontWeight: sel ? FontWeight.w800 : FontWeight.w500)),
+                    selected: sel,
+                    onSelected: (_) => setState(() => _cat = c),
+                    selectedColor: AppColors.primaryOrange.withValues(alpha: 0.25),
+                  );
+                },
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+              child: TextField(
+                controller: _search,
+                onChanged: (_) => setState(() {}),
+                decoration: InputDecoration(
+                  hintText: 'Ø¨Ø­Ø« Ø¨Ø§Ù„Ø§Ø³Ù… Ø£Ùˆ Ø§Ù„ØªØµÙ†ÙŠÙ',
+                  hintStyle: GoogleFonts.tajawal(),
+                  prefixIcon: const Icon(Icons.search),
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+            ),
+            Expanded(
+              child: _loading
+                  ? const Center(child: CircularProgressIndicator(color: AppColors.primaryOrange))
+                  : rows.isEmpty
+                      ? EmptyStateWidget(
+                          type: EmptyStateType.wholesale,
+                          onAction: _reload,
+                          actionLabel: 'إعادة المحاولة',
+                        )
+                  : ListView.builder(
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      itemCount: rows.length + 1,
+                      itemBuilder: (context, i) {
+                        if (i >= rows.length) {
+                          if (!_hasMore) return const SizedBox(height: 12);
+                          return Padding(
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            child: Center(
+                              child: FilledButton(
+                                onPressed: _loadingMore ? null : _loadMore,
+                                child: Text(_loadingMore ? 'Ø¬Ø§Ø±Ù Ø§Ù„ØªØ­Ù…ÙŠÙ„...' : 'ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ù…Ø²ÙŠØ¯', style: GoogleFonts.tajawal()),
+                              ),
+                            ),
+                          );
+                        }
+                        final w = rows[i];
+                        return Card(
+                          clipBehavior: Clip.antiAlias,
+                          child: InkWell(
+                            onTap: () {
+                              Navigator.of(context).push<void>(
+                                MaterialPageRoute<void>(builder: (_) => WholesalerDetailPage(wholesaler: w)),
+                              );
+                            },
+                            child: ListTile(
+                              leading: CircleAvatar(
+                                backgroundImage: w.logo.trim().isNotEmpty ? NetworkImage(webSafeImageUrl(w.logo)) : null,
+                                child: w.logo.trim().isEmpty ? const Icon(Icons.warehouse_outlined) : null,
+                              ),
+                              title: Text(w.name, style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+                              subtitle: Text(
+                                'Ø§Ù„ØªØµÙ†ÙŠÙ: ${w.category}\nØ§Ù„Ù…Ø¯ÙŠÙ†Ø©: ${w.city}',
+                                style: GoogleFonts.tajawal(fontSize: 12),
+                                textAlign: TextAlign.right,
+                              ),
+                              trailing: FilledButton(
+                                style: FilledButton.styleFrom(backgroundColor: AppColors.primaryOrange),
+                                onPressed: () {
+                                  Navigator.of(context).push<void>(
+                                    MaterialPageRoute<void>(builder: (_) => WholesalerProductsMarketPage(wholesaler: w)),
+                                  );
+                                },
+                                child: Text('Ø¹Ø±Ø¶ Ø§Ù„Ù…Ù†ØªØ¬Ø§Øª', style: GoogleFonts.tajawal(color: Colors.white)),
+                              ),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+

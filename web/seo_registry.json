@@ -1,0 +1,78 @@
+{
+  "generatedAt": "2026-04-10T11:20:33.610672Z",
+  "siteUrl": "https://ammarjo.net",
+  "routes": {
+    "/": {
+      "type": "WebSite",
+      "title": "AmmarJo - Construction Marketplace",
+      "description": "AmmarJo marketplace for construction materials, maintenance services, and professional suppliers.",
+      "canonical": "https://ammarjo.net/",
+      "lastModified": "2026-04-10",
+      "priority": 1.0
+    },
+    "/about": {
+      "type": "WebPage",
+      "title": "About AmmarJo",
+      "description": "Learn about AmmarJo construction marketplace.",
+      "canonical": "https://ammarjo.net/about",
+      "lastModified": "2026-04-10",
+      "priority": 0.7
+    },
+    "/blog": {
+      "type": "CollectionPage",
+      "title": "AmmarJo Blog",
+      "description": "Construction insights, maintenance guides, and marketplace updates from AmmarJo.",
+      "canonical": "https://ammarjo.net/blog",
+      "lastModified": "2026-04-10",
+      "priority": 0.6
+    },
+    "/blog/:slug": {
+      "type": "Article",
+      "titleTemplate": "Blog: {{slug}} | AmmarJo",
+      "description": "Read AmmarJo blog content.",
+      "canonical": "https://ammarjo.net/blog/:slug",
+      "lastModified": "2026-04-10",
+      "priority": 0.6
+    },
+    "/category/:name": {
+      "type": "CollectionPage",
+      "titleTemplate": "Category: {{name}} | AmmarJo",
+      "description": "Browse category products and stores on AmmarJo.",
+      "canonical": "https://ammarjo.net/category/:name",
+      "lastModified": "2026-04-10",
+      "priority": 0.7
+    },
+    "/privacy": {
+      "type": "WebPage",
+      "title": "Privacy Policy | AmmarJo",
+      "description": "AmmarJo privacy policy.",
+      "canonical": "https://ammarjo.net/privacy",
+      "lastModified": "2026-04-10",
+      "priority": 0.6
+    },
+    "/product/:id": {
+      "type": "Product",
+      "titleTemplate": "Product {{id}} | AmmarJo",
+      "description": "Browse product details on AmmarJo.",
+      "canonical": "https://ammarjo.net/product/:id",
+      "lastModified": "2026-04-10",
+      "priority": 0.8
+    },
+    "/return-policy": {
+      "type": "WebPage",
+      "title": "Return Policy | AmmarJo",
+      "description": "AmmarJo return policy.",
+      "canonical": "https://ammarjo.net/return-policy",
+      "lastModified": "2026-04-10",
+      "priority": 0.6
+    },
+    "/terms": {
+      "type": "WebPage",
+      "title": "Terms of Use | AmmarJo",
+      "description": "AmmarJo terms of use.",
+      "canonical": "https://ammarjo.net/terms",
+      "lastModified": "2026-04-10",
+      "priority": 0.6
+    }
+  }
+}

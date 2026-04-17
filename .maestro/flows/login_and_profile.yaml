@@ -1,0 +1,25 @@
+appId: com.webkul.Ammar StoreApp.iOS
+---
+- launchApp
+- tapOn:
+    text: "Account"
+- assertVisible:
+    text: "Ammar Store"
+- assertVisible:
+    text: "Login"
+- tapOn:
+    text: "Login"
+- assertVisible:
+    text: "Email Address"
+- tapOn:
+    text: "Enter your email"
+- inputText: "customer@example.com"
+- tapOn:
+    text: "Enter your password"
+- inputText: "password123"
+- tapOn:
+    text: "Login"
+    index: 0
+- assertVisible:
+    text: "Profile"
+

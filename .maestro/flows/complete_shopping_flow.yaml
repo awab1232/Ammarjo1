@@ -1,0 +1,25 @@
+appId: com.webkul.Ammar StoreApp.iOS
+---
+# COMPLETE SHOPPING JOURNEY - FROM HOME TO ORDER
+- launchApp
+- assertVisible:
+    text: "Home"
+- assertVisible:
+    text: "Popular Products"
+- tapOn:
+    text: "Home"
+- assertVisible:
+    text: "Popular Products"
+- tapOn:
+    index: 3
+- assertVisible:
+    text: "$"
+- tapOn:
+    text: "Add to Cart"
+- assertVisible:
+    text: "Item added"
+- tapOn:
+    text: "Cart"
+- assertVisible:
+    text: "Cart"
+

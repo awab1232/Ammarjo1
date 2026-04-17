@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  ~   Webkul Software.
+  ~   @package Ammar Store Application Code.
+  ~   @Category Ammar Store
+  ~   @author Webkul <support@webkul.com>
+  ~   @Copyright (c) Webkul Software Private Limited (https://webkul.com)
+  ~   @license https://store.webkul.com/license.html
+  ~   @link https://store.webkul.com/license.html
+  -->
+
+<resources>
+    <color name="layout_background">#ffffff</color>
+    <color name="btn_text_color">#ffffff</color>
+    <color name="camera_search_background">#000</color>
+    <color name="main_grey">#efefef</color>
+
+    <color name="colorPrimary">#FFFFFFFF</color>
+    <color name="colorPrimaryDark">#FFe6e6e6</color>
+    <color name="colorAccent">#FF000000</color>
+
+	<color name="ic_launcher_background">#FF6B00</color>
+	<!-- خلفية إقلاع قريبة من شاشة السبلاش (ورق مخططات) -->
+	<color name="splash_cream">#F5F0E6</color>
+    <color name="notification_color">#FF6B00</color>
+</resources>

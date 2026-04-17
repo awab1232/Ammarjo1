@@ -1,0 +1,26 @@
+# Dependencies & build output (rebuilt inside the image)
+node_modules
+dist
+
+# Secrets and local env (inject via Cloud Run / Secret Manager)
+.env
+.env.*
+!.env.example
+
+# VCS & noise
+.git
+.gitignore
+*.log
+
+# IDE / OS
+.DS_Store
+Thumbs.db
+.cursor
+
+# Tests & docs (not needed to compile or run)
+coverage
+**/*.spec.ts
+**/*.test.ts
+
+# Note: `src/` must remain in the build context so the builder stage can run `nest build`.
+# The final image still only ships `dist/` + production node_modules.

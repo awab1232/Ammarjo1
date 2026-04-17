@@ -1,0 +1,213 @@
+rules_version = '2';
+
+// Firebase Storage — مسارات مُستخرجة من التطبيق (StoreOwnerRepository، AdminStorageService،
+// UsedItemsRepository، TenderRepository، service_requests، إلخ).
+// نشر: firebase deploy --only storage
+//
+// ملاحظة: CORS لـ Flutter Web تُضبط على الـ bucket من Google Cloud Console، وليس من هنا.
+//
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function emailLower() {
+      return request.auth.token.email != null
+        ? request.auth.token.email.lower()
+        : '';
+    }
+
+    function isStaticAdmin() {
+      return signedIn() && emailLower() in ['awabaloran@gmail.com'];
+    }
+
+    function userPath() {
+      return /databases/(default)/documents/users/$(request.auth.uid);
+    }
+
+    function userData() {
+      return firestore.get(userPath()).data;
+    }
+
+    function userExists() {
+      return signedIn() && firestore.exists(userPath());
+    }
+
+    /// أدمن التطبيق (يتطابق تقريباً مع firestore.rules).
+    function isAdminUser() {
+      return signedIn() && (
+        isStaticAdmin() ||
+        (
+          userExists() &&
+          (
+            userData().isAdmin == true ||
+            userData().role == 'admin' ||
+            userData().role == 'full_admin'
+          )
+        )
+      );
+    }
+
+    /// لوحة إدارة موسّعة (رفع صور الأقسام، البanners، إلخ).
+    function isStaffOrAdmin() {
+      return signedIn() && (
+        isStaticAdmin() ||
+        (
+          userExists() &&
+          (
+            userData().isAdmin == true ||
+            userData().role in ['admin', 'full_admin', 'support', 'finance', 'viewer']
+          )
+        )
+      );
+    }
+
+    function storePath(storeId) {
+      return /databases/(default)/documents/stores/$(storeId);
+    }
+
+    function ownsStore(storeId) {
+      return signedIn()
+        && firestore.exists(storePath(storeId))
+        && firestore.get(storePath(storeId)).data.ownerId == request.auth.uid;
+    }
+
+    function wholesalerPath(wholesalerId) {
+      return /databases/(default)/documents/wholesalers/$(wholesalerId);
+    }
+
+    function ownsWholesaler(wholesalerId) {
+      return signedIn()
+        && firestore.exists(wholesalerPath(wholesalerId))
+        && firestore.get(wholesalerPath(wholesalerId)).data.ownerId == request.auth.uid;
+    }
+
+    function unifiedChatPath(chatId) {
+      return /databases/(default)/documents/unified_chats/$(chatId);
+    }
+
+    /// يطابق منطق unified_chats في firestore.rules: لا يعتمد على participants فقط (وثائق قديمة أو هاتف بدون email في JWT).
+    function unifiedChatDataAllowsStorage(d) {
+      return (
+        (d.participants is list && request.auth.uid in d.participants) ||
+        request.auth.uid == d.buyer_id ||
+        request.auth.uid == d.seller_id ||
+        (d.otherPartyId is string && d.otherPartyId == request.auth.uid) ||
+        (
+          d.participantEmails is list &&
+          emailLower() != '' &&
+          emailLower() in d.participantEmails
+        ) ||
+        (
+          userExists() &&
+          d.participantEmails is list &&
+          userData().email is string &&
+          userData().email.lower() in d.participantEmails
+        ) ||
+        (
+          userExists() &&
+          d.participantEmails is list &&
+          userData().contactEmail is string &&
+          userData().contactEmail.lower() in d.participantEmails
+        )
+      );
+    }
+
+    function isUnifiedChatParticipant(chatId) {
+      return signedIn()
+        && firestore.exists(unifiedChatPath(chatId))
+        && unifiedChatDataAllowsStorage(firestore.get(unifiedChatPath(chatId)).data);
+    }
+
+    /// حد معقول لصور المنتجات والواجهات (15 ميجابايت).
+    function withinImageSizeLimit() {
+      return request.resource.size < 15 * 1024 * 1024;
+    }
+
+    function isImageContentType() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function validImageWrite() {
+      return request.resource != null
+        && withinImageSizeLimit()
+        && isImageContentType();
+    }
+
+    // ——— لوحة الإدارة ———
+    match /admin/{prefix}/{fileName} {
+      allow read: if true;
+      allow write: if validImageWrite() && isStaffOrAdmin();
+      allow delete: if isStaffOrAdmin();
+    }
+
+    // ——— كتالوج المنتجات الجذري (استيراد CSV / صور المنتج) ———
+    match /products/{fileName} {
+      allow read: if true;
+      allow write: if validImageWrite() && isAdminUser();
+      allow delete: if isAdminUser();
+    }
+
+    // ——— سوق المستعمل ———
+    match /used_items/{fileName} {
+      allow read: if true;
+      allow write: if validImageWrite() && signedIn();
+      allow delete: if signedIn();
+    }
+
+    // ——— طلبات الصيانة (مرفق صورة) ———
+    match /service_requests/{fileName} {
+      allow read: if true;
+      allow write: if validImageWrite() && signedIn();
+      allow delete: if signedIn();
+    }
+
+    // ——— مناقصات — مسار tenders/{userId}/... ———
+    match /tenders/{userId}/{fileName} {
+      allow read: if true;
+      allow write: if validImageWrite() && signedIn() && request.auth.uid == userId;
+      allow delete: if signedIn() && request.auth.uid == userId;
+    }
+
+    // ——— متجر بائع — stores/{storeId}/... ———
+    match /stores/{storeId}/branding/{fileName} {
+      allow read: if true;
+      allow write: if validImageWrite() && ownsStore(storeId);
+      allow delete: if ownsStore(storeId) || isAdminUser();
+    }
+
+    match /stores/{storeId}/products/{productId}/{fileName} {
+      allow read: if true;
+      allow write: if validImageWrite() && ownsStore(storeId);
+      allow delete: if ownsStore(storeId) || isAdminUser();
+    }
+
+    match /stores/{storeId}/categories/{fileName} {
+      allow read: if true;
+      allow write: if validImageWrite() && ownsStore(storeId);
+      allow delete: if ownsStore(storeId) || isAdminUser();
+    }
+
+    match /stores/{storeId}/offers/{fileName} {
+      allow read: if true;
+      allow write: if validImageWrite() && ownsStore(storeId);
+      allow delete: if ownsStore(storeId) || isAdminUser();
+    }
+
+    // ——— تاجر جملة (مسار احتياطي إن أُضيف رفع صور لاحقاً) ———
+    match /wholesalers/{wholesalerId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if validImageWrite() && ownsWholesaler(wholesalerId);
+      allow delete: if ownsWholesaler(wholesalerId) || isAdminUser();
+    }
+
+    // ——— محادثات موحّدة (تعليق في unified_chat_repository) ———
+    match /unified_chats/{chatId}/{allPaths=**} {
+      allow read: if true;
+      allow write: if validImageWrite() && isUnifiedChatParticipant(chatId);
+      allow delete: if isUnifiedChatParticipant(chatId) || isAdminUser();
+    }
+  }
+}

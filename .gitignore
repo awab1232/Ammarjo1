@@ -1,0 +1,103 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# YoYo AI version control directory
+.yoyo/
+
+# ML models - large files not needed in git
+assets/ml/
+
+# Google Services configuration files - contain sensitive API keys
+**/google-services.json
+**/GoogleService-Info.plist
+
+# Android release signing — never commit keystores or passwords
+**/key.properties
+**/*.jks
+**/*.keystore
+
+# --- Node / NestJS backend, Firebase Functions, Web tooling ---
+**/node_modules/
+**/dist/
+**/coverage/
+**/.nest/
+**/.turbo/
+**/*.tsbuildinfo
+**/npm-debug.log*
+**/yarn-debug.log*
+**/yarn-error.log*
+**/pnpm-debug.log*
+
+# --- Secrets: never commit real credentials ---
+# By default exclude ALL dotenv files; only `.env.example` / `.env.*.example`
+# (templates with placeholder values) are allowed. Real files contain
+# Algolia / Firebase / Sentry / DB / SMTP credentials and MUST stay local.
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.*.example
+!**/.env.template
+
+# --- Firebase emulator & debug artifacts ---
+**/firebase-debug.log*
+**/firestore-debug.log*
+**/ui-debug.log*
+**/*-debug.log
+**/.firebase/
+**/.firebaserc.local
+
+# --- OS / editor junk ---
+Thumbs.db
+.DS_Store
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# --- Docker / local volumes ---
+**/postgres_data/
+**/pgdata/
+

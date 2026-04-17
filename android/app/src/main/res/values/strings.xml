@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">AmmarJo</string>
+    <string name="camera_permission_rationale">نحتاج الوصول للكاميرا لتصوير القطع المراد البحث عنها.</string>
+    <string name="gallery_permission_rationale">نحتاج الوصول لمعرض الصور لاختيار صورة القطعة المراد البحث عنها.</string>
+    <string name="point_your_phone_down">Point your phone down to detect a surface</string>
+    <string name="ar_view">AR view</string>
+</resources>

@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- نصوص مرجعية بالعربية لسياسة الاستخدام / إذن الكاميرا والمعرض (تُعرض رسائل التطبيق من Flutter أيضاً بالعربية) -->
+    <string name="camera_permission_rationale">نحتاج الوصول للكاميرا لتصوير القطع المراد البحث عنها.</string>
+    <string name="gallery_permission_rationale">نحتاج الوصول لمعرض الصور لاختيار صورة القطعة المراد البحث عنها.</string>
+    <string name="point_your_phone_down">وجّه الهاتف للأسفل لاكتشاف سطح</string>
+    <string name="ar_view">عرض الواقع المعزّز</string>
+</resources>
