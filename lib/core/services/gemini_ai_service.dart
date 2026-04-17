@@ -189,7 +189,6 @@ Future<String> generateGeminiViaHttp({
       'gemini-1.5-flash-002',
       'gemini-1.5-flash',
       'gemini-1.5-flash-8b',
-      'gemini-pro',
     }.toList();
   try {
     const versions = <String>['v1', 'v1beta'];

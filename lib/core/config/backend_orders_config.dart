@@ -68,11 +68,13 @@ abstract final class BackendOrdersConfig {
   static String get baseUrl {
     const fromEnv = String.fromEnvironment('BACKEND_ORDERS_BASE_URL', defaultValue: '');
     if (fromEnv.trim().isNotEmpty) return fromEnv.trim();
-    if (defaultTargetPlatform == TargetPlatform.android && kDebugMode) {
-      return 'http://10.0.2.2:3000';
+    // Keep Android builds away from localhost defaults to avoid white screen / startup failures.
+    const fallbackRailway = 'https://ammarjo1-production.up.railway.app';
+    if (kDebugMode && defaultTargetPlatform == TargetPlatform.android) {
+      return fallbackRailway;
     }
-    if (kDebugMode) return 'http://localhost:3000';
-    return '';
+    if (kDebugMode) return fallbackRailway;
+    return fallbackRailway;
   }
 
   static bool _warnedMissingBaseUrl = false;

@@ -38,6 +38,7 @@ android {
 
     defaultConfig {
         // يجب أن يطابق package_name في android/app/google-services.json (حمّل الملف من Firebase بعد تسجيل التطبيق).
+        // Verify SHA-1 and SHA-256 in Firebase Console manually.
         applicationId = "com.ammarjo.store"
         minSdk = maxOf(flutter.minSdkVersion, 21)
         targetSdk = 34

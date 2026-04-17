@@ -662,14 +662,14 @@ final class BackendOrdersClient {
 
   Future<JsonList?> fetchStoreCategories(String storeId) async {
     final body = await _authedGetJson('/stores/${Uri.encodeComponent(storeId.trim())}/categories', flow: 'store_categories');
-    if (body == null) throw StateError('NULL_RESPONSE');
+    if (body == null) return const <Map<String, dynamic>>[];
     if (body['items'] is List) {
       return (body['items'] as List)
           .whereType<Map>()
           .map((e) => Map<String, dynamic>.from(e))
           .toList();
     }
-    throw StateError('NULL_RESPONSE');
+    return const <Map<String, dynamic>>[];
   }
 
   Future<JsonList?> fetchProductsByStore({

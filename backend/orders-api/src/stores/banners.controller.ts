@@ -13,7 +13,7 @@ export class BannersController {
       items: [
         {
           id: '1',
-          imageUrl: 'https://via.placeholder.com/600x200',
+          imageUrl: 'https://picsum.photos/seed/ammarjo-banner/600/200',
           title: 'عرض خاص',
         },
       ],

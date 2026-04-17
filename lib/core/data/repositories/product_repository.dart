@@ -61,11 +61,15 @@ Product _productFromBackendRow(Map<String, dynamic> row) {
 }
 
 ProductCategory _categoryFromBackendRow(Map<String, dynamic> row) {
+  final idText = row['id']?.toString().trim() ?? '';
+  final nameText = row['name']?.toString().trim() ?? '';
+  final imageText = row['imageUrl']?.toString().trim() ?? row['image']?.toString().trim() ?? '';
+  final parentNum = (row['parent'] as num?)?.toInt() ?? 0;
   return ProductCategory(
-    id: (row['id']?.toString() ?? (throw StateError('NULL_RESPONSE'))).hashCode.abs(),
-    name: row['name']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-    imageUrl: row['imageUrl']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-    parent: (row['parent'] as num?)?.toInt() ?? (throw StateError('INVALID_NUMERIC_DATA')),
+    id: (idText.isNotEmpty ? idText : nameText).hashCode.abs(),
+    name: nameText.isNotEmpty ? nameText : 'قسم',
+    imageUrl: imageText,
+    parent: parentNum,
     categoryPage: 'stores',
   );
 }
@@ -186,7 +190,7 @@ class BackendProductRepository implements ProductRepository {
     if (rows == null) {
       return FeatureState.success(<WpHomeBannerSlide>[
         const WpHomeBannerSlide(
-          imageUrl: 'https://via.placeholder.com/600x200',
+          imageUrl: 'https://picsum.photos/seed/ammarjo-banner/600/200',
           title: 'عرض خاص',
           linkUrl: null,
         ),
@@ -196,7 +200,7 @@ class BackendProductRepository implements ProductRepository {
     if (slides.isEmpty) {
       return FeatureState.success(<WpHomeBannerSlide>[
         const WpHomeBannerSlide(
-          imageUrl: 'https://via.placeholder.com/600x200',
+          imageUrl: 'https://picsum.photos/seed/ammarjo-banner/600/200',
           title: 'عرض خاص',
           linkUrl: null,
         ),

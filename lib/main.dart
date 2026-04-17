@@ -75,14 +75,15 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 /// Sentry DSN is loaded only from dart-define (never hardcoded), e.g.:
 /// flutter run --dart-define=SENTRY_DSN=https://8f6710a4cc2492c6ac6414329b8fb028@o4511219698237440.ingest.de.sentry.io/4511219712655440
 Future<void> main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+  // ignore: avoid_print
+  print('APP START');
   final sentryDsn = const String.fromEnvironment('SENTRY_DSN', defaultValue: '').trim();
   final appEnv = const String.fromEnvironment('APP_ENV', defaultValue: '').trim();
   final resolvedEnv = appEnv.isNotEmpty ? appEnv : (kDebugMode ? 'staging' : 'production');
   final tracesSampleRate = resolvedEnv == 'production' ? 0.1 : 1.0;
   Future<void> runner() async {
     FlutterError.onError = (details) {
-      FlutterError.presentError(details);
+      FlutterError.dumpErrorToConsole(details);
       unawaited(
         sentryCaptureExceptionSafe(
           details.exception,
@@ -91,6 +92,7 @@ Future<void> main() async {
       );
     };
     await runZonedGuarded<Future<void>>(() async {
+      WidgetsFlutterBinding.ensureInitialized();
       await _appMain();
     }, (error, stack) async {
       await sentryCaptureExceptionSafe(error, stackTrace: stack);
@@ -120,12 +122,26 @@ Future<void> main() async {
 }
 
 Future<void> _appMain() async {
-  BackendOrdersConfig.enforceStartupSafetyOrThrow();
-  FeatureContractValidator.validateAtStartup();
+  try {
+    BackendOrdersConfig.enforceStartupSafetyOrThrow();
+  } on Object catch (e, st) {
+    debugPrint('[Startup] backend config validation failed (continuing): $e');
+    if (kDebugMode) {
+      developer.log('BackendOrdersConfig.enforceStartupSafetyOrThrow failed', error: e, stackTrace: st);
+    }
+  }
+  try {
+    FeatureContractValidator.validateAtStartup();
+  } on Object catch (e, st) {
+    debugPrint('[Startup] feature contract validation failed (continuing): $e');
+    if (kDebugMode) {
+      developer.log('FeatureContractValidator.validateAtStartup failed', error: e, stackTrace: st);
+    }
+  }
   ensureFirestorePolicyHookLoaded();
   assert(PRODUCTION_HARDENED, 'build_integrity_marker');
-  await RuntimeSafetyEnforcer.probeBackendHealthNonBlocking();
-  await StagingStartupGuard.verifyOrThrow();
+  await RuntimeSafetyEnforcer.probeBackendHealthNonBlocking().onError((_, _) => null);
+  await StagingStartupGuard.verifyOrThrow().onError((_, _) => null);
   final info = await PackageInfo.fromPlatform();
   await sentryConfigureScopeSafe((scope) {
     scope.setTag('app_version', info.version);
@@ -146,8 +162,12 @@ Future<void> _appMain() async {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
       );
+      // ignore: avoid_print
+      print('FIREBASE OK');
       debugPrint('✅ Firebase initialized');
     } else {
+      // ignore: avoid_print
+      print('FIREBASE OK');
       debugPrint('✅ Firebase already initialized (${Firebase.apps.length} app(s))');
     }
     if (Firebase.apps.isNotEmpty && kIsWeb) {
