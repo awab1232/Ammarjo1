@@ -100,6 +100,7 @@ function rowToSummary(row: EventOutboxRow): EventOutboxRowSummary {
 export class EventOutboxService implements OnModuleDestroy {
   private pool: Pool | null = null;
   private replicaPool: Pool | null = null;
+  private outboxTableAvailable = true;
 
   constructor(
     @Optional() private readonly chaos?: EventOutboxChaosService,
@@ -141,7 +142,7 @@ export class EventOutboxService implements OnModuleDestroy {
   }
 
   isReady(): boolean {
-    return this.pool != null;
+    return this.pool != null && this.outboxTableAvailable;
   }
 
   async onModuleDestroy(): Promise<void> {
@@ -156,7 +157,7 @@ export class EventOutboxService implements OnModuleDestroy {
   }
 
   private async getClient(): Promise<PoolClient | null> {
-    if (!this.pool) return null;
+    if (!this.pool || !this.outboxTableAvailable) return null;
     return this.pool.connect();
   }
 
@@ -174,6 +175,9 @@ export class EventOutboxService implements OnModuleDestroy {
   }
 
   private async getReadClient(): Promise<PoolClient | null> {
+    if (!this.outboxTableAvailable) {
+      return null;
+    }
     if (this.chaos?.isEngineEnabled() && this.chaos.shouldForcePrimaryReads()) {
       await this.chaos.maybeAwaitReplicaPartitionLatency();
       return this.getClient();
@@ -186,6 +190,25 @@ export class EventOutboxService implements OnModuleDestroy {
       }
     }
     return this.getClient();
+  }
+
+  private isMissingOutboxTableError(e: unknown): boolean {
+    const err = e as { code?: string } | null;
+    return err?.code === '42P01';
+  }
+
+  private handleOutboxQueryError(operation: string, e: unknown): void {
+    if (this.isMissingOutboxTableError(e)) {
+      if (this.outboxTableAvailable) {
+        this.outboxTableAvailable = false;
+        console.error(
+          `[EventOutboxService] ${operation} failed: relation "event_outbox" does not exist. ` +
+            'Disabling outbox runtime until restart/migrations are applied.',
+        );
+      }
+      return;
+    }
+    console.error(`[EventOutboxService] ${operation} failed:`, e);
   }
 
   /**
@@ -327,7 +350,7 @@ export class EventOutboxService implements OnModuleDestroy {
       );
       return r.rowCount ?? 0;
     } catch (e) {
-      console.error('[EventOutboxService] recoverStaleProcessing failed:', e);
+      this.handleOutboxQueryError('recoverStaleProcessing', e);
       return 0;
     } finally {
       client.release();
@@ -366,7 +389,7 @@ export class EventOutboxService implements OnModuleDestroy {
       );
       return r.rowCount ?? 0;
     } catch (e) {
-      console.error('[EventOutboxService] recoverForeignRegionStale failed:', e);
+      this.handleOutboxQueryError('recoverForeignRegionStale', e);
       return 0;
     } finally {
       client.release();
@@ -422,7 +445,7 @@ export class EventOutboxService implements OnModuleDestroy {
       );
       return r.rows.map((row) => mapRow(row as Record<string, unknown>));
     } catch (e) {
-      console.error('[EventOutboxService] claimPendingBatch failed:', e);
+      this.handleOutboxQueryError('claimPendingBatch', e);
       return [];
     } finally {
       client.release();
@@ -453,7 +476,7 @@ export class EventOutboxService implements OnModuleDestroy {
       );
       return Number.parseInt(r.rows[0]?.c ?? '0', 10) || 0;
     } catch (e) {
-      console.error('[EventOutboxService] countEligiblePendingApprox failed:', e);
+      this.handleOutboxQueryError('countEligiblePendingApprox', e);
       return 0;
     } finally {
       client.release();
@@ -989,7 +1012,7 @@ export class EventOutboxService implements OnModuleDestroy {
       );
       return del.rowCount ?? 0;
     } catch (e) {
-      console.error('[EventOutboxService] pruneDeadLetterOverflow failed:', e);
+      this.handleOutboxQueryError('pruneDeadLetterOverflow', e);
       return 0;
     } finally {
       client.release();
