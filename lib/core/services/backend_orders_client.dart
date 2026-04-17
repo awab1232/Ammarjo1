@@ -7,7 +7,6 @@ import 'package:http/http.dart' as http;
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../config/backend_orders_config.dart';
-import '../contracts/feature_state.dart';
 import '../logging/backend_fallback_logger.dart';
 import '../models/backend_auth_me.dart';
 import '../models/home_section.dart';
