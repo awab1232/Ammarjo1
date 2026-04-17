@@ -12,25 +12,8 @@
 set -u
 
 DB_WAIT_SECONDS="${DB_WAIT_SECONDS:-30}"
+RUN_DB_BOOTSTRAP_ON_START="${RUN_DB_BOOTSTRAP_ON_START:-1}"
 DB_URL="${DATABASE_URL:-${ORDERS_DATABASE_URL:-}}"
-
-if [ -z "$DB_URL" ]; then
-  echo "[entrypoint] WARN: DATABASE_URL / ORDERS_DATABASE_URL not set — skipping DB wait and migrations."
-else
-  echo "[entrypoint] waiting up to ${DB_WAIT_SECONDS}s for PostgreSQL..."
-  i=0
-  while [ "$i" -lt "$DB_WAIT_SECONDS" ]; do
-    if psql "$DB_URL" -c "SELECT 1" >/dev/null 2>&1; then
-      echo "[entrypoint] PostgreSQL is reachable."
-      break
-    fi
-    i=$((i + 1))
-    sleep 1
-  done
-  if [ "$i" -ge "$DB_WAIT_SECONDS" ]; then
-    echo "[entrypoint] WARN: Postgres not reachable after ${DB_WAIT_SECONDS}s — starting server anyway so /health is up. DB-backed endpoints will fail until connectivity is restored."
-  fi
-fi
 
 # Apply migrations in dependency order. 011 must run before 008 so hybrid
 # `store_categories` (011) is created first; 008's legacy CREATE IF NOT EXISTS
@@ -61,24 +44,58 @@ MIGRATION_ORDER="
 025_create_banners.sql
 "
 
-if [ -n "$DB_URL" ] && [ -d /sql/migrations ]; then
-  echo "[entrypoint] applying SQL migrations from /sql/migrations"
-  for base in $MIGRATION_ORDER; do
-    f="/sql/migrations/$base"
-    if [ ! -f "$f" ]; then
-      echo "[entrypoint] WARN: missing expected file $f — skipping."
-      continue
+run_db_bootstrap_async() {
+  if [ "$RUN_DB_BOOTSTRAP_ON_START" = "0" ]; then
+    echo "[entrypoint] RUN_DB_BOOTSTRAP_ON_START=0 — skipping DB wait + migrations."
+    return
+  fi
+
+  if [ -z "$DB_URL" ]; then
+    echo "[entrypoint] WARN: DATABASE_URL / ORDERS_DATABASE_URL not set — skipping DB wait and migrations."
+    return
+  fi
+
+  (
+    echo "[entrypoint] background DB bootstrap started."
+    echo "[entrypoint] waiting up to ${DB_WAIT_SECONDS}s for PostgreSQL..."
+    i=0
+    while [ "$i" -lt "$DB_WAIT_SECONDS" ]; do
+      if psql "$DB_URL" -c "SELECT 1" >/dev/null 2>&1; then
+        echo "[entrypoint] PostgreSQL is reachable."
+        break
+      fi
+      i=$((i + 1))
+      sleep 1
+    done
+
+    if [ "$i" -ge "$DB_WAIT_SECONDS" ]; then
+      echo "[entrypoint] WARN: Postgres not reachable after ${DB_WAIT_SECONDS}s — server is already running; DB-backed endpoints will fail until connectivity is restored."
+      exit 0
     fi
-    echo "[entrypoint] running $f"
-    if ! psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$f"; then
-      echo "[entrypoint] WARN: migration $base failed — continuing so server can still start."
+
+    if [ -d /sql/migrations ]; then
+      echo "[entrypoint] applying SQL migrations from /sql/migrations"
+      for base in $MIGRATION_ORDER; do
+        f="/sql/migrations/$base"
+        if [ ! -f "$f" ]; then
+          echo "[entrypoint] WARN: missing expected file $f — skipping."
+          continue
+        fi
+        echo "[entrypoint] running $f"
+        if ! psql "$DB_URL" -v ON_ERROR_STOP=1 -f "$f"; then
+          echo "[entrypoint] WARN: migration $base failed — continuing."
+        fi
+      done
+    else
+      echo "[entrypoint] WARN: /sql/migrations not found inside image — skipping migrations."
     fi
-  done
-elif [ -n "$DB_URL" ]; then
-  echo "[entrypoint] WARN: /sql/migrations not found inside image — skipping migrations."
-fi
+  ) &
+
+  echo "[entrypoint] DB bootstrap is running in background; continuing server startup."
+}
 
 echo "[entrypoint] Starting server..."
+run_db_bootstrap_async
 if [ "$#" -gt 0 ]; then
   exec "$@"
 else
