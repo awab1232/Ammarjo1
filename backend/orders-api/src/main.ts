@@ -120,9 +120,8 @@ async function bootstrap() {
   );
   app.useGlobalFilters(new SentryExceptionFilter());
   app.enableCors({ origin: true });
-  // Railway (and most PaaS platforms) inject PORT at runtime. We default to
-  // 3000 to match the Dockerfile's EXPOSE + HEALTHCHECK when PORT is absent.
-  const port = Number(process.env.PORT) || 3000;
+  // Railway (and most PaaS platforms) inject PORT at runtime.
+  const port = process.env.PORT || 3000;
   await app.listen(port, '0.0.0.0');
   console.log('Server running on port', port);
   console.log(

@@ -4,7 +4,8 @@
   "private": true,
   "description": "Orders REST API (shadow / parallel to Firebase) — NestJS, Cloud Run–ready",
   "scripts": {
-    "build": "nest build",
+    "db:client:generate": "node scripts/generate-db-client.js",
+    "build": "npm run db:client:generate && nest build",
     "start": "nest start",
     "start:dev": "nest start --watch",
     "start:prod": "node dist/main",
