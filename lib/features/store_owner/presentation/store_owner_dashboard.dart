@@ -79,9 +79,12 @@ class _BoostRequestsTabState extends State<_BoostRequestsTab> {
       future: StoreOwnerRepository.fetchBoostRequests(widget.storeId),
       builder: (context, snap) {
         final state = snap.data;
-        final rows = state is FeatureSuccess<List<Map<String, dynamic>>>
-            ? state.data
-            : const <Map<String, dynamic>>[];
+        final List<Map<String, dynamic>> rows;
+        if (state is FeatureSuccess<List<Map<String, dynamic>>>) {
+          rows = state.data;
+        } else {
+          rows = const <Map<String, dynamic>>[];
+        }
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [
