@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-http://localhost:8080}"
+BASE_URL="${BASE_URL:-http://localhost:3000}"
 INTERNAL_API_KEY="${INTERNAL_API_KEY:-${SEARCH_INTERNAL_API_KEY:-}}"
 CUSTOMER_TOKEN="${CUSTOMER_TOKEN:-}"
 ADMIN_TOKEN="${ADMIN_TOKEN:-}"

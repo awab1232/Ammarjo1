@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
-BASE_URL="${BASE_URL:-http://localhost:8080}"
+BASE_URL="${BASE_URL:-http://localhost:3000}"
 N="${N:-100}"
 MOCK_MODE="${MOCK_MODE:-1}"
 INTERNAL_API_KEY="${INTERNAL_API_KEY:-}"

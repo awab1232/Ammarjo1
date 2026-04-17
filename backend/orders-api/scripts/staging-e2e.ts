@@ -13,7 +13,7 @@ function logStep(step: string, ok: boolean, extra: Record<string, unknown> = {})
 }
 
 function baseUrl(): string {
-  return (process.env.BASE_URL?.trim() || 'http://localhost:8080').replace(/\/+$/, '');
+  return (process.env.BASE_URL?.trim() || 'http://localhost:3000').replace(/\/+$/, '');
 }
 
 function loadStagingEnvIfPresent(): void {

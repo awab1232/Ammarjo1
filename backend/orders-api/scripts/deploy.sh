@@ -68,7 +68,7 @@ deploy_one() {
       --platform managed \
       --region "${r}" \
       --allow-unauthenticated \
-      --port 8080 \
+      --port 3000 \
       --service-account "${SERVICE_ACCOUNT_EMAIL}" \
       --set-secrets "${SECRET_MANAGER_BINDINGS}" \
       --set-env-vars "NODE_ENV=production"
@@ -79,7 +79,7 @@ deploy_one() {
       --platform managed \
       --region "${r}" \
       --allow-unauthenticated \
-      --port 8080 \
+      --port 3000 \
       --set-env-vars "NODE_ENV=production"
   fi
 }

@@ -3,7 +3,7 @@
 ## Overview
 
 - **Container**: `Dockerfile` (Node 20, multi-stage: build → `dist/` only in runtime).
-- **Port**: `8080` (Cloud Run sets `PORT`; the app defaults to `8080` if unset).
+- **Port**: dynamic from `PORT` (app defaults to `3000` if unset).
 - **Environment**: `NODE_ENV=production` in the deploy script; add secrets and config via Cloud Run variables or Secret Manager (next phase).
 
 ## Health checks
@@ -59,10 +59,10 @@ npm run start:prod
 
 ```bash
 docker build -t orders-api:local .
-docker run --rm -p 8080:8080 -e NODE_ENV=production orders-api:local
+docker run --rm -p 3000:3000 -e NODE_ENV=production orders-api:local
 ```
 
-Then open `http://localhost:8080/health`.
+Then open `http://localhost:3000/health`.
 
 ## Global HTTPS endpoint (optional)
 

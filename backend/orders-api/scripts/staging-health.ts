@@ -38,7 +38,7 @@ async function dbHealthy(): Promise<boolean> {
 }
 
 async function apiHealthy(baseUrlRaw?: string): Promise<boolean> {
-  const base = (baseUrlRaw?.trim() || 'http://localhost:8080').replace(/\/+$/, '');
+  const base = (baseUrlRaw?.trim() || 'http://localhost:3000').replace(/\/+$/, '');
   try {
     const r = await fetch(`${base}/health`);
     return r.status >= 200 && r.status < 500;

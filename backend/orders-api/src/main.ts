@@ -121,8 +121,10 @@ async function bootstrap() {
   app.useGlobalFilters(new SentryExceptionFilter());
   app.enableCors({ origin: true });
   // Railway (and most PaaS platforms) inject PORT at runtime.
-  const port = process.env.PORT || 3000;
+  const port = Number(process.env.PORT) || 3000;
   await app.listen(port, '0.0.0.0');
+  console.log('ENV PORT:', process.env.PORT);
+  console.log('FORCE DEPLOY');
   console.log('Server running on port', port);
   console.log(
     JSON.stringify({

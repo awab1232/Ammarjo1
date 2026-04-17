@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Wholesale stress simulation (sequential curl only).
 
-BASE_URL="${BASE_URL:-http://localhost:8080}"
+BASE_URL="${BASE_URL:-http://localhost:3000}"
 N="${N:-100}" # 50-500 recommended
 MOCK_MODE="${MOCK_MODE:-1}"
 TOKEN="${TOKEN:-}"

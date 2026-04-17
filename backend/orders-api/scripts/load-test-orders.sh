@@ -4,7 +4,7 @@ set -euo pipefail
 # Orders/Admin load simulation (sequential curl only).
 # Safe-by-default: MOCK_MODE=1 sends invalid POST payloads to avoid data mutation.
 
-BASE_URL="${BASE_URL:-http://localhost:8080}"
+BASE_URL="${BASE_URL:-http://localhost:3000}"
 N="${N:-100}" # 50-500 recommended
 MOCK_MODE="${MOCK_MODE:-1}"
 TOKEN="${TOKEN:-}"
