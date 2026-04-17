@@ -8,7 +8,10 @@ void main() {
         .listSync(recursive: true)
         .whereType<File>()
         .where((f) => f.path.endsWith('.dart'))
-        .where((f) => !f.path.endsWith('lib\\core\\security\\deterministic_guard.dart'));
+        .where((f) {
+      final normalized = f.path.replaceAll('\\', '/');
+      return !normalized.endsWith('lib/core/security/deterministic_guard.dart');
+    });
 
     final forbidden = [
       'Future<List',

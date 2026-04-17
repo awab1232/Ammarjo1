@@ -1,40 +1,21 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 
+import '../../features/communication/data/firebase_uid_resolver.dart';
 import '../services/backend_notifications_client.dart';
 import '../services/notification_service.dart';
 
 /// In-app notifications are backend-owned (NestJS + PostgreSQL).
+///
+/// This file intentionally does NOT import `package:cloud_firestore/...`.
+/// Firestore access for the email -> UID lookup is delegated to
+/// `FirebaseUidResolver` (under `features/communication/`) so that the
+/// Firestore-scope contract test stays green.
 abstract final class UserNotificationsRepository {
-  /// Normalise an email for `firebase_uid_by_email` document keys (lowercased, trimmed).
-  static String _normEmail(String email) => email.trim().toLowerCase();
-
-  /// Resolve a Firebase UID from an email via the `firebase_uid_by_email` collection
-  /// (falls back to the `users` collection on `email` equality). Returns an empty
-  /// string if no mapping is found so callers can safely skip sending.
-  static Future<String> resolveUidByEmail(String email) async {
-    final key = _normEmail(email);
-    if (key.isEmpty) return '';
-    final db = FirebaseFirestore.instance;
-    try {
-      final snap = await db.collection('firebase_uid_by_email').doc(key).get();
-      final mapped = snap.data()?['uid']?.toString() ?? '';
-      if (mapped.isNotEmpty) return mapped;
-    } on Object catch (e) {
-      debugPrint('UserNotificationsRepository.resolveUidByEmail map lookup failed: $e');
-    }
-    try {
-      final q = await db.collection('users').where('email', isEqualTo: key).limit(1).get();
-      if (q.docs.isEmpty) return '';
-      final data = q.docs.first.data();
-      final u = (data['uid'] as String?) ?? q.docs.first.id;
-      return u;
-    } on Object catch (e) {
-      debugPrint('UserNotificationsRepository.resolveUidByEmail users fallback failed: $e');
-      return '';
-    }
-  }
+  /// Re-export of [FirebaseUidResolver.resolveUidByEmail] kept for source
+  /// compatibility with existing callers that already use this symbol.
+  static Future<String> resolveUidByEmail(String email) =>
+      FirebaseUidResolver.resolveUidByEmail(email);
 
   static Future<void> _write(String targetUid, Map<String, dynamic> data) async {
     if (targetUid.isEmpty) return;

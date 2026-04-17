@@ -15,7 +15,7 @@ class AdminProductsBoostSection extends StatefulWidget {
 }
 
 class _AdminProductsBoostSectionState extends State<AdminProductsBoostSection> {
-  Future<List<Map<String, dynamic>>>? _future;
+  Future<FeatureState<List<Map<String, dynamic>>>>? _future;
 
   @override
   void initState() {
@@ -29,27 +29,57 @@ class _AdminProductsBoostSectionState extends State<AdminProductsBoostSection> {
     });
   }
 
-  Future<List<Map<String, dynamic>>> _loadProducts() async {
-    final raw = await BackendAdminClient.instance.fetchFilteredProducts(limit: 300);
-    final itemsRaw = raw?['items'];
-    if (itemsRaw is! List) return <Map<String, dynamic>>[];
-    return itemsRaw
-        .whereType<Map>()
-        .map((e) => Map<String, dynamic>.from(e))
-        .toList();
+  Future<FeatureState<List<Map<String, dynamic>>>> _loadProducts() async {
+    try {
+      final raw =
+          await BackendAdminClient.instance.fetchFilteredProducts(limit: 300);
+      if (raw == null) {
+        return FeatureState.missingBackend('admin_products_boost');
+      }
+      final itemsRaw = raw['items'];
+      if (itemsRaw is! List) {
+        return FeatureState.failure('admin_products_boost_invalid_response');
+      }
+      final items = <Map<String, dynamic>>[];
+      for (final e in itemsRaw) {
+        if (e is Map) items.add(Map<String, dynamic>.from(e));
+      }
+      return FeatureState.success(items);
+    } on Object catch (e) {
+      return FeatureState.failure('admin_products_boost_load_failed', e);
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<Map<String, dynamic>>>(
+    return FutureBuilder<FeatureState<List<Map<String, dynamic>>>>(
       future: _future,
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+      builder: (context, snap) {
+        final state = snap.data;
+        if (state == null) {
           return const Center(
             child: CircularProgressIndicator(color: AppColors.orange),
           );
         }
-        final rows = snapshot.requireData;
+
+        final List<Map<String, dynamic>> rows;
+        switch (state) {
+          case FeatureSuccess<List<Map<String, dynamic>>>(:final data):
+            rows = data;
+          case FeatureFailure<List<Map<String, dynamic>>>(:final message):
+            return _errorState(context, message, _reload);
+          case FeatureMissingBackend<List<Map<String, dynamic>>>():
+          case FeatureAdminNotWired<List<Map<String, dynamic>>>():
+          case FeatureAdminMissingEndpoint<List<Map<String, dynamic>>>():
+          case FeatureCriticalPublicDataFailure<List<Map<String, dynamic>>>():
+            state.logIfNotSuccess('admin_products_boost');
+            return _errorState(
+              context,
+              'خدمة المنتجات غير متاحة حالياً',
+              _reload,
+            );
+        }
+
         if (rows.isEmpty) {
           return Center(
             child: Text(
@@ -90,7 +120,8 @@ class _AdminProductsBoostSectionState extends State<AdminProductsBoostSection> {
                               onChanged: (v) async {
                                 await _patchBoost(row, isBoosted: v);
                               },
-                              title: Text('Boosted', style: GoogleFonts.tajawal(fontSize: 12)),
+                              title: Text('Boosted',
+                                  style: GoogleFonts.tajawal(fontSize: 12)),
                               dense: true,
                             ),
                           ),
@@ -100,7 +131,8 @@ class _AdminProductsBoostSectionState extends State<AdminProductsBoostSection> {
                               onChanged: (v) async {
                                 await _patchBoost(row, isTrending: v);
                               },
-                              title: Text('Trending', style: GoogleFonts.tajawal(fontSize: 12)),
+                              title: Text('Trending',
+                                  style: GoogleFonts.tajawal(fontSize: 12)),
                               dense: true,
                             ),
                           ),
@@ -114,6 +146,32 @@ class _AdminProductsBoostSectionState extends State<AdminProductsBoostSection> {
           ),
         );
       },
+    );
+  }
+
+  Widget _errorState(BuildContext context, String message, VoidCallback onRetry) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: AppColors.textSecondary),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.tajawal(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: Text('إعادة المحاولة', style: GoogleFonts.tajawal()),
+            ),
+          ],
+        ),
+      ),
     );
   }
 

@@ -9,6 +9,7 @@ import 'package:http/http.dart' as http;
 
 import '../../../core/config/backend_orders_config.dart';
 import '../../../core/constants/order_status.dart';
+import '../../../core/contracts/feature_state.dart';
 import '../../../core/logging/backend_fallback_logger.dart';
 import '../../../core/services/backend_orders_client.dart';
 import '../../../core/utils/image_compress.dart';
@@ -583,12 +584,28 @@ abstract final class StoreOwnerRepository {
     await _httpDelete('/offers/${offerId.trim()}');
   }
 
-  static Future<List<Map<String, dynamic>>> fetchBoostRequests(String storeId) async {
-    final raw = await _httpGetJson('/stores/${storeId.trim()}/boost-requests');
-    if (raw is! Map) return <Map<String, dynamic>>[];
-    final items = raw['items'];
-    if (items is! List) return <Map<String, dynamic>>[];
-    return items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+  /// Returns the boost requests for a store wrapped in an explicit
+  /// [FeatureState] so the caller can differentiate between "backend said no
+  /// rows" and "request failed" instead of defaulting to a silent empty list.
+  static Future<FeatureState<List<Map<String, dynamic>>>> fetchBoostRequests(
+    String storeId,
+  ) async {
+    try {
+      final raw = await _httpGetJson('/stores/${storeId.trim()}/boost-requests');
+      if (raw is! Map) {
+        return FeatureState.failure('boost_requests_invalid_response');
+      }
+      final items = raw['items'];
+      final list = <Map<String, dynamic>>[];
+      if (items is List) {
+        for (final e in items) {
+          if (e is Map) list.add(Map<String, dynamic>.from(e));
+        }
+      }
+      return FeatureState.success(list);
+    } on Object catch (e) {
+      return FeatureState.failure('fetch_boost_requests_failed', e);
+    }
   }
 
   static Future<Map<String, dynamic>> createBoostRequest({

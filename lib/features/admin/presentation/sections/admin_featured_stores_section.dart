@@ -15,7 +15,7 @@ class AdminFeaturedStoresSection extends StatefulWidget {
 }
 
 class _AdminFeaturedStoresSectionState extends State<AdminFeaturedStoresSection> {
-  Future<List<Map<String, dynamic>>>? _future;
+  Future<FeatureState<List<Map<String, dynamic>>>>? _future;
 
   @override
   void initState() {
@@ -29,35 +29,64 @@ class _AdminFeaturedStoresSectionState extends State<AdminFeaturedStoresSection>
     });
   }
 
-  Future<List<Map<String, dynamic>>> _loadStores() async {
-    final rows = <Map<String, dynamic>>[];
-    var offset = 0;
-    for (var i = 0; i < 30; i++) {
-      final page =
-          await BackendAdminClient.instance.fetchStores(limit: 100, offset: offset);
-      final dataRaw = page?['items'];
-      final data = dataRaw is List
-          ? dataRaw.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList()
-          : <Map<String, dynamic>>[];
-      if (data.isEmpty) break;
-      rows.addAll(data);
-      if (data.length < 100) break;
-      offset += 100;
+  Future<FeatureState<List<Map<String, dynamic>>>> _loadStores() async {
+    try {
+      final rows = <Map<String, dynamic>>[];
+      var offset = 0;
+      for (var i = 0; i < 30; i++) {
+        final page = await BackendAdminClient.instance
+            .fetchStores(limit: 100, offset: offset);
+        if (page == null) {
+          return FeatureState.missingBackend('admin_featured_stores');
+        }
+        final dataRaw = page['items'];
+        final data = <Map<String, dynamic>>[];
+        if (dataRaw is List) {
+          for (final e in dataRaw) {
+            if (e is Map) data.add(Map<String, dynamic>.from(e));
+          }
+        }
+        if (data.isEmpty) break;
+        rows.addAll(data);
+        if (data.length < 100) break;
+        offset += 100;
+      }
+      return FeatureState.success(rows);
+    } on Object catch (e) {
+      return FeatureState.failure('admin_featured_stores_load_failed', e);
     }
-    return rows;
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<Map<String, dynamic>>>(
+    return FutureBuilder<FeatureState<List<Map<String, dynamic>>>>(
       future: _future,
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+      builder: (context, snap) {
+        final state = snap.data;
+        if (state == null) {
           return const Center(
             child: CircularProgressIndicator(color: AppColors.orange),
           );
         }
-        final stores = snapshot.requireData;
+
+        final List<Map<String, dynamic>> stores;
+        switch (state) {
+          case FeatureSuccess<List<Map<String, dynamic>>>(:final data):
+            stores = data;
+          case FeatureFailure<List<Map<String, dynamic>>>(:final message):
+            return _errorState(context, message, _reload);
+          case FeatureMissingBackend<List<Map<String, dynamic>>>():
+          case FeatureAdminNotWired<List<Map<String, dynamic>>>():
+          case FeatureAdminMissingEndpoint<List<Map<String, dynamic>>>():
+          case FeatureCriticalPublicDataFailure<List<Map<String, dynamic>>>():
+            state.logIfNotSuccess('admin_featured_stores');
+            return _errorState(
+              context,
+              'خدمة المتاجر غير متاحة حالياً',
+              _reload,
+            );
+        }
+
         if (stores.isEmpty) {
           return Center(
             child: Text(
@@ -111,6 +140,32 @@ class _AdminFeaturedStoresSectionState extends State<AdminFeaturedStoresSection>
           ),
         );
       },
+    );
+  }
+
+  Widget _errorState(BuildContext context, String message, VoidCallback onRetry) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: AppColors.textSecondary),
+            const SizedBox(height: 12),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: GoogleFonts.tajawal(color: AppColors.textSecondary),
+            ),
+            const SizedBox(height: 12),
+            OutlinedButton.icon(
+              onPressed: onRetry,
+              icon: const Icon(Icons.refresh),
+              label: Text('إعادة المحاولة', style: GoogleFonts.tajawal()),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }

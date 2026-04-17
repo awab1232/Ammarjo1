@@ -49,7 +49,7 @@ class _AdminSessionsSectionState extends State<AdminSessionsSection> {
       final res = await http.get(uri, headers: {'Authorization': 'Bearer $token'}).timeout(const Duration(seconds: 20));
       if (res.statusCode != 200) throw Exception('HTTP ${res.statusCode}');
       final body = jsonDecode(res.body) as Map<String, dynamic>;
-      final rows = body['rows'] as List? ?? [];
+      final rows = body['rows'] as List? ?? const <dynamic>[];
       setState(() {
         _sessions = rows.map((e) => Map<String, dynamic>.from(e as Map)).toList();
         _total = (body['total'] as num?)?.toInt() ?? 0;

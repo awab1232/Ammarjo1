@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/contracts/feature_state.dart';
 import '../../../core/domain/store_type.dart';
 import '../../../core/logging/backend_fallback_logger.dart';
 import '../../../core/session/backend_identity_controller.dart';
@@ -74,10 +75,14 @@ class _BoostRequestsTabState extends State<_BoostRequestsTab> {
   @override
   Widget build(BuildContext context) {
     final price = _priceFor(_boostType, _durationDays);
-    return FutureBuilder<List<Map<String, dynamic>>>(
+    return FutureBuilder<FeatureState<List<Map<String, dynamic>>>>(
       future: StoreOwnerRepository.fetchBoostRequests(widget.storeId),
       builder: (context, snap) {
-        final rows = snap.data ?? const <Map<String, dynamic>>[];
+        final state = snap.data;
+        final rows = switch (state) {
+          FeatureSuccess<List<Map<String, dynamic>>>(:final data) => data,
+          _ => const <Map<String, dynamic>>[],
+        };
         return ListView(
           padding: const EdgeInsets.all(16),
           children: [

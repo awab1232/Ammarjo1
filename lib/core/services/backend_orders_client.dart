@@ -7,6 +7,7 @@ import 'package:http/http.dart' as http;
 import 'package:sentry_flutter/sentry_flutter.dart';
 
 import '../config/backend_orders_config.dart';
+import '../contracts/feature_state.dart';
 import '../logging/backend_fallback_logger.dart';
 import '../models/backend_auth_me.dart';
 import '../models/home_section.dart';
@@ -829,25 +830,44 @@ final class BackendOrdersClient {
   }
 
   /// Lists active sessions for the signed-in user.
-  Future<List<Map<String, dynamic>>> fetchMySessions() async {
+  ///
+  /// Returns an explicit [FeatureState] instead of raw rows so the UI can
+  /// surface missing-backend / auth-failure / transport-error conditions
+  /// without silent empty lists (see zero-violation contract).
+  Future<FeatureState<List<Map<String, dynamic>>>> fetchMySessions() async {
     final base = BackendOrdersConfig.baseUrl.trim();
     if (base.isEmpty) {
       BackendOrdersConfig.warnIfBackendBaseUrlMissing('fetch_my_sessions');
-      throw StateError('NULL_RESPONSE');
+      return FeatureState.missingBackend('auth_sessions');
     }
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) throw StateError('NULL_RESPONSE');
+    if (user == null) {
+      return FeatureState.failure('not_authenticated');
+    }
     final token = await _idToken(user);
-    if (token == null || token.isEmpty) throw StateError('NULL_RESPONSE');
+    if (token == null || token.isEmpty) {
+      return FeatureState.failure('token_unavailable');
+    }
     final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}/auth/sessions');
-    final res = await http
-        .get(uri, headers: {'Authorization': 'Bearer $token'})
-        .timeout(const Duration(seconds: 15));
-    if (res.statusCode != 200) throw StateError('NULL_RESPONSE');
-    final body = jsonDecode(res.body) as Map<String, dynamic>;
-    final sessions = body['sessions'];
-    if (sessions is! List) return <Map<String, dynamic>>[];
-    return sessions.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+    try {
+      final res = await http
+          .get(uri, headers: {'Authorization': 'Bearer $token'})
+          .timeout(const Duration(seconds: 15));
+      if (res.statusCode != 200) {
+        return FeatureState.failure('HTTP ${res.statusCode}');
+      }
+      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      final sessions = body['sessions'];
+      final list = <Map<String, dynamic>>[];
+      if (sessions is List) {
+        for (final e in sessions) {
+          if (e is Map) list.add(Map<String, dynamic>.from(e));
+        }
+      }
+      return FeatureState.success(list);
+    } on Object catch (e) {
+      return FeatureState.failure('fetch_my_sessions_failed', e);
+    }
   }
 
   Future<JsonList?> searchStores({
