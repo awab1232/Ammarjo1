@@ -35,6 +35,7 @@ import { CartModule } from './cart/cart.module';
 import { BlogController } from './blog/blog.controller';
 import { HomeController } from './home/home.controller';
 import { HomeService } from './home/home.service';
+import { AppController } from './app.controller';
 
 @Module({
   imports: [
@@ -64,7 +65,7 @@ import { HomeService } from './home/home.service';
     EventsInternalModule,
     OpsDashboardModule,
   ],
-  controllers: [HealthController, InternalHealthController, BlogController, HomeController],
+  controllers: [AppController, HealthController, InternalHealthController, BlogController, HomeController],
   providers: [
     HomeService,
     { provide: APP_GUARD, useClass: TenantContextGuard },

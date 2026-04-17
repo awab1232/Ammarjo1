@@ -9,7 +9,6 @@ import { SentryExceptionFilter } from './common/sentry-exception.filter';
 function initSentry(): void {
   const dsn = process.env.SENTRY_DSN?.trim();
   if (!dsn) {
-    console.warn('[Sentry] WARNING: SENTRY_DSN is empty, monitoring disabled.');
     return;
   }
   const env = (process.env.NODE_ENV?.trim() || 'development').toLowerCase();
@@ -66,7 +65,7 @@ async function bootstrap() {
 
   let app: INestApplication;
   try {
-    app = await NestFactory.create(AppModule);
+    app = await NestFactory.create(AppModule, { abortOnError: false });
   } catch (e) {
     console.error(
       '[bootstrap] FATAL NestFactory.create failed — exiting with code 1 so the platform restarts the container:',
@@ -120,6 +119,11 @@ async function bootstrap() {
   );
   app.useGlobalFilters(new SentryExceptionFilter());
   app.enableCors({ origin: true });
+  const globalPrefix = process.env.GLOBAL_PREFIX?.trim() || process.env.API_PREFIX?.trim();
+  if (globalPrefix) {
+    app.setGlobalPrefix(globalPrefix);
+    console.log('Global prefix:', globalPrefix);
+  }
   // Railway (and most PaaS platforms) inject PORT at runtime.
   const port = Number(process.env.PORT) || 3000;
   await app.listen(port, '0.0.0.0');
