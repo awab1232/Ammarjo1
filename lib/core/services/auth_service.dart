@@ -9,7 +9,7 @@ import 'email_service.dart';
 import '../firebase/users_repository.dart';
 import 'backend_orders_client.dart';
 
-/// Ã™â€¦Ã˜ÂµÃ˜Â§Ã˜Â¯Ã™â€šÃ˜Â© Firebase + Ã™â€¦Ã˜Â²Ã˜Â§Ã™â€¦Ã™â€ Ã˜Â© Ã™Ë†Ã˜Â«Ã™Å Ã™â€šÃ˜Â© `users/{uid}` Ã™â€¦Ã˜Â¹ [UsersRepository].
+/// مصادقة Firebase + مزامنة وثيقة `users/{uid}` مع [UsersRepository].
 abstract final class AuthService {
   AuthService._();
 
@@ -25,20 +25,20 @@ abstract final class AuthService {
 
   static Future<void> signOut() => _auth.signOut();
 
-  /// Ã™Å Ã˜Â­Ã˜Â¯Ã™â€˜Ã˜Â« `users/{uid}` Ã™â€¦Ã™â€  [CustomerProfile] Ã™â€žÃ™â€žÃ™â€¦Ã˜Â³Ã˜ÂªÃ˜Â®Ã˜Â¯Ã™â€¦ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â³Ã˜Â¬Ã™â€˜Ã™â€ž Ã˜Â­Ã˜Â§Ã™â€žÃ™Å Ã˜Â§Ã™â€¹.
+  /// يحدّث `users/{uid}` من [CustomerProfile] للمستخدم الحالي.
   static Future<void> syncUserDocumentFromProfile(CustomerProfile profile) async {
     if (Firebase.apps.isEmpty) return;
     if (_auth.currentUser == null) return;
     await UsersRepository.syncUserDocument(profile);
   }
 
-  /// Ã™Å Ã˜Â²Ã™Å Ã˜Â¯ Ã™â€ Ã™â€šÃ˜Â§Ã˜Â· Ã˜Â§Ã™â€žÃ™Ë†Ã™â€žÃ˜Â§Ã˜Â¡ Ã™â€žÃ™â€žÃ™â€¦Ã˜Â³Ã˜ÂªÃ˜Â®Ã˜Â¯Ã™â€¦ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â­Ã˜Â¯Ã˜Â¯ (Ã˜Â·Ã™â€žÃ˜Â¨Ã˜Â§Ã˜Âª Ã™â€¦Ã™Æ’Ã˜ÂªÃ™â€¦Ã™â€žÃ˜Â©Ã˜Å’ Ã˜Â¥Ã™â€žÃ˜Â®).
+  /// يزيد نقاط الولاء للمستخدم المحدد.
   static Future<void> incrementLoyaltyPoints(String uid, int amount) async {
     if (Firebase.apps.isEmpty) return;
     await UsersRepository.incrementPoints(uid, amount);
   }
 
-  /// Ã™Å Ã˜Â¬Ã™â€žÃ˜Â¨ Ã™â€¦Ã™â€žÃ™Â Ã˜Â§Ã™â€žÃ˜Â¹Ã™â€¦Ã™Å Ã™â€ž Ã™â€¦Ã™â€  `users/{uid}`.
+  /// يجلب ملف العميل من `users/{uid}`.
   static Future<CustomerProfile?> fetchCustomerProfile(String uid) async {
     if (Firebase.apps.isEmpty) throw StateError('NULL_RESPONSE');
     return UsersRepository.fetchProfileDocument(uid);
@@ -58,7 +58,7 @@ abstract final class AuthService {
     try {
       await EmailService.instance.sendPasswordReset(
         target,
-        'Ã˜ÂªÃ™â€¦ Ã˜Â¥Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž Ã˜Â±Ã˜Â§Ã˜Â¨Ã˜Â· Ã˜Â¥Ã˜Â¹Ã˜Â§Ã˜Â¯Ã˜Â© Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â¹Ã™Å Ã™Å Ã™â€  Ã˜Â§Ã™â€žÃ˜Â±Ã˜Â³Ã™â€¦Ã™Å  Ã™â€¦Ã™â€  Firebase Ã˜Â¥Ã™â€žÃ™â€° Ã˜Â¨Ã˜Â±Ã™Å Ã˜Â¯Ã™Æ’.',
+        'تم إرسال رابط إعادة تعيين كلمة المرور من Firebase إلى بريدك الإلكتروني.',
       );
     } on Object {
       debugPrint('AuthService.sendPasswordResetEmail email notification failed');

@@ -9,6 +9,14 @@ import { TenantContextGuard } from '../identity/tenant-context.guard';
 export class BannersController {
   @Get()
   list() {
-    return { items: [] };
+    return {
+      items: [
+        {
+          id: '1',
+          imageUrl: 'https://via.placeholder.com/600x200',
+          title: 'عرض خاص',
+        },
+      ],
+    };
   }
 }

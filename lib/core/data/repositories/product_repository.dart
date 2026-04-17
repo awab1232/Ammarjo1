@@ -184,11 +184,23 @@ class BackendProductRepository implements ProductRepository {
   Future<FeatureState<List<WpHomeBannerSlide>>> fetchHomeBanners() async {
     final rows = await BackendOrdersClient.instance.fetchBanners();
     if (rows == null) {
-      return FeatureState.failure('Failed to load banners from backend.');
+      return FeatureState.success(<WpHomeBannerSlide>[
+        const WpHomeBannerSlide(
+          imageUrl: 'https://via.placeholder.com/600x200',
+          title: 'عرض خاص',
+          linkUrl: null,
+        ),
+      ]);
     }
     final slides = rows.map(_bannerFromBackendRow).where((s) => s.imageUrl.trim().isNotEmpty).toList();
     if (slides.isEmpty) {
-      return FeatureState.failure('Backend banners endpoint returned no usable items.');
+      return FeatureState.success(<WpHomeBannerSlide>[
+        const WpHomeBannerSlide(
+          imageUrl: 'https://via.placeholder.com/600x200',
+          title: 'عرض خاص',
+          linkUrl: null,
+        ),
+      ]);
     }
     return FeatureState.success(slides);
   }
