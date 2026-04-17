@@ -1,4 +1,3 @@
-# syntax=docker/dockerfile:1
 # NestJS orders-api — production image for Railway / Docker.
 # Multi-stage: compile TypeScript in `builder`, ship a slim runtime.
 
