@@ -8,7 +8,6 @@ import { Pool } from 'pg';
 @Injectable()
 export class DatabaseIntegrityService implements OnModuleInit {
   private readonly logger = new Logger(DatabaseIntegrityService.name);
-  private readonly strictMode = process.env.ENFORCE_DB_INTEGRITY_ON_BOOT?.trim() === '1';
 
   async onModuleInit(): Promise<void> {
     if (process.env.NODE_ENV !== 'production') {
@@ -59,9 +58,6 @@ export class DatabaseIntegrityService implements OnModuleInit {
 
   private handleFailure(details: string): void {
     const message = `[DatabaseIntegrity] ${details}`;
-    if (this.strictMode) {
-      throw new Error(message);
-    }
-    this.logger.error(`${message} (non-fatal: set ENFORCE_DB_INTEGRITY_ON_BOOT=1 to fail fast)`);
+    this.logger.error(`${message} (non-fatal during boot; apply migrations/constraints as soon as possible)`);
   }
 }

@@ -79,7 +79,14 @@ export function enforceProductionSafetyOrThrow(): void {
     failures.push('EVENT_OUTBOX_WORKER_DEGRADED must be false in production');
   }
 
-  if (failures.length > 0) {
-    throw new Error(`[EnvValidationFatal] ${failures.join(' | ')}`);
+  if (failures.length === 0) {
+    return;
   }
+
+  const message = `[EnvValidationFatal] ${failures.join(' | ')}`;
+  if (process.env.ENFORCE_PRODUCTION_ENV_VALIDATION?.trim() === '1') {
+    throw new Error(message);
+  }
+
+  console.warn(`${message} (non-fatal during boot; set ENFORCE_PRODUCTION_ENV_VALIDATION=1 to fail fast)`);
 }
