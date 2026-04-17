@@ -1,18 +1,21 @@
-import 'dart:async';
-
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../../core/firebase/phone_auth_service.dart';
 import '../../../../core/routing/role_home_resolver.dart';
+import '../../../../core/services/phone_password_auth_service.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/utils/jordan_phone.dart';
 import '../../../../core/widgets/app_bar_back_button.dart';
 import 'main_navigation_page.dart';
+import 'register_page.dart';
 
-/// تسجيل الدخول برقم الهاتف (OTP عبر Firebase Phone Auth).
-/// يدعم أرقام الأردن بصيغة 07XXXXXXXX أو +9627XXXXXXXX.
+/// تسجيل الدخول برقم الهاتف + كلمة المرور.
+/// OTP أصبح مخصّصاً للتسجيل الجديد فقط (في [RegisterPage]).
+///
+/// (اسم الملف محفوظ للحفاظ على التوافق مع الواردات الحالية، ولكن المحتوى
+/// تحوّل إلى نموذج phone + password.)
 class PhoneOtpLoginPage extends StatefulWidget {
   const PhoneOtpLoginPage({super.key});
 
@@ -22,71 +25,34 @@ class PhoneOtpLoginPage extends StatefulWidget {
 
 class _PhoneOtpLoginPageState extends State<PhoneOtpLoginPage> {
   // ─── State ───────────────────────────────────────────────────────────────
+  final _formKey = GlobalKey<FormState>();
   final _phoneCtrl = TextEditingController();
-  final _otpCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
   final _phoneFocus = FocusNode();
-  final _otpFocus = FocusNode();
+  final _passwordFocus = FocusNode();
 
   bool _loading = false;
-  bool _codeSent = false;
-  String? _verificationId;
-  int? _resendToken;
+  bool _obscurePassword = true;
   String? _error;
-
-  /// Countdown seconds before user can resend OTP.
-  int _resendCountdown = 0;
-  Timer? _resendTimer;
-
-  static const int _resendCooldownSeconds = 60;
 
   @override
   void dispose() {
     _phoneCtrl.dispose();
-    _otpCtrl.dispose();
+    _passwordCtrl.dispose();
     _phoneFocus.dispose();
-    _otpFocus.dispose();
-    _resendTimer?.cancel();
+    _passwordFocus.dispose();
     super.dispose();
-  }
-
-  // ─── Helpers ─────────────────────────────────────────────────────────────
-
-  String _normalizePhone(String raw) {
-    final digits = raw.replaceAll(RegExp(r'\D'), '');
-    if (digits.startsWith('9627') && digits.length == 12) return '+$digits';
-    if (digits.startsWith('07') && digits.length == 10) return '+962${digits.substring(1)}';
-    if (digits.startsWith('7') && digits.length == 9) return '+962$digits';
-    return '+$digits';
-  }
-
-  void _startResendCountdown() {
-    _resendCountdown = _resendCooldownSeconds;
-    _resendTimer?.cancel();
-    _resendTimer = Timer.periodic(const Duration(seconds: 1), (t) {
-      if (!mounted) {
-        t.cancel();
-        return;
-      }
-      setState(() {
-        _resendCountdown--;
-        if (_resendCountdown <= 0) t.cancel();
-      });
-    });
   }
 
   // ─── Actions ─────────────────────────────────────────────────────────────
 
-  Future<void> _sendOtp({bool resend = false}) async {
-    final raw = _phoneCtrl.text.trim();
-    if (raw.isEmpty) {
-      setState(() => _error = 'أدخل رقم الهاتف');
-      return;
-    }
-    final e164 = _normalizePhone(raw);
-    if (!PhoneAuthService.isValidE164Jordan(e164)) {
-      setState(() => _error = 'رقم الهاتف غير صحيح. استخدم صيغة 07XXXXXXXX');
-      return;
-    }
+  Future<void> _submit() async {
+    FocusScope.of(context).unfocus();
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    final local = _phoneCtrl.text.trim();
+    final e164 = '+962$local';
+    final password = _passwordCtrl.text;
 
     setState(() {
       _loading = true;
@@ -94,32 +60,16 @@ class _PhoneOtpLoginPageState extends State<PhoneOtpLoginPage> {
     });
 
     try {
-      final result = await PhoneAuthService.startVerification(
-        e164,
-        forceResendingToken: resend ? _resendToken : null,
+      await PhonePasswordAuthService.signInWithPhonePassword(
+        phone: e164,
+        password: password,
       );
-
       if (!mounted) return;
-
-      if (result.verificationId == PhoneAuthService.autoVerifiedSentinel) {
-        await _onAutoVerified();
-        return;
-      }
-
-      setState(() {
-        _verificationId = result.verificationId;
-        _resendToken = result.resendToken;
-        _codeSent = true;
-        _loading = false;
-      });
-      _startResendCountdown();
-      Future<void>.delayed(const Duration(milliseconds: 300), () {
-        if (mounted) _otpFocus.requestFocus();
-      });
-    } on FirebaseAuthException catch (e) {
+      await _navigateAfterLogin();
+    } on PhonePasswordAuthException catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = PhoneAuthService.userFacingMessage(e);
+        _error = e.messageAr;
         _loading = false;
       });
     } on Object catch (e) {
@@ -129,48 +79,6 @@ class _PhoneOtpLoginPageState extends State<PhoneOtpLoginPage> {
         _loading = false;
       });
     }
-  }
-
-  Future<void> _verifyOtp() async {
-    final vid = _verificationId;
-    if (vid == null) {
-      setState(() => _error = 'أرسل الرمز أولاً');
-      return;
-    }
-    final code = _otpCtrl.text.trim();
-    if (code.length != 6) {
-      setState(() => _error = 'أدخل الرمز المكوّن من 6 أرقام');
-      return;
-    }
-
-    setState(() {
-      _loading = true;
-      _error = null;
-    });
-
-    try {
-      await PhoneAuthService.signInWithSmsCode(verificationId: vid, smsCode: code);
-      if (!mounted) return;
-      await _navigateAfterLogin();
-    } on FirebaseAuthException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = PhoneAuthService.userFacingMessage(e);
-        _loading = false;
-      });
-    } on Object catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = 'حدث خطأ: $e';
-        _loading = false;
-      });
-    }
-  }
-
-  Future<void> _onAutoVerified() async {
-    if (!mounted) return;
-    setState(() => _loading = true);
-    await _navigateAfterLogin();
   }
 
   Future<void> _navigateAfterLogin() async {
@@ -185,6 +93,12 @@ class _PhoneOtpLoginPageState extends State<PhoneOtpLoginPage> {
     );
   }
 
+  void _goToRegister() {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (_) => const RegisterPage()),
+    );
+  }
+
   // ─── Build ────────────────────────────────────────────────────────────────
 
   @override
@@ -193,227 +107,235 @@ class _PhoneOtpLoginPageState extends State<PhoneOtpLoginPage> {
       backgroundColor: AppColors.background,
       appBar: AppBar(
         leading: const AppBarBackButton(),
-        title: Text('الدخول برمز التحقق', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+        title: Text(
+          'تسجيل الدخول',
+          style: GoogleFonts.tajawal(fontWeight: FontWeight.w700),
+        ),
         backgroundColor: Colors.transparent,
         elevation: 0,
         foregroundColor: AppColors.heading,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            // Header illustration
-            Container(
-              margin: const EdgeInsets.only(bottom: 24),
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                color: AppColors.orange.withValues(alpha: 0.08),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Column(
-                children: [
-                  Icon(Icons.phone_android_rounded, size: 56, color: AppColors.orange),
-                  const SizedBox(height: 12),
-                  Text(
-                    _codeSent ? 'أدخل رمز التحقق' : 'أدخل رقم هاتفك',
-                    style: GoogleFonts.tajawal(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.navy,
-                    ),
-                    textAlign: TextAlign.center,
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // Header card
+                Container(
+                  margin: const EdgeInsets.only(bottom: 24),
+                  padding: const EdgeInsets.all(20),
+                  decoration: BoxDecoration(
+                    color: AppColors.orange.withValues(alpha: 0.08),
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                  const SizedBox(height: 6),
-                  Text(
-                    _codeSent
-                        ? 'أُرسل رمز مكوّن من 6 أرقام إلى ${_phoneCtrl.text.trim()}'
-                        : 'سنرسل لك رمز تحقق عبر رسالة نصية',
-                    style: GoogleFonts.tajawal(
-                      fontSize: 13,
-                      color: AppColors.textSecondary,
-                      height: 1.4,
-                    ),
-                    textAlign: TextAlign.center,
+                  child: Column(
+                    children: [
+                      Icon(Icons.lock_rounded, size: 56, color: AppColors.orange),
+                      const SizedBox(height: 12),
+                      Text(
+                        'أهلاً بعودتك',
+                        style: GoogleFonts.tajawal(
+                          fontSize: 20,
+                          fontWeight: FontWeight.w800,
+                          color: AppColors.navy,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      const SizedBox(height: 6),
+                      Text(
+                        'أدخل رقم هاتفك وكلمة المرور للدخول إلى حسابك',
+                        style: GoogleFonts.tajawal(
+                          fontSize: 13,
+                          color: AppColors.textSecondary,
+                          height: 1.4,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ),
-
-            // Phone number field (always visible)
-            Text(
-              'رقم الهاتف',
-              textAlign: TextAlign.right,
-              style: GoogleFonts.tajawal(fontWeight: FontWeight.w600, fontSize: 14),
-            ),
-            const SizedBox(height: 8),
-            TextFormField(
-              controller: _phoneCtrl,
-              focusNode: _phoneFocus,
-              keyboardType: TextInputType.phone,
-              textAlign: TextAlign.right,
-              style: GoogleFonts.tajawal(fontSize: 16),
-              enabled: !_codeSent,
-              decoration: InputDecoration(
-                hintText: '07XXXXXXXX',
-                hintStyle: GoogleFonts.tajawal(color: AppColors.textSecondary),
-                prefixIcon: const Icon(Icons.phone_outlined, color: AppColors.orange),
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
-                filled: true,
-                fillColor: _codeSent ? Colors.grey.shade100 : Colors.white,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              ),
-            ),
-
-            const SizedBox(height: 20),
-
-            // OTP field (shown after code sent)
-            if (_codeSent) ...[
-              Text(
-                'رمز التحقق',
-                textAlign: TextAlign.right,
-                style: GoogleFonts.tajawal(fontWeight: FontWeight.w600, fontSize: 14),
-              ),
-              const SizedBox(height: 8),
-              TextFormField(
-                controller: _otpCtrl,
-                focusNode: _otpFocus,
-                keyboardType: TextInputType.number,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.tajawal(
-                  fontSize: 26,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 8,
-                  color: AppColors.navy,
                 ),
-                maxLength: 6,
-                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                onChanged: (v) {
-                  if (v.length == 6) _verifyOtp();
-                },
-                decoration: InputDecoration(
-                  counterText: '',
-                  hintText: '• • • • • •',
-                  hintStyle: GoogleFonts.tajawal(
-                    color: AppColors.textSecondary,
-                    fontSize: 22,
-                    letterSpacing: 6,
-                  ),
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppColors.orange, width: 2),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(14),
-                    borderSide: const BorderSide(color: AppColors.orange, width: 2),
-                  ),
-                  filled: true,
-                  fillColor: Colors.white,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
-                ),
-              ),
-              const SizedBox(height: 8),
-            ],
 
-            // Error display
-            if (_error != null)
-              Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                decoration: BoxDecoration(
-                  color: Colors.red.shade50,
-                  borderRadius: BorderRadius.circular(10),
-                  border: Border.all(color: Colors.red.shade200),
-                ),
-                child: Text(
-                  _error!,
+                // Phone field
+                Text(
+                  'رقم الهاتف',
                   textAlign: TextAlign.right,
-                  style: GoogleFonts.tajawal(color: Colors.red.shade800, fontSize: 13, height: 1.4),
+                  style: GoogleFonts.tajawal(fontWeight: FontWeight.w600, fontSize: 14),
                 ),
-              ),
-
-            const SizedBox(height: 4),
-
-            // Primary action button
-            FilledButton(
-              style: FilledButton.styleFrom(
-                backgroundColor: AppColors.orange,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-              ),
-              onPressed: _loading
-                  ? null
-                  : () {
-                      if (_codeSent) {
-                        _verifyOtp();
-                      } else {
-                        _sendOtp();
-                      }
-                    },
-              child: _loading
-                  ? const SizedBox(
-                      height: 22,
-                      width: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    )
-                  : Text(
-                      _codeSent ? 'تحقق وادخل' : 'إرسال رمز التحقق',
-                      style: GoogleFonts.tajawal(fontWeight: FontWeight.w700, fontSize: 16),
-                    ),
-            ),
-
-            const SizedBox(height: 12),
-
-            // Resend / Change number options
-            if (_codeSent)
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  TextButton(
-                    onPressed: _loading
-                        ? null
-                        : () {
-                            setState(() {
-                              _codeSent = false;
-                              _otpCtrl.clear();
-                              _error = null;
-                              _resendCountdown = 0;
-                              _resendTimer?.cancel();
-                            });
+                const SizedBox(height: 8),
+                Directionality(
+                  textDirection: TextDirection.ltr,
+                  child: Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                        decoration: BoxDecoration(
+                          color: AppColors.orangeLight,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: AppColors.border),
+                        ),
+                        child: Text(
+                          '+962',
+                          style: GoogleFonts.tajawal(
+                            fontWeight: FontWeight.w700,
+                            color: AppColors.orange,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: TextFormField(
+                          controller: _phoneCtrl,
+                          focusNode: _phoneFocus,
+                          keyboardType: TextInputType.phone,
+                          style: GoogleFonts.tajawal(fontSize: 16),
+                          enabled: !_loading,
+                          inputFormatters: [
+                            FilteringTextInputFormatter.digitsOnly,
+                            LengthLimitingTextInputFormatter(9),
+                          ],
+                          decoration: InputDecoration(
+                            hintText: '7XXXXXXXX',
+                            hintStyle: GoogleFonts.tajawal(color: AppColors.textSecondary),
+                            prefixIcon: const Icon(Icons.phone_outlined, color: AppColors.orange),
+                            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                            filled: true,
+                            fillColor: Colors.white,
+                            contentPadding:
+                                const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                          ),
+                          validator: (v) {
+                            final t = (v ?? '').trim();
+                            if (t.isEmpty) return 'مطلوب';
+                            if (!isValidJordanMobileLocal(t)) {
+                              return 'رقم أردني صحيح (9 أرقام تبدأ بـ 7)';
+                            }
+                            return null;
                           },
+                          onFieldSubmitted: (_) => _passwordFocus.requestFocus(),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Password field
+                Text(
+                  'كلمة المرور',
+                  textAlign: TextAlign.right,
+                  style: GoogleFonts.tajawal(fontWeight: FontWeight.w600, fontSize: 14),
+                ),
+                const SizedBox(height: 8),
+                TextFormField(
+                  controller: _passwordCtrl,
+                  focusNode: _passwordFocus,
+                  textAlign: TextAlign.right,
+                  obscureText: _obscurePassword,
+                  enabled: !_loading,
+                  style: GoogleFonts.tajawal(fontSize: 16),
+                  decoration: InputDecoration(
+                    hintText: '••••••••',
+                    hintStyle: GoogleFonts.tajawal(color: AppColors.textSecondary),
+                    prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppColors.orange),
+                    suffixIcon: IconButton(
+                      icon: Icon(
+                        _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                        color: AppColors.textSecondary,
+                      ),
+                      onPressed: _loading
+                          ? null
+                          : () => setState(() => _obscurePassword = !_obscurePassword),
+                    ),
+                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                    filled: true,
+                    fillColor: Colors.white,
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+                  ),
+                  validator: (v) {
+                    final t = v ?? '';
+                    if (t.isEmpty) return 'مطلوب';
+                    if (t.length < 6) return '6 أحرف على الأقل';
+                    return null;
+                  },
+                  onFieldSubmitted: (_) => _loading ? null : _submit(),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Error banner
+                if (_error != null)
+                  Container(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: Colors.red.shade50,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(color: Colors.red.shade200),
+                    ),
                     child: Text(
-                      'تغيير الرقم',
-                      style: GoogleFonts.tajawal(color: AppColors.navy, fontWeight: FontWeight.w600),
+                      _error!,
+                      textAlign: TextAlign.right,
+                      style: GoogleFonts.tajawal(
+                        color: Colors.red.shade800,
+                        fontSize: 13,
+                        height: 1.4,
+                      ),
                     ),
                   ),
-                  const SizedBox(width: 8),
-                  if (_resendCountdown > 0)
+
+                // Primary action
+                FilledButton(
+                  style: FilledButton.styleFrom(
+                    backgroundColor: AppColors.orange,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                  ),
+                  onPressed: _loading ? null : _submit,
+                  child: _loading
+                      ? const SizedBox(
+                          height: 22,
+                          width: 22,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                        )
+                      : Text(
+                          'تسجيل الدخول',
+                          style: GoogleFonts.tajawal(fontWeight: FontWeight.w700, fontSize: 16),
+                        ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // Register link
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
                     Text(
-                      'إعادة الإرسال بعد $_resendCountdownث',
-                      style: GoogleFonts.tajawal(color: AppColors.textSecondary, fontSize: 13),
-                    )
-                  else
+                      'لا تملك حساباً؟',
+                      style: GoogleFonts.tajawal(
+                        color: AppColors.textSecondary,
+                        fontSize: 13,
+                      ),
+                    ),
                     TextButton(
-                      onPressed: _loading ? null : () => _sendOtp(resend: true),
+                      onPressed: _loading ? null : _goToRegister,
                       child: Text(
-                        'إعادة إرسال الرمز',
+                        'أنشئ حساباً جديداً',
                         style: GoogleFonts.tajawal(
                           color: AppColors.orange,
-                          fontWeight: FontWeight.w600,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
-                ],
-              )
-            else
-              Center(
-                child: Text(
-                  'الرمز صالح لمدة دقيقتين فقط.',
-                  style: GoogleFonts.tajawal(fontSize: 12, color: AppColors.textSecondary),
+                  ],
                 ),
-              ),
-          ],
+              ],
+            ),
+          ),
         ),
       ),
     );

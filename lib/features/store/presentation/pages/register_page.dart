@@ -11,6 +11,7 @@ import '../../../../core/routing/role_home_resolver.dart';
 import '../../../../core/data/repositories/user_repository.dart';
 import '../../../../core/constants/jordan_cities.dart';
 import '../../../../core/firebase/phone_auth_service.dart';
+import '../../../../core/services/phone_password_auth_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/jordan_phone.dart';
 import '../../../../core/widgets/app_bar_back_button.dart';
@@ -31,12 +32,16 @@ class _RegisterPageState extends State<RegisterPage> {
   final _lastName = TextEditingController();
   final _email = TextEditingController(); // optional
   final _phoneLocal = TextEditingController();
+  final _password = TextEditingController();
+  final _confirmPassword = TextEditingController();
   final _otpCtrl = TextEditingController();
   final _otpFocus = FocusNode();
 
   String _selectedCity = kJordanCities.first;
   _RegistrationStep _step = _RegistrationStep.profile;
   bool _submitting = false;
+  bool _obscurePassword = true;
+  bool _obscureConfirm = true;
   String? _error;
 
   String? _verificationId;
@@ -52,6 +57,8 @@ class _RegisterPageState extends State<RegisterPage> {
     _lastName.dispose();
     _email.dispose();
     _phoneLocal.dispose();
+    _password.dispose();
+    _confirmPassword.dispose();
     _otpCtrl.dispose();
     _otpFocus.dispose();
     _resendTimer?.cancel();
@@ -206,6 +213,29 @@ class _RegisterPageState extends State<RegisterPage> {
       );
     } on Object {
       // Non-fatal: profile save failed but Firebase auth succeeded — continue
+    }
+
+    // Attach phone + bcrypt(password) to the backend user row so future logins
+    // can use phone + password (OTP is only used here to verify ownership).
+    try {
+      await PhonePasswordAuthService.setPasswordForCurrentUser(
+        phone: phone,
+        password: _password.text,
+      );
+    } on PhonePasswordAuthException catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = 'تم إنشاء الحساب ولكن تعذر حفظ كلمة المرور: ${e.messageAr}';
+        _submitting = false;
+      });
+      return;
+    } on Object {
+      if (!mounted) return;
+      setState(() {
+        _error = 'تم إنشاء الحساب ولكن تعذر حفظ كلمة المرور. جرّب تسجيل الدخول لاحقاً.';
+        _submitting = false;
+      });
+      return;
     }
 
     if (!mounted) return;
@@ -382,6 +412,69 @@ class _RegisterPageState extends State<RegisterPage> {
               if (t.isEmpty) return null; // optional — allow empty
               final ok = RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(t);
               return ok ? null : 'صيغة بريد غير صحيحة';
+            },
+          ),
+          const SizedBox(height: 10),
+
+          // Password — required
+          TextFormField(
+            controller: _password,
+            textAlign: TextAlign.right,
+            obscureText: _obscurePassword,
+            enabled: !_submitting,
+            decoration: InputDecoration(
+              labelText: 'كلمة المرور *',
+              hintText: '6 أحرف على الأقل',
+              prefixIcon: const Icon(Icons.lock_outline_rounded, color: AppColors.orange),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscurePassword ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                  color: AppColors.textSecondary,
+                ),
+                onPressed: _submitting
+                    ? null
+                    : () => setState(() => _obscurePassword = !_obscurePassword),
+              ),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              filled: true,
+              fillColor: Colors.white,
+            ),
+            validator: (v) {
+              final t = v ?? '';
+              if (t.isEmpty) return 'مطلوب';
+              if (t.length < 6) return '6 أحرف على الأقل';
+              if (t.length > 128) return 'كلمة المرور طويلة جداً';
+              return null;
+            },
+          ),
+          const SizedBox(height: 10),
+
+          // Confirm password
+          TextFormField(
+            controller: _confirmPassword,
+            textAlign: TextAlign.right,
+            obscureText: _obscureConfirm,
+            enabled: !_submitting,
+            decoration: InputDecoration(
+              labelText: 'تأكيد كلمة المرور *',
+              prefixIcon: const Icon(Icons.lock_rounded, color: AppColors.orange),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _obscureConfirm ? Icons.visibility_outlined : Icons.visibility_off_outlined,
+                  color: AppColors.textSecondary,
+                ),
+                onPressed: _submitting
+                    ? null
+                    : () => setState(() => _obscureConfirm = !_obscureConfirm),
+              ),
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+              filled: true,
+              fillColor: Colors.white,
+            ),
+            validator: (v) {
+              if ((v ?? '').isEmpty) return 'مطلوب';
+              if (v != _password.text) return 'كلمتا المرور غير متطابقتين';
+              return null;
             },
           ),
           const SizedBox(height: 10),
