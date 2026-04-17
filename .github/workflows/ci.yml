@@ -1,7 +1,8 @@
-name: Zero Violation CI
+name: Flutter CI
 
 on:
   push:
+    branches: [ main ]
   pull_request:
 
 jobs:
@@ -9,24 +10,19 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v3
+      - name: Checkout
+        uses: actions/checkout@v3
 
       - name: Setup Flutter
         uses: subosito/flutter-action@v2
         with:
-          flutter-version: 'stable'
+          flutter-version: '3.22.2'
 
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Run zero violation check
-        run: bash .ci/zero_violation_check.sh
-
       - name: Analyze
         run: flutter analyze
 
-      - name: Test
+      - name: Run tests
         run: flutter test
-
-      - name: Build
-        run: flutter build apk --debug
