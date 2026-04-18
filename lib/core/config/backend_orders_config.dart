@@ -1,6 +1,7 @@
-import 'package:flutter/foundation.dart' show TargetPlatform, debugPrint, defaultTargetPlatform, kDebugMode;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode, kReleaseMode;
 
 import '../logging/backend_fallback_logger.dart';
+import 'beta_launch_config.dart';
 
 /// NestJS orders API — backend-only; no Firestore/catalog fallback.
 ///
@@ -64,17 +65,28 @@ abstract final class BackendOrdersConfig {
   /// Max wait for backend POST during checkout (async; does not block the UI isolate).
   static const Duration backendOrdersWriteTimeout = Duration(seconds: 20);
 
-  /// Base URL without trailing slash, e.g. `https://orders-api-xxxxx.run.app`
+  /// Base URL without trailing slash (إنتاج: [BetaLaunchConfig.productionOrdersApiDefault]).
   static String get baseUrl {
     const fromEnv = String.fromEnvironment('BACKEND_ORDERS_BASE_URL', defaultValue: '');
-    if (fromEnv.trim().isNotEmpty) return fromEnv.trim();
-    // Keep Android builds away from localhost defaults to avoid white screen / startup failures.
-    const fallbackRailway = 'https://ammarjo1-production.up.railway.app';
-    if (kDebugMode && defaultTargetPlatform == TargetPlatform.android) {
-      return fallbackRailway;
+    final trimmed = fromEnv.trim();
+    if (trimmed.isNotEmpty) {
+      if (_isLocalhostUrl(trimmed) && kReleaseMode) {
+        debugPrint(
+          '[BackendConfig] BACKEND_ORDERS_BASE_URL points to localhost in release — using ${BetaLaunchConfig.productionOrdersApiDefault}',
+        );
+        return BetaLaunchConfig.productionOrdersApiDefault;
+      }
+      return trimmed;
     }
-    if (kDebugMode) return fallbackRailway;
-    return fallbackRailway;
+    // إنتاج افتراضي: نطاق مخصّص (لا Railway ولا localhost في الـ APK).
+    return BetaLaunchConfig.productionOrdersApiDefault;
+  }
+
+  static bool _isLocalhostUrl(String url) {
+    final lower = url.toLowerCase();
+    return lower.contains('localhost') ||
+        lower.contains('127.0.0.1') ||
+        lower.contains('10.0.2.2');
   }
 
   static bool _warnedMissingBaseUrl = false;

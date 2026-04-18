@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
+
+import '../core/config/beta_launch_config.dart';
 
 class AboutUsPage extends StatelessWidget {
   const AboutUsPage({super.key});
@@ -59,6 +62,23 @@ class AboutUsPage extends StatelessWidget {
               'مساعد ذكي لدعم قرارات البناء',
               'تجربة استخدام سهلة وسريعة',
             ]),
+            if (BetaLaunchConfig.feedbackUrl.trim().isNotEmpty) ...[
+              const SizedBox(height: 28),
+              Text('نسخة تجريبية — ملاحظاتك تهمنا', style: _sectionTitleStyle, textAlign: TextAlign.right),
+              const SizedBox(height: 10),
+              FilledButton.icon(
+                onPressed: () async {
+                  final uri = Uri.tryParse(BetaLaunchConfig.feedbackUrl.trim());
+                  if (uri == null) return;
+                  await launchUrl(uri, mode: LaunchMode.externalApplication);
+                },
+                icon: const Icon(Icons.feedback_outlined),
+                label: Text(
+                  'إرسال ملاحظة للفريق',
+                  style: GoogleFonts.tajawal(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
           ],
         ),
       ),

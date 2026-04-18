@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show debugPrint;
+import 'dart:developer' as developer;
 
 class GrowthAnalyticsService {
   GrowthAnalyticsService._();
@@ -22,6 +22,9 @@ class GrowthAnalyticsService {
       }
       _eventDedup[key] = now;
     }
-    debugPrint('[GrowthAnalytics] $eventName $payload');
+    developer.log(
+      payload.isEmpty ? eventName : '$eventName $payload',
+      name: 'GrowthAnalytics',
+    );
   }
 }
