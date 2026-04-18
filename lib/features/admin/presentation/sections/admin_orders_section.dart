@@ -833,11 +833,6 @@ class _OrdersListView extends StatelessWidget {
                                 ? 'تم شحن طلبك #$id. يمكنك تتبعه الآن.\n$tu'
                                 : 'تم شحن طلبك #$id. يمكنك تتبعه الآن.';
                           }
-                          await UserNotificationsRepository.sendNotificationToCustomer(
-                            customerUid: customerUid,
-                            orderId: id,
-                            statusLabel: OrderStatus.toArabicForDisplay(v),
-                          );
                           await UserNotificationsRepository.sendNotificationToUser(
                             userId: customerUid,
                             title: title,

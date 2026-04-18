@@ -85,7 +85,7 @@ abstract class OrderRepository {
     int? pointsEarned,
   });
 
-  Future<void> cancelFirebaseOrderForCustomer({
+  Future<bool> cancelFirebaseOrderForCustomer({
     required String uid,
     required String userOrderDocId,
     String? rootOrderId,
@@ -278,7 +278,7 @@ class BackendOrderRepository implements OrderRepository {
       );
 
   @override
-  Future<void> cancelFirebaseOrderForCustomer({
+  Future<bool> cancelFirebaseOrderForCustomer({
     required String uid,
     required String userOrderDocId,
     String? rootOrderId,

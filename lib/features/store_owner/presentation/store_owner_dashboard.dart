@@ -6,6 +6,7 @@ import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import '../../../core/contracts/feature_state.dart';
+import '../../../core/firebase/user_notifications_repository.dart';
 import '../../../core/domain/store_type.dart';
 import '../../../core/logging/backend_fallback_logger.dart';
 import '../../../core/session/backend_identity_controller.dart';
@@ -2511,20 +2512,35 @@ class _OrdersTabState extends State<_OrdersTab> {
                         if (nv == null) return;
                         if (nv == status) return;
                         final messenger = ScaffoldMessenger.of(context);
-                        await StoreOwnerRepository.updateOrderStatus(widget.storeId, d.id, nv).then((_) {
-                          if (context.mounted) {
-                            messenger.showSnackBar(
-                              SnackBar(content: Text('تم تحديث حالة الطلب', style: GoogleFonts.tajawal())),
-                            );
+                        try {
+                          await StoreOwnerRepository.updateOrderStatus(widget.storeId, d.id, nv);
+                          if (!context.mounted) return;
+                          messenger.showSnackBar(
+                            SnackBar(content: Text('تم تحديث حالة الطلب', style: GoogleFonts.tajawal())),
+                          );
+                          final customerUid = m['customerUid']?.toString().trim() ?? '';
+                          if (customerUid.isNotEmpty) {
+                            final storeLabel = m['storeName']?.toString().trim();
+                            try {
+                              await UserNotificationsRepository.notifyCustomerOrderStatusChange(
+                                customerUid: customerUid,
+                                orderId: d.id,
+                                statusLabel: nv,
+                                storeName: (storeLabel != null && storeLabel.isNotEmpty) ? storeLabel : 'المتجر',
+                              );
+                            } on Object catch (e) {
+                              debugPrint('[StoreOwner] notifyCustomerOrderStatusChange: $e');
+                            }
                           }
-                        }).onError((error, stackTrace) {
-                          debugPrint('[StoreOwner] updateOrderStatus: $error');
+                          if (mounted) await _loadInitial();
+                        } on Object catch (error, stackTrace) {
+                          debugPrint('[StoreOwner] updateOrderStatus: $error\n$stackTrace');
                           if (context.mounted) {
                             messenger.showSnackBar(
                               SnackBar(content: Text('تعذّر تحديث الحالة', style: GoogleFonts.tajawal())),
                             );
                           }
-                        });
+                        }
                       },
                     ),
                   ),

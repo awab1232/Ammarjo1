@@ -100,16 +100,20 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     if (ok != true || !context.mounted) return;
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) return;
-    await CustomerOpsRepository.instance.cancelFirebaseOrderForCustomer(
+    final cancelled = await CustomerOpsRepository.instance.cancelFirebaseOrderForCustomer(
       uid: uid,
       userOrderDocId: o.id,
       rootOrderId: o.firebaseOrderId ?? o.id,
     );
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تم إلغاء الطلب', style: GoogleFonts.tajawal())),
-      );
-    }
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          cancelled ? 'تم إلغاء الطلب' : 'تعذّر إلغاء الطلب. تحقق من الاتصال أو من حالة الطلب.',
+          style: GoogleFonts.tajawal(),
+        ),
+      ),
+    );
   }
 
   Future<void> _rateDeliveredOrder(BuildContext context, TrackOrderItem order) async {

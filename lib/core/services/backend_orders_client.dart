@@ -298,6 +298,25 @@ final class BackendOrdersClient {
     }
   }
 
+  /// `PATCH /orders/:id/status` — عميل (إلغاء)، متجر، أو مسار مرخّص.
+  Future<bool> patchOrderStatus({
+    required String orderId,
+    required String statusEnglish,
+  }) async {
+    final path = '/orders/${Uri.encodeComponent(orderId.trim())}/status';
+    try {
+      await _authedPatchJson(
+        path,
+        body: <String, dynamic>{'status': statusEnglish.trim().toLowerCase()},
+        flow: 'orders_patch_status',
+      );
+      return true;
+    } on Object catch (e) {
+      if (kDebugMode) debugPrint('BackendOrders: patchOrderStatus failed: $e');
+      return false;
+    }
+  }
+
   Future<JsonList?> fetchOrdersForCurrentUser({
     int limit = 20,
     String? cursor,

@@ -219,11 +219,18 @@ class CustomerOpsRepository {
     int? pointsEarned,
   }) async {}
 
-  Future<void> cancelFirebaseOrderForCustomer({
+  Future<bool> cancelFirebaseOrderForCustomer({
     required String uid,
     required String userOrderDocId,
     String? rootOrderId,
-  }) async {}
+  }) async {
+    final id = (rootOrderId ?? userOrderDocId).trim();
+    if (id.isEmpty) return false;
+    return BackendOrdersClient.instance.patchOrderStatus(
+      orderId: id,
+      statusEnglish: 'cancelled',
+    );
+  }
 
   /// طلبات المتجر من **`users/{uid}/orders`** — نفس [uid] المستخدم في [syncOrderToFirestore]
   /// (يُفضَّل `FirebaseAuth.currentUser.uid` عند وجود جلسة).
