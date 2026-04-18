@@ -609,6 +609,32 @@ final class BackendOrdersClient {
     return out;
   }
 
+  /// Public (unauthenticated) store directory used by the mobile home page
+  /// when there is no signed-in user, or as a fallback after an auth failure.
+  /// The backend falls back to mock Arabic demo stores if the DB is empty.
+  Future<JsonList?> fetchStoresPublic({
+    String? category,
+    int limit = 50,
+  }) async {
+    final body = await _publicGetJson(
+      '/stores/public',
+      query: {'limit': '$limit'},
+      flow: 'stores_list_public',
+    );
+    final items = body?['items'];
+    if (items is! List) throw StateError('NULL_RESPONSE');
+    final out = <Map<String, dynamic>>[];
+    for (final raw in items) {
+      if (raw is! Map) continue;
+      final row = Map<String, dynamic>.from(raw);
+      if (category != null && category.trim().isNotEmpty) {
+        if ((row['category']?.toString() ?? '').trim() != category.trim()) continue;
+      }
+      out.add(row);
+    }
+    return out;
+  }
+
   Future<JsonList?> fetchStoreTypes() async {
     final data = await fetchStoreTypesVersioned();
     return data?.items;

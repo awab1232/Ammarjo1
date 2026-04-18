@@ -189,6 +189,128 @@ export class StoresService {
     return { items: q.rows.map((row) => this.mapStore(row as Record<string, unknown>)) };
   }
 
+  /**
+   * Public (unauthenticated) store directory used by the mobile home page.
+   * Returns all `approved` stores; if the DB is empty / unreachable, falls
+   * back to a hard-coded mock list so the UI never renders an empty shell.
+   */
+  async listPublic(limit = 50): Promise<{ items: StoreRecord[]; source: 'db' | 'mock' }> {
+    const safeLimit = Math.min(Math.max(1, Number(limit) || 50), 200);
+
+    // Try DB first. Any failure (schema not migrated, DB down, etc.) is logged
+    // and swallowed so we can still return mock data to the client.
+    try {
+      await this.ensureSchema();
+      await this.clearExpiredBoosts();
+      const q = await this.pool.query(
+        `SELECT ${this.storeColumns} FROM stores WHERE status = 'approved'
+         ORDER BY is_boosted DESC, created_at DESC LIMIT $1`,
+        [safeLimit],
+      );
+      const rows = q.rows.map((row) => this.mapStore(row as Record<string, unknown>));
+      if (rows.length > 0) return { items: rows, source: 'db' };
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.warn(`[StoresPublic] DB query failed, returning mock list: ${msg}`);
+    }
+
+    return { items: StoresService.mockStores(), source: 'mock' };
+  }
+
+  /**
+   * Arabic demo stores used as a graceful fallback whenever the DB has no
+   * approved rows yet (e.g. fresh Railway deployment before migration 024 is
+   * applied). Safe to ship — ids are deterministic UUIDs prefixed with
+   * `00000000-0000-0000-0000-0000000000xx` so they cannot collide with real rows.
+   */
+  static mockStores(): StoreRecord[] {
+    const now = new Date().toISOString();
+    const base = {
+      tenantId: null,
+      status: 'approved',
+      isFeatured: false,
+      isBoosted: false,
+      boostExpiresAt: null,
+      hasActivePromotions: false,
+      hasDiscountedProducts: false,
+      freeDelivery: false,
+      createdAt: now,
+    } as const;
+    return [
+      {
+        ...base,
+        id: '00000000-0000-0000-0000-000000000001',
+        ownerId: 'seed_owner_mock_1',
+        name: 'متجر الأمل للإلكترونيات',
+        description: 'هواتف، إكسسوارات، وأجهزة ذكية بأسعار تنافسية.',
+        category: 'إلكترونيات',
+        storeType: 'retail',
+        storeTypeId: null,
+        storeTypeKey: 'retail',
+        imageUrl: 'https://picsum.photos/seed/mock-store-1/600/400',
+        logoUrl: 'https://picsum.photos/seed/mock-store-1-logo/200/200',
+        hasActivePromotions: true,
+        hasDiscountedProducts: true,
+      },
+      {
+        ...base,
+        id: '00000000-0000-0000-0000-000000000002',
+        ownerId: 'seed_owner_mock_2',
+        name: 'سوبرماركت النور',
+        description: 'خضروات وفواكه طازجة، منتجات منزلية، توصيل سريع.',
+        category: 'سوبرماركت',
+        storeType: 'retail',
+        storeTypeId: null,
+        storeTypeKey: 'retail',
+        imageUrl: 'https://picsum.photos/seed/mock-store-2/600/400',
+        logoUrl: 'https://picsum.photos/seed/mock-store-2-logo/200/200',
+        freeDelivery: true,
+        isFeatured: true,
+      },
+      {
+        ...base,
+        id: '00000000-0000-0000-0000-000000000003',
+        ownerId: 'seed_owner_mock_3',
+        name: 'أزياء الريم',
+        description: 'ملابس نسائية ورجالية، تصاميم حديثة ومتنوعة.',
+        category: 'أزياء',
+        storeType: 'retail',
+        storeTypeId: null,
+        storeTypeKey: 'retail',
+        imageUrl: 'https://picsum.photos/seed/mock-store-3/600/400',
+        logoUrl: 'https://picsum.photos/seed/mock-store-3-logo/200/200',
+        hasActivePromotions: true,
+      },
+      {
+        ...base,
+        id: '00000000-0000-0000-0000-000000000004',
+        ownerId: 'seed_owner_mock_4',
+        name: 'مخزن أدوات البيت',
+        description: 'كل ما تحتاجه للمنزل من أدوات مطبخ وتنظيف.',
+        category: 'أدوات منزلية',
+        storeType: 'retail',
+        storeTypeId: null,
+        storeTypeKey: 'retail',
+        imageUrl: 'https://picsum.photos/seed/mock-store-4/600/400',
+        logoUrl: 'https://picsum.photos/seed/mock-store-4-logo/200/200',
+      },
+      {
+        ...base,
+        id: '00000000-0000-0000-0000-000000000005',
+        ownerId: 'seed_owner_mock_5',
+        name: 'مطعم الشام',
+        description: 'وجبات شامية أصيلة وأطباق شعبية.',
+        category: 'مطاعم',
+        storeType: 'retail',
+        storeTypeId: null,
+        storeTypeKey: 'retail',
+        imageUrl: 'https://picsum.photos/seed/mock-store-5/600/400',
+        logoUrl: 'https://picsum.photos/seed/mock-store-5-logo/200/200',
+        freeDelivery: true,
+      },
+    ];
+  }
+
   async listStoreTypesPublic(): Promise<{ data: Array<Record<string, unknown>>; items: Array<Record<string, unknown>>; version: number }> {
     await this.ensureSchema();
     const q = await this.pool.query(

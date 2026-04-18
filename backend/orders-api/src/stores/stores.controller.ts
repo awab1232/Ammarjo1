@@ -66,6 +66,7 @@ export class StoresController {
 }
 
 @Controller('stores')
+@UseGuards(TenantContextGuard, ApiPolicyGuard)
 @ApiPolicy({ auth: false, tenant: 'optional', rateLimit: { rpm: 180 } })
 export class StoresPublicController {
   constructor(private readonly stores: StoresService) {}
@@ -73,6 +74,16 @@ export class StoresPublicController {
   @Get('store-types')
   storeTypes() {
     return this.stores.listStoreTypesPublic();
+  }
+
+  /**
+   * Public store directory for the mobile home page.
+   * Returns approved stores; falls back to Arabic demo data if the DB is
+   * empty so the home screen never renders blank.
+   */
+  @Get('public')
+  publicList(@Query('limit') limit?: string) {
+    return this.stores.listPublic(Number(limit ?? 50));
   }
 
   @Get('by-subcategory/:id')

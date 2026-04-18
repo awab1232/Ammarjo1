@@ -1,3 +1,5 @@
+import 'package:flutter/foundation.dart' show debugPrint;
+
 import '../../../core/contracts/feature_contract_registry.dart';
 import '../../../core/contracts/feature_state.dart';
 import '../../../core/contracts/feature_unit.dart';
@@ -80,11 +82,34 @@ class StoresRepository {
     if (cached != null && _isFresh(_storesPageCacheAt[key])) {
       return cached;
     }
-    final backend = await BackendOrdersClient.instance.fetchStores(
-      category: category,
-      limit: limit,
-      cursor: startAfter,
-    );
+    // Try the authenticated `/stores` endpoint first (returns the caller's own
+    // stores or, for privileged users, all stores). If that fails — e.g. no
+    // signed-in user, expired token, or a 401/403 from the guard — fall back
+    // to the **public** `/stores/public` endpoint which the backend also
+    // fills with Arabic demo data if the DB is empty. This ensures the home
+    // page never renders an empty shell for anonymous or guest users.
+    List<Map<String, dynamic>>? backend;
+    try {
+      backend = await BackendOrdersClient.instance.fetchStores(
+        category: category,
+        limit: limit,
+        cursor: startAfter,
+      );
+    } on Object catch (e) {
+      debugPrint('[StoresRepository] authed /stores failed, will try /stores/public: $e');
+      backend = null;
+    }
+    if (backend == null || backend.isEmpty) {
+      try {
+        backend = await BackendOrdersClient.instance.fetchStoresPublic(
+          category: category,
+          limit: limit,
+        );
+      } on Object catch (e) {
+        debugPrint('[StoresRepository] public /stores/public failed: $e');
+        backend = null;
+      }
+    }
     if (backend == null) {
       final FeatureState<StoreDirectoryPage> fail = FeatureState.criticalPublicDataFailure(FeatureIds.storeDirectory);
       _storesPageCache[key] = fail;
