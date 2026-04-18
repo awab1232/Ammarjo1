@@ -2,11 +2,12 @@
 # docker-entrypoint.sh — orders-api
 #
 # Boot rules (Railway / Docker):
-#   1. On each container start, run SQL migrations via Node (same order as repo:
-#      `node scripts/apply-all-sql.cjs`) so Railway deploys stay in sync with
-#      sql/migrations (001…028). Requires DATABASE_URL / ORDERS_DATABASE_URL.
-#   2. If migrations fail, log a warning and still start the server so health
-#      checks can surface /health while operators fix the DB.
+#   1. On each container start, run SQL migrations via Node (`apply-all-sql.cjs`)
+#      so Railway deploys stay in sync with sql/migrations. Requires DATABASE_URL /
+#      ORDERS_DATABASE_URL. Applied files are tracked in schema_migrations; the
+#      runner stops on first SQL error (no partial forward progress within one boot).
+#   2. If migrations fail, exit non-zero so the platform restarts / surfaces failure.
+#      To skip migrations entirely: RUN_DB_BOOTSTRAP_ON_START=0.
 #   3. Exactly one `exec` hands PID 1 to the main process.
 set -u
 
@@ -31,7 +32,8 @@ run_sql_migrations() {
 
   echo "[entrypoint] running SQL migrations: node scripts/apply-all-sql.cjs"
   if ! node scripts/apply-all-sql.cjs; then
-    echo "[entrypoint] WARN: apply-all-sql.cjs failed — continuing to start server."
+    echo "[entrypoint] FATAL: apply-all-sql.cjs failed — exiting so the DB is not started with a bad schema."
+    exit 1
   fi
 }
 

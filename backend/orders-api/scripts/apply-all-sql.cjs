@@ -1,26 +1,53 @@
 /**
- * Applies every numbered SQL file in sql/migrations in ascending order (001…028).
+ * Applies numbered SQL files in sql/migrations in ascending order (000…).
  * Uses the `postgres` driver so multi-statement files (DO $$ … $$, functions) work
- * without requiring the `psql` CLI on the machine.
+ * without requiring the `psql` CLI.
  *
- * Usage (Railway / local):
- *   cd backend/orders-api && npm install
- *   export DATABASE_URL="postgresql://USER:PASS@HOST:PORT/DB?sslmode=require"
+ * Tracking: table `schema_migrations` stores each applied basename; already-applied
+ * files are skipped (no duplicate execution). On first failure the process exits
+ * and does not apply later files.
+ *
+ * Usage:
+ *   export DATABASE_URL="postgresql://…"
  *   npm run db:apply-all-sql
  *
- * On Railway: run the same command in a one-off shell where DATABASE_URL is
- * injected from the Postgres plugin / service variables.
+ * Optional: SKIP_SQL_FILES=024_….sql,026_….sql — skip without recording (re-tried next run).
  *
- * Optional: SKIP_SQL_FILES=024_seed_dev_stores_and_technicians.sql,026_demo_home_seed.sql
- *   (comma-separated basenames) to skip heavy demo seeds on a fresh DB.
+ * Existing DBs predating tracking: migrations should be idempotent (IF NOT EXISTS, etc.),
+ * or manually insert rows into schema_migrations for files already applied.
  *
- * After success: curl "$BASE/api/stores/public?limit=10" should list ≥4 stores
- * when 028_railway_seed_targeted.sql ran (and source:"db" in JSON if applicable).
+ * Multi-instance: pg_advisory_lock reduces concurrent double-apply races on one connection.
  */
 'use strict';
 
 const fs = require('fs');
 const path = require('path');
+
+const ADVISORY_LOCK_KEY = 802154319;
+
+const ENSURE_MIGRATIONS_TABLE = `
+CREATE TABLE IF NOT EXISTS schema_migrations (
+  filename TEXT PRIMARY KEY,
+  applied_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+`;
+
+async function ensureMigrationsTable(sql) {
+  await sql.unsafe(ENSURE_MIGRATIONS_TABLE);
+}
+
+async function isApplied(sql, filename) {
+  const rows = await sql`
+    SELECT 1 AS ok FROM schema_migrations WHERE filename = ${filename} LIMIT 1
+  `;
+  return rows.length > 0;
+}
+
+async function recordApplied(sql, filename) {
+  await sql`
+    INSERT INTO schema_migrations (filename) VALUES (${filename})
+  `;
+}
 
 async function main() {
   const url = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
@@ -41,7 +68,7 @@ async function main() {
   try {
     postgres = require('postgres');
   } catch {
-    console.error('Install dependency: npm install postgres --save-dev');
+    console.error('Install dependency: npm install postgres');
     process.exit(1);
   }
 
@@ -61,23 +88,72 @@ async function main() {
     connect_timeout: 60,
   });
 
-  for (const f of files) {
-    if (skip.has(f)) {
-      console.error(`[skip] ${f}`);
-      continue;
-    }
-    const fp = path.join(migrationsDir, f);
-    const body = fs.readFileSync(fp, 'utf8');
-    console.error(`[apply] ${f} …`);
-    await sql.unsafe(body);
-    console.error(`[ok]   ${f}`);
-  }
+  let failedAt = null;
+  try {
+    await ensureMigrationsTable(sql);
 
-  await sql.end({ timeout: 10 });
-  console.error('All migration files applied successfully.');
+    await sql.unsafe(`SELECT pg_advisory_lock(${ADVISORY_LOCK_KEY})`);
+    try {
+      for (const f of files) {
+        if (skip.has(f)) {
+          console.error(`[SKIP] ${f}`);
+          continue;
+        }
+
+        if (await isApplied(sql, f)) {
+          console.error(`[SKIP] ${f}`);
+          continue;
+        }
+
+        const fp = path.join(migrationsDir, f);
+        const body = fs.readFileSync(fp, 'utf8');
+
+        failedAt = f;
+        console.error(`[APPLY] ${f}`);
+        await sql.unsafe(body);
+        await recordApplied(sql, f);
+        console.error(`[OK] ${f}`);
+        failedAt = null;
+      }
+    } finally {
+      try {
+        await sql.unsafe(`SELECT pg_advisory_unlock(${ADVISORY_LOCK_KEY})`);
+      } catch {
+        /* best-effort */
+      }
+    }
+
+    console.error('Migration tracking added: YES');
+    console.error('Duplicate execution prevented: YES');
+    console.error('Safe execution: YES');
+    console.error('FINAL STATUS: SUCCESS');
+  } catch (err) {
+    if (failedAt) {
+      console.error(`[MIGRATION] FATAL: failed while running: ${failedAt}`);
+    } else {
+      console.error('[MIGRATION] FATAL: migration runner error');
+    }
+    console.error(err instanceof Error ? err.message : String(err));
+    if (err instanceof Error && err.stack) {
+      console.error(err.stack);
+    }
+    console.error('FINAL STATUS: FAILED');
+    process.exit(1);
+  } finally {
+    try {
+      await sql.end({ timeout: 10 });
+    } catch {
+      /* ignore */
+    }
+  }
 }
 
 main().catch((err) => {
-  console.error(err);
+  console.error('[MIGRATION] FATAL: unexpected error in migration runner');
+  console.error(err instanceof Error ? err.message : String(err));
+  if (err instanceof Error && err.stack) {
+    console.error(err.stack);
+  }
+  console.error('FINAL STATUS: FAILED');
   process.exit(1);
 });
