@@ -22,11 +22,11 @@ class _ChatMsg {
     required this.text,
     this.showMaintenanceCta = false,
     this.showQuantityCalcCta = false,
-    this.suggestedProducts = const [],
-  });
+    List<Product>? suggestedProducts,
+  }) : suggestedProducts = suggestedProducts ?? List<Product>.empty();
 }
 
-/// Ã™â€¦Ã˜Â­Ã˜Â§Ã˜Â¯Ã˜Â«Ã˜Â© Ã™â€ Ã˜ÂµÃ™Å Ã˜Â© Ã™â€¦Ã˜Â¹ Gemini Ã™Ë†Ã˜Â³Ã™Å Ã˜Â§Ã™â€š Ã˜Â§Ã™â€žÃ™â€¦Ã˜ÂªÃ˜Â¬Ã˜Â±.
+/// محادثة نصية مع Gemini وسياق المتجر.
 class AiChatTab extends StatefulWidget {
   const AiChatTab({super.key, this.onBookMaintenance, this.onOpenQuantityCalculator});
 
@@ -44,7 +44,7 @@ class _AiChatTabState extends State<AiChatTab> {
     _ChatMsg(
       isUser: false,
       text:
-          'Ã™â€¦Ã˜Â±Ã˜Â­Ã˜Â¨Ã˜Â§Ã™â€¹Ã˜Å’ Ã˜Â£Ã™â€ Ã˜Â§ Ã™â€¦Ã˜Â³Ã˜Â§Ã˜Â¹Ã˜Â¯ AmmarJo Ã™â€žÃ™â€¦Ã˜ÂªÃ˜Â¬Ã˜Â± **Ã™â€¦Ã™Ë†Ã˜Â§Ã˜Â¯ Ã˜Â§Ã™â€žÃ˜Â¨Ã™â€ Ã˜Â§Ã˜Â¡ Ã™Ë†Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â´Ã™Å Ã™Å Ã˜Â¯**. Ã˜Â§Ã˜Â³Ã˜Â£Ã™â€žÃ™â€ Ã™Å  Ã˜Â¹Ã™â€  Ã˜Â§Ã™â€žÃ˜Â¯Ã™â€¡Ã˜Â§Ã™â€ Ã˜Â§Ã˜ÂªÃ˜Å’ Ã˜Â§Ã™â€žÃ˜Â³Ã˜Â¨Ã˜Â§Ã™Æ’Ã˜Â©Ã˜Å’ Ã˜Â§Ã™â€žÃ™Æ’Ã™â€¡Ã˜Â±Ã˜Â¨Ã˜Â§Ã˜Â¡Ã˜Å’ Ã˜Â§Ã™â€žÃ˜Â£Ã˜Â¯Ã™Ë†Ã˜Â§Ã˜ÂªÃ˜Å’ Ã˜ÂªÃ™Ë†Ã™ÂÃ˜Â± Ã™â€¦Ã™â€ Ã˜ÂªÃ˜Â¬Ã˜Å’ Ã˜Â£Ã™Ë† Ã™Æ’Ã™â€¦Ã™Å Ã˜Â§Ã˜Âª Ã™â€¦Ã™Ë†Ã˜Â§Ã˜Â¯ Ã™â€žÃ™â€¦Ã˜Â³Ã˜Â§Ã˜Â­Ã˜Â© Ã™â€¦Ã˜Â¹Ã™Å Ã™â€˜Ã™â€ Ã˜Â© Ã¢â‚¬â€ Ã™Ë†Ã˜Â³Ã˜Â£Ã˜Â¬Ã™Å Ã˜Â¨ Ã˜Â¨Ã˜Â§Ã™â€žÃ˜Â¹Ã˜Â±Ã˜Â¨Ã™Å Ã˜Â© Ã™Ë†Ã™ÂÃ™â€š Ã™Æ’Ã˜ÂªÃ˜Â§Ã™â€žÃ™Ë†Ã˜Â¬ Ã˜Â§Ã™â€žÃ™â€¦Ã˜ÂªÃ˜Â¬Ã˜Â±. Ã™Å Ã™â€¦Ã™Æ’Ã™â€ Ã™Æ’ Ã™ÂÃ˜ÂªÃ˜Â­ Ã‚Â«Ã˜Â­Ã˜Â§Ã˜Â³Ã˜Â¨Ã˜Â© Ã˜Â§Ã™â€žÃ™Æ’Ã™â€¦Ã™Å Ã˜Â§Ã˜ÂªÃ‚Â» Ã™â€¦Ã™â€  Ã˜Â§Ã™â€žÃ˜Â²Ã˜Â± Ã˜Â¹Ã™â€ Ã˜Â¯ Ã˜Â§Ã™â€žÃ˜Â­Ã˜Â§Ã˜Â¬Ã˜Â©.',
+          'مرحباً، أنا مساعد AmmarJo لمتجر **مواد البناء والتشييد**. اسألني عن الدهانات، السباكة، الكهرباء، الأدوات، توفر منتج، أو كميات مواد لمساحة معيّنة — وسأجيب بالعربية وفق كتالوج المتجر. يمكنك فتح «حاسبة الكميات» من الزر عند الحاجة.',
     ),
   ];
   bool _sending = false;
@@ -70,7 +70,7 @@ class _AiChatTabState extends State<AiChatTab> {
     super.dispose();
   }
 
-  /// Ã™Å Ã˜Â·Ã˜Â§Ã˜Â¨Ã™â€š Ã˜Â£Ã˜Â³Ã™â€¦Ã˜Â§Ã˜Â¡ Ã˜Â§Ã™â€žÃ™â€¦Ã™â€ Ã˜ÂªÃ˜Â¬Ã˜Â§Ã˜Âª Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â­Ã™â€¦Ã™â€˜Ã™â€žÃ˜Â© Ã™ÂÃ™Å  Ã™Æ’Ã˜ÂªÃ˜Â§Ã™â€žÃ™Ë†Ã˜Â¬ Ã˜Â§Ã™â€žÃ™â€¦Ã˜ÂªÃ˜Â¬Ã˜Â± Ã™â€¦Ã˜Â¹ Ã™â€ Ã˜Âµ Ã˜Â±Ã˜Â¯ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â³Ã˜Â§Ã˜Â¹Ã˜Â¯ Ã™â€žÃ˜Â¹Ã˜Â±Ã˜Â¶ Ã˜Â£Ã˜Â²Ã˜Â±Ã˜Â§Ã˜Â± Ã‚Â«Ã˜Â£Ã˜Â¶Ã™Â Ã™â€žÃ™â€žÃ˜Â³Ã™â€žÃ˜Â©Ã‚Â».
+  /// يطابق أسماء المنتجات المُحمّلة في كتالوج المتجر مع نص رد المساعد لعرض أزرار «أضف للسلة».
   List<Product> _suggestedProductsForReply(String reply, StoreController store) {
     final lower = reply.toLowerCase();
     final out = <Product>[];
@@ -127,10 +127,13 @@ class _AiChatTabState extends State<AiChatTab> {
         );
         _sending = false;
       });
-    } on Object {
+    } on Object catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('AiChatTab._send: $e\n$st');
+      }
       if (!mounted) return;
       setState(() {
-        _msgs.add(_ChatMsg(isUser: false, text: 'Ã˜Â¹Ã˜Â°Ã˜Â±Ã˜Â§Ã™â€¹Ã˜Å’ Ã˜Â­Ã˜Â¯Ã˜Â« Ã˜Â®Ã˜Â·Ã˜Â£: unexpected error'));
+        _msgs.add(_ChatMsg(isUser: false, text: 'عذراً، حدث خطأ. حاول مرة أخرى.'));
         _sending = false;
       });
     }
@@ -178,7 +181,7 @@ class _AiChatTabState extends State<AiChatTab> {
                         ScaffoldMessenger.of(context).showSnackBar(
                           SnackBar(
                             content: Text(
-                              'Ã˜ÂªÃ™â€¦ Ã˜Â¥Ã˜Â¶Ã˜Â§Ã™ÂÃ˜Â© ${product.name} Ã™â€žÃ™â€žÃ˜Â³Ã™â€žÃ˜Â© Ã¢Å“â€¦',
+                              'تمت إضافة ${product.name} للسلة ✓',
                               style: GoogleFonts.tajawal(),
                               textAlign: TextAlign.right,
                             ),
@@ -201,7 +204,7 @@ class _AiChatTabState extends State<AiChatTab> {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'Ã˜Â¬Ã˜Â§Ã˜Â±Ã™Å  Ã˜Â§Ã™â€žÃ˜ÂªÃ™ÂÃ™Æ’Ã™Å Ã˜Â±...',
+                            'جاري التفكير...',
                             style: GoogleFonts.tajawal(color: AppColors.textSecondary, fontSize: 14),
                           ),
                         ],
@@ -231,7 +234,7 @@ class _AiChatTabState extends State<AiChatTab> {
                         textAlign: TextAlign.right,
                         style: GoogleFonts.tajawal(fontSize: 15),
                         decoration: InputDecoration(
-                          hintText: 'Ã˜Â§Ã™Æ’Ã˜ÂªÃ˜Â¨ Ã˜Â³Ã˜Â¤Ã˜Â§Ã™â€žÃ™Æ’... (Ã™â€¦Ã˜Â«Ã˜Â§Ã™â€ž: Ã˜ÂªÃ˜Â³Ã˜Â±Ã™Å Ã˜Â¨ Ã˜ÂªÃ˜Â­Ã˜Âª Ã˜Â§Ã™â€žÃ™â€¦Ã˜ÂºÃ˜Â³Ã™â€žÃ˜Â©)',
+                          hintText: 'اكتب سؤالك... (مثال: تسريب تحت المغسلة)',
                           hintStyle: GoogleFonts.tajawal(color: AppColors.textSecondary),
                           filled: true,
                           fillColor: Colors.white,
@@ -336,7 +339,7 @@ class _Bubble extends StatelessWidget {
                 ),
                 icon: const Icon(Icons.home_repair_service_rounded, size: 20),
                 label: Text(
-                  'Ã˜Â§Ã˜Â­Ã˜Â¬Ã˜Â² Ã™ÂÃ™â€ Ã™â€˜Ã™Å Ã˜Â§Ã™â€¹ Ã™â€žÃ˜Â¥Ã˜ÂµÃ™â€žÃ˜Â§Ã˜Â­ Ã™â€¡Ã˜Â°Ã˜Â§',
+                  'احجز فنّياً لإصلاح هذا',
                   style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 14),
                 ),
               ),
@@ -354,7 +357,7 @@ class _Bubble extends StatelessWidget {
                 ),
                 icon: const Icon(Icons.calculate_outlined, size: 20),
                 label: Text(
-                  'Ã˜Â§Ã™ÂÃ˜ÂªÃ˜Â­ Ã˜Â­Ã˜Â§Ã˜Â³Ã˜Â¨Ã˜Â© Ã˜Â§Ã™â€žÃ™Æ’Ã™â€¦Ã™Å Ã˜Â§Ã˜Âª Ã˜Â§Ã™â€žÃ˜Â°Ã™Æ’Ã™Å Ã˜Â©',
+                  'افتح حاسبة الكميات الذكية',
                   style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 14),
                 ),
               ),
@@ -372,7 +375,7 @@ class _Bubble extends StatelessWidget {
                     return ElevatedButton.icon(
                       icon: const Icon(Icons.add_shopping_cart, size: 18),
                       label: Text(
-                        'Ã˜Â£Ã˜Â¶Ã™Â ${p.name} Ã™â€žÃ™â€žÃ˜Â³Ã™â€žÃ˜Â©',
+                        'أضف ${p.name} للسلة',
                         style: GoogleFonts.tajawal(fontWeight: FontWeight.w600, fontSize: 12),
                       ),
                       style: ElevatedButton.styleFrom(

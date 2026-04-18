@@ -5,21 +5,21 @@ import '../../../../core/config/gemini_config.dart';
 import '../../../../core/config/gemini_connection_validation.dart';
 import '../../../../core/services/gemini_ai_service.dart';
 
-/// Ã˜ÂªÃ˜Â­Ã™â€žÃ™Å Ã™â€ž Ã˜ÂµÃ™Ë†Ã˜Â±Ã˜Â© Ã˜Â§Ã™â€žÃ™â€¦Ã™â€ Ã˜ÂªÃ˜Â¬ Ã˜Â¹Ã˜Â¨Ã˜Â± Gemini (Ã˜Â¨Ã˜ÂµÃ˜Â±Ã™Å ).
+/// تحليل صورة المنتج عبر Gemini (بصري).
 Future<String?> analyzeImageWithAI(Uint8List imageBytes, {String mimeType = 'image/jpeg'}) async {
   if (!isGeminiConfigured) {
     throw StateError(geminiMissingKeyUserMessage);
   }
 
   const prompt = '''
-Ã˜Â£Ã™â€ Ã˜Âª Ã˜Â®Ã˜Â¨Ã™Å Ã˜Â± Ã™ÂÃ™Å  Ã™â€¦Ã™Ë†Ã˜Â§Ã˜Â¯ Ã˜Â§Ã™â€žÃ˜Â¨Ã™â€ Ã˜Â§Ã˜Â¡ Ã™Ë†Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â´Ã™Å Ã™Å Ã˜Â¯ Ã™Ë†Ã˜Â§Ã™â€žÃ˜Â³Ã˜Â¨Ã˜Â§Ã™Æ’Ã˜Â© Ã™Ë†Ã˜Â§Ã™â€žÃ˜Â¯Ã™â€¡Ã˜Â§Ã™â€ Ã˜Â§Ã˜Âª Ã™Ë†Ã˜Â§Ã™â€žÃ™Æ’Ã™â€¡Ã˜Â±Ã˜Â¨Ã˜Â§Ã˜Â¡ Ã˜Â§Ã™â€žÃ™â€¦Ã™â€ Ã˜Â²Ã™â€žÃ™Å Ã˜Â© Ã™Ë†Ã˜Â£Ã˜Â¯Ã™Ë†Ã˜Â§Ã˜Âª Ã˜Â§Ã™â€žÃ™Ë†Ã˜Â±Ã˜Â´ Ã™â€žÃ™â€¦Ã˜ÂªÃ˜Â¬Ã˜Â± AmmarJo Ã¢â‚¬â€ Ã™â€¦Ã˜ÂªÃ˜Â¬Ã˜Â± Ã™â€¦Ã™Ë†Ã˜Â§Ã˜Â¯ Ã˜Â¨Ã™â€ Ã˜Â§Ã˜Â¡ Ã™ÂÃ™Å  Ã˜Â§Ã™â€žÃ˜Â£Ã˜Â±Ã˜Â¯Ã™â€ . Ã˜Â­Ã™â€žÃ™â€˜Ã™â€ž Ã˜Â§Ã™â€žÃ˜ÂµÃ™Ë†Ã˜Â±Ã˜Â©: Ã˜Â¥Ã™â€  Ã™Ë†Ã™ÂÃ˜Â¬Ã˜Â¯ Ã˜Â¹Ã˜Â·Ã™â€ž Ã˜Â£Ã™Ë† Ã˜ÂªÃ™â€žÃ™Â Ã˜Â£Ã™Ë† Ã˜ÂªÃ˜Â³Ã˜Â±Ã™Å Ã˜Â¨ Ã™Ë†Ã˜Â§Ã˜Â¶Ã˜Â­Ã˜Å’ Ã˜ÂµÃ™ÂÃ™â€˜Ã™â€¡Ã˜â€º Ã™Ë†Ã˜Â¥Ã™â€žÃ˜Â§ Ã˜ÂµÃ™ÂÃ™â€˜ Ã˜Â§Ã™â€žÃ™â€šÃ˜Â·Ã˜Â¹Ã˜Â© Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â±Ã˜Â¦Ã™Å Ã˜Â©.
+أنت خبير في مواد البناء والتشييد والسباكة والدهانات والكهرباء المنزلية وأدوات الورش لمتجر AmmarJo — متجر مواد بناء في الأردن. حلّل الصورة: إن وُجد عطل أو تلف أو تسريب واضح، صفّه؛ وإلا صف القطعة المرئية.
 
-Ã˜Â£Ã˜Â¬Ã˜Â¨ Ã˜Â¨Ã˜Â§Ã™â€žÃ˜Â¹Ã˜Â±Ã˜Â¨Ã™Å Ã˜Â© Ã™ÂÃ™â€šÃ˜Â·. Ã˜Â£Ã˜Â±Ã˜Â¬Ã˜Â¹ Ã™Æ’Ã˜Â§Ã˜Â¦Ã™â€  JSON Ã™Ë†Ã˜Â§Ã˜Â­Ã˜Â¯ Ã˜Â¨Ã˜Â¯Ã™Ë†Ã™â€  markdownÃ˜Å’ Ã˜Â¨Ã˜Â§Ã™â€žÃ™â€¦Ã™ÂÃ˜Â§Ã˜ÂªÃ™Å Ã˜Â­:
-- "identified_item_ar": Ã˜Â§Ã˜Â³Ã™â€¦ Ã™â€¦Ã˜Â®Ã˜ÂªÃ˜ÂµÃ˜Â± Ã™â€žÃ™â€žÃ™â€šÃ˜Â·Ã˜Â¹Ã˜Â© Ã˜Â£Ã™Ë† Ã˜Â§Ã™â€žÃ˜Â¹Ã˜Â·Ã™â€ž Ã˜Â¨Ã˜Â§Ã™â€žÃ˜Â¹Ã˜Â±Ã˜Â¨Ã™Å Ã˜Â©
-- "store_category_ar": Ã˜Â£Ã™â€ Ã˜Â³Ã˜Â¨ Ã˜ÂªÃ˜ÂµÃ™â€ Ã™Å Ã™Â Ã™â€¦Ã™â€  Ã˜Â£Ã™â€šÃ˜Â³Ã˜Â§Ã™â€¦ Ã˜Â§Ã™â€žÃ™â€¦Ã˜ÂªÃ˜Â¬Ã˜Â± Ã˜Â¨Ã˜Â§Ã™â€žÃ˜Â¹Ã˜Â±Ã˜Â¨Ã™Å Ã˜Â©
-- "recommended_technician_category_ar": Ã˜Â£Ã™â€ Ã˜Â³Ã˜Â¨ Ã™ÂÃ˜Â¦Ã˜Â© Ã™ÂÃ™â€ Ã™Å  Ã™â€¦Ã™â€ : Ã˜Â³Ã˜Â¨Ã˜Â§Ã™Æ’Ã˜Â©Ã˜Å’ Ã™Æ’Ã™â€¡Ã˜Â±Ã˜Â¨Ã˜Â§Ã˜Â¡Ã˜Å’ Ã˜Â¯Ã™â€¡Ã˜Â§Ã™â€ Ã˜Â§Ã˜ÂªÃ˜Å’ Ã˜Â¨Ã™â€ Ã˜Â§Ã˜Â¡Ã˜Å’ Ã˜ÂªÃ˜Â±Ã™Æ’Ã™Å Ã˜Â¨ Ã˜Â¨Ã™â€žÃ˜Â§Ã˜Â·Ã˜Å’ Ã˜ÂªÃ™Æ’Ã™Å Ã™Å Ã™Â Ã¢â‚¬â€ Ã˜Â£Ã™Ë† "Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã˜Â·Ã™â€žÃ™Ë†Ã˜Â¨" Ã˜Â¥Ã™â€  Ã™Æ’Ã˜Â§Ã™â€  Ã™â€¦Ã˜Â¬Ã˜Â±Ã˜Â¯ Ã™â€¦Ã™â€ Ã˜ÂªÃ˜Â¬ Ã˜Â³Ã™â€žÃ™Å Ã™â€¦ Ã˜Â¨Ã˜Â¯Ã™Ë†Ã™â€  Ã˜Â¹Ã˜Â·Ã™â€ž
+أجب بالعربية فقط. أرجع كائن JSON واحد بدون markdown، بالمفاتيح:
+- "identified_item_ar": اسم مختصر للقطعة أو العطل بالعربية
+- "store_category_ar": أنسب تصنيف من أقسام المتجر بالعربية
+- "recommended_technician_category_ar": أنسب فئة فني من: سباكة، كهرباء، دهانات، بناء، تركيب بلاط، تكييف — أو "غير مطلوب" إن كان مجرد منتج سليم بدون عطل
 
-Ã™â€¦Ã˜Â«Ã˜Â§Ã™â€ž Ã˜Â¹Ã˜Â·Ã™â€ž: {"identified_item_ar":"Ã˜ÂªÃ˜Â³Ã˜Â±Ã™Å Ã˜Â¨ Ã™â€¦Ã™â€  Ã™Ë†Ã˜ÂµÃ™â€žÃ˜Â© Ã™â€¦Ã˜Â§Ã˜Â¡","store_category_ar":"Ã˜Â§Ã™â€žÃ˜Â£Ã˜Â¯Ã™Ë†Ã˜Â§Ã˜Âª Ã˜Â§Ã™â€žÃ˜ÂµÃ˜Â­Ã™Å Ã˜Â©","recommended_technician_category_ar":"Ã˜Â³Ã˜Â¨Ã˜Â§Ã™Æ’Ã˜Â©"}
+مثال عطل: {"identified_item_ar":"تسريب من وصلة ماء","store_category_ar":"الأدوات الصحية","recommended_technician_category_ar":"سباكة"}
 ''';
 
   try {
@@ -41,10 +41,10 @@ Future<String?> analyzeImageWithAI(Uint8List imageBytes, {String mimeType = 'ima
       ]),
     ]);
     return response.text;
-  } on Object {
+  } on Object catch (e, st) {
     if (kDebugMode) {
-      debugPrint('[Gemini] analyzeImageWithAI failed: unexpected error');
-      debugPrint('$StackTrace.current');
+      debugPrint('[Gemini] analyzeImageWithAI failed: $e');
+      debugPrint('$st');
     }
     try {
       if (kDebugMode) {
@@ -56,13 +56,12 @@ Future<String?> analyzeImageWithAI(Uint8List imageBytes, {String mimeType = 'ima
         mimeType: mimeType,
       );
       if (fallback.trim().isNotEmpty) return fallback.trim();
-    } on Object {
+    } on Object catch (e2, st2) {
       if (kDebugMode) {
-        debugPrint('[Gemini] HTTP image fallback failed: unexpected error');
-        debugPrint('$StackTrace.current');
+        debugPrint('[Gemini] HTTP image fallback failed: $e2');
+        debugPrint('$st2');
       }
     }
     rethrow;
   }
 }
-

@@ -26,7 +26,7 @@ import '../domain/shipping_policy.dart';
 import '../domain/store_shelf_product.dart';
 import 'store_category_page.dart';
 
-/// Ã˜ÂªÃ™ÂÃ˜Â§Ã˜ÂµÃ™Å Ã™â€ž Ã˜Â§Ã™â€žÃ™â€¦Ã˜ÂªÃ˜Â¬Ã˜Â± Ã¢â‚¬â€ Ã˜ÂºÃ™â€žÃ˜Â§Ã™ÂÃ˜Å’ Ã˜Â£Ã™â€šÃ˜Â³Ã˜Â§Ã™â€¦Ã˜Å’ Ã™Ë†Ã™â€¦Ã™â€ Ã˜ÂªÃ˜Â¬Ã˜Â§Ã˜Âª Ã˜Â­Ã˜Â³Ã˜Â¨ Ã˜Â§Ã™â€žÃ˜ÂªÃ˜ÂµÃ™â€ Ã™Å Ã™Â.
+/// تفاصيل المتجر — غلاف، أقسام، ومنتجات حسب التصنيف.
 class StoreDetailPage extends StatefulWidget {
   const StoreDetailPage({super.key, required this.store});
 
@@ -89,7 +89,7 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
   Future<void> _openChat(BuildContext context) async {
     if (!Firebase.apps.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Firebase Ã˜ÂºÃ™Å Ã˜Â± Ã˜Â¬Ã˜Â§Ã™â€¡Ã˜Â²', style: GoogleFonts.tajawal())),
+        SnackBar(content: Text('Firebase غير جاهز', style: GoogleFonts.tajawal())),
       );
       return;
     }
@@ -97,7 +97,7 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
     if (_isOwnStore()) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Ã™â€žÃ˜Â§ Ã™Å Ã™â€¦Ã™Æ’Ã™â€ Ã™Æ’ Ã™â€¦Ã˜Â±Ã˜Â§Ã˜Â³Ã™â€žÃ˜Â© Ã™â€¦Ã˜ÂªÃ˜Â¬Ã˜Â±Ã™Æ’ Ã™â€¦Ã™â€  Ã™â€ Ã™ÂÃ˜Â³ Ã˜Â§Ã™â€žÃ˜Â­Ã˜Â³Ã˜Â§Ã˜Â¨.', style: GoogleFonts.tajawal()),
+          content: Text('لا يمكنك مراسلة متجرك من نفس الحساب.', style: GoogleFonts.tajawal()),
         ),
       );
       return;
@@ -105,7 +105,7 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
 
     if (FirebaseAuth.instance.currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ã™Å Ã˜Â±Ã˜Â¬Ã™â€° Ã˜ÂªÃ˜Â³Ã˜Â¬Ã™Å Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â¯Ã˜Â®Ã™Ë†Ã™â€ž Ã˜Â£Ã™Ë†Ã™â€žÃ˜Â§Ã™â€¹', style: GoogleFonts.tajawal())),
+        SnackBar(content: Text('يرجى تسجيل الدخول أولاً', style: GoogleFonts.tajawal())),
       );
       return;
     }
@@ -114,7 +114,7 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
     final myEmail = storeCtrl.profile?.email.trim() ?? '';
     if (myEmail.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ã™Å Ã™â€žÃ˜Â²Ã™â€¦ Ã˜Â¨Ã˜Â±Ã™Å Ã˜Â¯ Ã™â€¦Ã˜Â³Ã˜Â¬Ã™â€ž Ã™ÂÃ™Å  Ã˜Â§Ã™â€žÃ™â€¦Ã™â€žÃ™Â Ã™â€žÃ˜Â¨Ã˜Â¯Ã˜Â¡ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â­Ã˜Â§Ã˜Â¯Ã˜Â«Ã˜Â©.', style: GoogleFonts.tajawal())),
+        SnackBar(content: Text('يلزم بريد مسجل في الملف لبدء المحادثة.', style: GoogleFonts.tajawal())),
       );
       return;
     }
@@ -123,7 +123,7 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
     if (!context.mounted) return;
     if (ownerEmail == null || ownerEmail.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ã˜ÂªÃ˜Â¹Ã˜Â°Ã˜Â± Ã˜Â§Ã™â€žÃ˜Â¹Ã˜Â«Ã™Ë†Ã˜Â± Ã˜Â¹Ã™â€žÃ™â€° Ã˜Â¨Ã˜Â±Ã™Å Ã˜Â¯ Ã˜ÂµÃ˜Â§Ã˜Â­Ã˜Â¨ Ã˜Â§Ã™â€žÃ™â€¦Ã˜ÂªÃ˜Â¬Ã˜Â±.', style: GoogleFonts.tajawal())),
+        SnackBar(content: Text('تعذر العثور على بريد صاحب المتجر.', style: GoogleFonts.tajawal())),
       );
       return;
     }
@@ -131,7 +131,7 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
     if (myEmail.trim().toLowerCase() == ownerEmail.trim().toLowerCase()) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Ã™â€žÃ˜Â§ Ã™Å Ã™â€¦Ã™Æ’Ã™â€  Ã˜Â§Ã™â€žÃ˜Â¯Ã˜Â±Ã˜Â¯Ã˜Â´Ã˜Â© Ã™â€¦Ã˜Â¹ Ã™â€ Ã™ÂÃ˜Â³Ã™Æ’ (Ã™â€ Ã™ÂÃ˜Â³ Ã˜Â§Ã™â€žÃ˜Â¨Ã˜Â±Ã™Å Ã˜Â¯).', style: GoogleFonts.tajawal()),
+          content: Text('لا يمكن الدردشة مع نفسك (نفس البريد).', style: GoogleFonts.tajawal()),
         ),
       );
       return;
@@ -170,12 +170,12 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
           ),
         ),
       );
-    } on Object {
-      debugPrint('StoreDetailPage._openChat: unexpected error\n$StackTrace.current');
+    } on Object catch (e, st) {
+      debugPrint('StoreDetailPage._openChat: $e\n$st');
       if (context.mounted) Navigator.of(context).pop();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ã˜Â®Ã˜Â·Ã˜Â£ Ã™ÂÃ™Å  Ã™ÂÃ˜ÂªÃ˜Â­ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â­Ã˜Â§Ã˜Â¯Ã˜Â«Ã˜Â©: unexpected error', style: GoogleFonts.tajawal())),
+          SnackBar(content: Text('خطأ في فتح المحادثة. حاول مرة أخرى.', style: GoogleFonts.tajawal())),
         );
       }
     }
@@ -208,8 +208,8 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
                 ),
               ),
               const SizedBox(height: 8),
-              Text('Ã˜ÂªÃ™â€šÃ™Å Ã™Å Ã™â€¦Ã˜Â§Ã˜Âª Ã˜Â§Ã™â€žÃ™â€¦Ã˜ÂªÃ˜Â¬Ã˜Â±', textAlign: TextAlign.center, style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 17)),
-              ReviewsSection(targetId: store.id, targetType: 'store', title: 'Ã™Æ’Ã™â€ž Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â±Ã˜Â§Ã˜Â¬Ã˜Â¹Ã˜Â§Ã˜Âª'),
+              Text('تقييمات المتجر', textAlign: TextAlign.center, style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 17)),
+              ReviewsSection(targetId: store.id, targetType: 'store', title: 'كل المراجعات'),
             ],
           ),
         ),
@@ -325,6 +325,13 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
                                   FutureBuilder<FeatureState<RatingAggregate>>(
                                     future: ReviewsRepository.instance.getAggregate(targetId: store.id, targetType: 'store'),
                                     builder: (context, snap) {
+                                      if (snap.hasError) {
+                                        return _StoreRatingBadge(
+                                          rating: store.rating,
+                                          totalReviews: store.reviewCount,
+                                          onTap: _openReviewsDialog,
+                                        );
+                                      }
                                       final data = snap.data;
                                       final r = data is FeatureSuccess<RatingAggregate>
                                           ? data.data.averageRating
@@ -344,7 +351,7 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
                                   const SizedBox(width: 4),
                                   Expanded(
                                     child: Text(
-                                      store.deliveryTime.isNotEmpty ? store.deliveryTime : 'Ã¢â‚¬â€',
+                                      store.deliveryTime.isNotEmpty ? store.deliveryTime : '—',
                                       style: GoogleFonts.tajawal(color: Colors.white, fontSize: 12),
                                       maxLines: 1,
                                       overflow: TextOverflow.ellipsis,
@@ -376,7 +383,7 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white),
                   label: Text(
-                    _isOwnStore() ? 'Ã™â€¡Ã˜Â°Ã˜Â§ Ã™â€¦Ã˜ÂªÃ˜Â¬Ã˜Â±Ã™Æ’ Ã¢â‚¬â€ Ã™â€žÃ˜Â§ Ã™Å Ã™â€¦Ã™Æ’Ã™â€  Ã™â€¦Ã˜Â±Ã˜Â§Ã˜Â³Ã™â€žÃ˜ÂªÃ™â€¡ Ã™â€¦Ã™â€  Ã™â€¡Ã™â€ Ã˜Â§' : 'Ã˜ÂªÃ™Ë†Ã˜Â§Ã˜ÂµÃ™â€ž Ã™â€¦Ã˜Â¹ Ã˜Â§Ã™â€žÃ™â€¦Ã˜ÂªÃ˜Â¬Ã˜Â±',
+                    _isOwnStore() ? 'هذا متجرك — لا يمكن مراسلته من هنا' : 'تواصل مع المتجر',
                     style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.w700),
                   ),
                   style: ElevatedButton.styleFrom(
@@ -410,7 +417,7 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
                   return Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     child: Text(
-                      'Ã˜Â§Ã™â€žÃ˜Â®Ã˜Â¯Ã™â€¦Ã˜Â© Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã˜ÂªÃ˜Â§Ã˜Â­Ã˜Â© Ã™â€¦Ã˜Â¤Ã™â€šÃ˜ÂªÃ˜Â§Ã™â€¹. Ã˜Â­Ã˜Â§Ã™Ë†Ã™â€ž Ã™â€žÃ˜Â§Ã˜Â­Ã™â€šÃ˜Â§Ã™â€¹.',
+                      'الخدمة غير متاحة مؤقتاً. حاول لاحقاً.',
                       textAlign: TextAlign.center,
                       style: GoogleFonts.tajawal(color: AppColors.textSecondary),
                     ),
@@ -472,7 +479,7 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
   }
 }
 
-/// Ã˜Â£Ã™â€šÃ˜Â³Ã˜Â§Ã™â€¦ Ã™â€¦Ã™â€ Ã˜ÂªÃ˜Â¬Ã˜Â§Ã˜Âª: Ã˜Â¹Ã™â€ Ã™Ë†Ã˜Â§Ã™â€  + Ã‚Â«Ã˜Â¹Ã˜Â±Ã˜Â¶ Ã˜Â§Ã™â€žÃ™Æ’Ã™â€žÃ‚Â» + Ã˜ÂªÃ™â€¦Ã˜Â±Ã™Å Ã˜Â± Ã˜Â£Ã™ÂÃ™â€šÃ™Å  (Ã˜Â­Ã˜ÂªÃ™â€° 10).
+/// أقسام المنتجات: عنوان + «عرض الكل» + تمرير أفقي (حتى 10).
 class _StoreProductsByCategorySection extends StatelessWidget {
   const _StoreProductsByCategorySection({
     required this.store,
@@ -492,7 +499,7 @@ class _StoreProductsByCategorySection extends StatelessWidget {
             padding: const EdgeInsets.all(24),
             child: Center(
               child: Text(
-                'Ã˜Â§Ã™â€žÃ˜Â®Ã˜Â¯Ã™â€¦Ã˜Â© Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã˜ÂªÃ˜Â§Ã˜Â­Ã˜Â© Ã™â€¦Ã˜Â¤Ã™â€šÃ˜ÂªÃ˜Â§Ã™â€¹.',
+                'الخدمة غير متاحة مؤقتاً. حاول لاحقاً.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.tajawal(color: AppColors.textSecondary),
               ),
@@ -517,7 +524,7 @@ class _StoreProductsByCategorySection extends StatelessWidget {
             padding: const EdgeInsets.all(24),
             child: Center(
               child: Text(
-                'Ã™â€žÃ˜Â§ Ã™â€¦Ã™â€ Ã˜ÂªÃ˜Â¬Ã˜Â§Ã˜Âª Ã™â€¦Ã˜Â¶Ã˜Â§Ã™ÂÃ˜Â© Ã˜Â¨Ã˜Â¹Ã˜Â¯.',
+                'لا منتجات مضافة بعد.',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.tajawal(color: AppColors.textSecondary),
               ),
@@ -575,7 +582,7 @@ class _CategoryProductRow extends StatelessWidget {
                     ),
                   );
                 },
-                child: Text('Ã˜Â¹Ã˜Â±Ã˜Â¶ Ã˜Â§Ã™â€žÃ™Æ’Ã™â€ž', style: GoogleFonts.tajawal(color: const Color(0xFFFF6B00), fontWeight: FontWeight.w700)),
+                child: Text('عرض الكل', style: GoogleFonts.tajawal(color: const Color(0xFFFF6B00), fontWeight: FontWeight.w700)),
               ),
             ],
           ),
@@ -658,7 +665,7 @@ class _HorizontalStoreProductTile extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    '${product.priceDisplay} Ã˜Â¯Ã™Å Ã™â€ Ã˜Â§Ã˜Â±',
+                    '${product.priceDisplay} دينار',
                     style: GoogleFonts.tajawal(
                       color: const Color(0xFFFF6B00),
                       fontWeight: FontWeight.bold,
@@ -685,14 +692,14 @@ class _HorizontalStoreProductTile extends StatelessWidget {
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
-                              content: Text('Ã˜ÂªÃ™â€¦Ã˜Âª Ã˜Â§Ã™â€žÃ˜Â¥Ã˜Â¶Ã˜Â§Ã™ÂÃ˜Â© Ã¢Å“â€¦', style: GoogleFonts.tajawal()),
+                              content: Text('تمت الإضافة ✓', style: GoogleFonts.tajawal()),
                               backgroundColor: Colors.green.shade700,
                               duration: const Duration(seconds: 1),
                             ),
                           );
                         }
                       },
-                      child: Text('Ã˜Â£Ã˜Â¶Ã™Â Ã™â€žÃ™â€žÃ˜Â³Ã™â€žÃ˜Â©', style: GoogleFonts.tajawal(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                      child: Text('أضف للسلة', style: GoogleFonts.tajawal(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
                     ),
                   ),
                 ],
@@ -752,7 +759,7 @@ class _StoreRatingBadge extends StatelessWidget {
             ),
             const SizedBox(width: 4),
             Text(
-              '($totalReviews Ã˜ÂªÃ™â€šÃ™Å Ã™Å Ã™â€¦)',
+              '($totalReviews تقييم)',
               style: GoogleFonts.tajawal(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
             ),
           ],
@@ -772,25 +779,25 @@ class _TopDeliveryInfoCard extends StatelessWidget {
     String feeText;
     switch (policy.type) {
       case 'free':
-        feeText = 'Ã™â€¦Ã˜Â¬Ã˜Â§Ã™â€ Ã™Å ';
+        feeText = 'مجاني';
         break;
       case 'percentage':
         feeText = '${policy.amount ?? 0}%';
         break;
       case 'perItem':
-        feeText = '${(policy.amount ?? 0).toStringAsFixed(2)} Ã˜Â¯.Ã˜Â£/Ã™â€¦Ã™â€ Ã˜ÂªÃ˜Â¬';
+        feeText = '${(policy.amount ?? 0).toStringAsFixed(2)} د.أ/منتج';
         break;
       case 'fixed':
       default:
-        feeText = '${(policy.amount ?? 2.0).toStringAsFixed(2)} Ã˜Â¯.Ã˜Â£';
+        feeText = '${(policy.amount ?? 2.0).toStringAsFixed(2)} د.أ';
         break;
     }
     final etaText = policy.estimatedDays != null && policy.estimatedDays! > 0
-        ? '${policy.estimatedDays} Ã™Å Ã™Ë†Ã™â€¦'
-        : 'Ã¢â‚¬â€';
+        ? '${policy.estimatedDays} يوم'
+        : '—';
     final areaText = policy.freeShippingThreshold != null && policy.freeShippingThreshold! > 0
-        ? 'Ã™â€¦Ã˜Â¬Ã˜Â§Ã™â€ Ã™Å  Ã™ÂÃ™Ë†Ã™â€š ${policy.freeShippingThreshold} Ã˜Â¯.Ã˜Â£'
-        : 'Ã˜Â­Ã˜Â³Ã˜Â¨ Ã˜Â§Ã™â€žÃ™â€¦Ã™â€ Ã˜Â·Ã™â€šÃ˜Â©';
+        ? 'مجاني فوق ${policy.freeShippingThreshold} د.أ'
+        : 'حسب المنطقة';
 
     return Container(
       padding: const EdgeInsets.all(14),
@@ -811,11 +818,11 @@ class _TopDeliveryInfoCard extends StatelessWidget {
       ),
       child: Row(
         children: [
-          Expanded(child: _deliveryInfoItem(Icons.local_shipping_rounded, 'Ã˜Â±Ã˜Â³Ã™Ë†Ã™â€¦ Ã˜Â§Ã™â€žÃ˜ÂªÃ™Ë†Ã˜ÂµÃ™Å Ã™â€ž', feeText)),
+          Expanded(child: _deliveryInfoItem(Icons.local_shipping_rounded, 'رسوم التوصيل', feeText)),
           const SizedBox(width: 10),
-          Expanded(child: _deliveryInfoItem(Icons.timer_rounded, 'Ã™â€¦Ã˜Â¯Ã˜Â© Ã˜Â§Ã™â€žÃ˜ÂªÃ™Ë†Ã˜ÂµÃ™Å Ã™â€ž', etaText)),
+          Expanded(child: _deliveryInfoItem(Icons.timer_rounded, 'مدة التوصيل', etaText)),
           const SizedBox(width: 10),
-          Expanded(child: _deliveryInfoItem(Icons.location_on_rounded, 'Ã™â€¦Ã™â€ Ã˜Â·Ã™â€šÃ˜Â© Ã˜Â§Ã™â€žÃ˜ÂªÃ™Ë†Ã˜ÂµÃ™Å Ã™â€ž', areaText)),
+          Expanded(child: _deliveryInfoItem(Icons.location_on_rounded, 'منطقة التوصيل', areaText)),
         ],
       ),
     );

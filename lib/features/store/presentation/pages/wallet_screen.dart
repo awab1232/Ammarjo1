@@ -22,7 +22,7 @@ class _WalletScreenState extends State<WalletScreen> {
     final messenger = ScaffoldMessenger.of(context);
     String? selectedTechEmail;
     final amountCtrl = TextEditingController();
-    final noteCtrl = TextEditingController(text: 'Ã˜Â¯Ã™ÂÃ˜Â¹ Ã™â€¦Ã™â€šÃ˜Â§Ã˜Â¨Ã™â€ž Ã˜Â®Ã˜Â¯Ã™â€¦Ã˜Â© Ã™ÂÃ™â€ Ã™Å ');
+    final noteCtrl = TextEditingController(text: 'دفع مقابل خدمة فني');
     await showDialog<void>(
       context: context,
       builder: (ctx) => StatefulBuilder(
@@ -31,8 +31,24 @@ class _WalletScreenState extends State<WalletScreen> {
             title: Text('Pay Technician', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
             content: StreamBuilder<FeatureState<List<TechnicianProfile>>>(
               stream: TechniciansRepository.instance.watchTechnicians(),
-              builder: (context, snapshot) {
-                final state = snapshot.requireData;
+              builder: (context, snap) {
+                if (snap.hasError) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'تعذر تحميل قائمة الفنيين.',
+                      style: GoogleFonts.tajawal(color: Colors.red.shade800),
+                      textAlign: TextAlign.right,
+                    ),
+                  );
+                }
+                if (!snap.hasData) {
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 24),
+                    child: Center(child: CircularProgressIndicator(color: AppColors.orange)),
+                  );
+                }
+                final state = snap.data!;
                 final techs = switch (state) {
                   FeatureSuccess(:final data) => data,
                   _ => <TechnicianProfile>[],
@@ -53,7 +69,7 @@ class _WalletScreenState extends State<WalletScreen> {
                           .toList(),
                       onChanged: (v) => setLocal(() => selectedTechEmail = v),
                       decoration: InputDecoration(
-                        labelText: 'Ã˜Â§Ã˜Â®Ã˜ÂªÃ˜Â± Ã˜Â§Ã™â€žÃ™ÂÃ™â€ Ã™Å ',
+                        labelText: 'اختر الفني',
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                     ),
@@ -62,7 +78,7 @@ class _WalletScreenState extends State<WalletScreen> {
                       controller: amountCtrl,
                       keyboardType: const TextInputType.numberWithOptions(decimal: true),
                       decoration: InputDecoration(
-                        labelText: 'Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â¨Ã™â€žÃ˜Âº (JOD)',
+                        labelText: 'المبلغ (JOD)',
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                     ),
@@ -70,7 +86,7 @@ class _WalletScreenState extends State<WalletScreen> {
                     TextField(
                       controller: noteCtrl,
                       decoration: InputDecoration(
-                        labelText: 'Ã™â€¦Ã™â€žÃ˜Â§Ã˜Â­Ã˜Â¸Ã˜Â©',
+                        labelText: 'ملاحظة',
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                       ),
                     ),
@@ -79,7 +95,7 @@ class _WalletScreenState extends State<WalletScreen> {
               },
             ),
             actions: [
-              TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Ã˜Â¥Ã™â€žÃ˜ÂºÃ˜Â§Ã˜Â¡', style: GoogleFonts.tajawal())),
+              TextButton(onPressed: () => Navigator.pop(ctx), child: Text('إلغاء', style: GoogleFonts.tajawal())),
               FilledButton(
                 style: FilledButton.styleFrom(backgroundColor: AppColors.navy),
                 onPressed: () async {
@@ -96,15 +112,15 @@ class _WalletScreenState extends State<WalletScreen> {
                     if (!mounted || !ctx.mounted) return;
                     Navigator.pop(ctx);
                     messenger.showSnackBar(
-                      SnackBar(content: Text('Ã˜ÂªÃ™â€¦ Ã˜Â§Ã™â€žÃ˜Â¯Ã™ÂÃ˜Â¹ Ã˜Â¨Ã™â€ Ã˜Â¬Ã˜Â§Ã˜Â­.', style: GoogleFonts.tajawal())),
+                      SnackBar(content: Text('تم الدفع بنجاح.', style: GoogleFonts.tajawal())),
                     );
                   } on StateError {
                     if (!mounted) return;
-                    final msg = 'Ã˜ÂªÃ˜Â¹Ã˜Â°Ã™â€˜Ã˜Â± Ã˜ÂªÃ™â€ Ã™ÂÃ™Å Ã˜Â° Ã˜Â§Ã™â€žÃ˜Â¹Ã™â€¦Ã™â€žÃ™Å Ã˜Â©.';
+                    final msg = 'تعذّر تنفيذ العملية.';
                     messenger.showSnackBar(SnackBar(content: Text(msg, style: GoogleFonts.tajawal())));
                   }
                 },
-                child: Text('Ã˜Â¯Ã™ÂÃ˜Â¹', style: GoogleFonts.tajawal(color: Colors.white)),
+                child: Text('دفع', style: GoogleFonts.tajawal(color: Colors.white)),
               ),
             ],
           );
@@ -127,20 +143,30 @@ class _WalletScreenState extends State<WalletScreen> {
         backgroundColor: Colors.white,
         centerTitle: true,
         leading: const AppBarBackButton(),
-        title: Text('Ã™â€¦Ã˜Â­Ã™ÂÃ˜Â¸Ã˜Â© Ã˜Â¹Ã™Å½Ã™â€¦Ã™â€˜Ã˜Â§Ã˜Â±', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+        title: Text('محفظة عمّار', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
       ),
       body: email.isEmpty
-          ? Center(child: Text('Ã˜Â³Ã˜Â¬Ã™â€˜Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â¯Ã˜Â®Ã™Ë†Ã™â€ž Ã™â€žÃ™â€žÃ™Ë†Ã˜ÂµÃ™Ë†Ã™â€ž Ã˜Â¥Ã™â€žÃ™â€° Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â­Ã™ÂÃ˜Â¸Ã˜Â©.', style: GoogleFonts.tajawal(color: AppColors.textSecondary)))
+          ? Center(child: Text('سجّل الدخول للوصول إلى المحفظة.', style: GoogleFonts.tajawal(color: AppColors.textSecondary)))
           : Column(
               children: [
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: StreamBuilder<double>(
                     stream: CustomerOpsRepository.instance.watchWalletBalance(email),
-                    builder: (context, snapshot) {
-                      final balance = switch (snapshot.connectionState) {
+                    builder: (context, snap) {
+                      if (snap.hasError) {
+                        return Padding(
+                          padding: const EdgeInsets.all(16),
+                          child: Text(
+                            'تعذر تحميل الرصيد.',
+                            style: GoogleFonts.tajawal(color: AppColors.textSecondary),
+                            textAlign: TextAlign.center,
+                          ),
+                        );
+                      }
+                      final balance = switch (snap.connectionState) {
                         ConnectionState.waiting => 0.0,
-                        _ => snapshot.requireData,
+                        _ => snap.data ?? 0.0,
                       };
                       return Container(
                         width: double.infinity,
@@ -190,7 +216,7 @@ class _WalletScreenState extends State<WalletScreen> {
                   child: Align(
                     alignment: AlignmentDirectional.centerStart,
                     child: Text(
-                      'Ã˜Â³Ã˜Â¬Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â­Ã˜Â±Ã™Æ’Ã˜Â§Ã˜Âª',
+                      'سجل الحركات',
                       style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, color: AppColors.textPrimary),
                     ),
                   ),
@@ -199,18 +225,26 @@ class _WalletScreenState extends State<WalletScreen> {
                 Expanded(
                   child: StreamBuilder<FeatureState<List<WalletTransactionItem>>>(
                     stream: CustomerOpsRepository.instance.watchTransactions(email),
-                    builder: (context, snapshot) {
-                      if (snapshot.connectionState == ConnectionState.waiting) {
+                    builder: (context, snap) {
+                      if (snap.connectionState == ConnectionState.waiting) {
                         return const Center(child: CircularProgressIndicator(color: AppColors.orange));
                       }
-                      final state = snapshot.requireData;
+                      if (snap.hasError || !snap.hasData) {
+                        return Center(
+                          child: Text(
+                            'تعذر تحميل الحركات.',
+                            style: GoogleFonts.tajawal(color: AppColors.textSecondary),
+                          ),
+                        );
+                      }
+                      final state = snap.data!;
                       final txs = switch (state) {
                         FeatureSuccess(:final data) => data,
                         _ => <WalletTransactionItem>[],
                       };
                       if (txs.isEmpty) {
                         return Center(
-                          child: Text('Ã™â€žÃ˜Â§ Ã™Å Ã™Ë†Ã˜Â¬Ã˜Â¯ Ã˜Â­Ã˜Â±Ã™Æ’Ã˜Â§Ã˜Âª Ã˜Â­Ã˜ÂªÃ™â€° Ã˜Â§Ã™â€žÃ˜Â¢Ã™â€ .', style: GoogleFonts.tajawal(color: AppColors.textSecondary)),
+                          child: Text('لا يوجد حركات حتى الآن.', style: GoogleFonts.tajawal(color: AppColors.textSecondary)),
                         );
                       }
                       return ListView.separated(

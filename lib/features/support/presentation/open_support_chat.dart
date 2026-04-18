@@ -12,7 +12,7 @@ import 'support_chat_page.dart';
 
 String _displayNameFromStore(StoreController store) {
   final p = store.profile;
-  if (p == null) return 'Ã˜Â¹Ã™â€¦Ã™Å Ã™â€ž';
+  if (p == null) return 'عميل';
   final f = p.fullName?.trim();
   if (f != null && f.isNotEmpty) return f;
   final a = '${p.firstName ?? ''} ${p.lastName ?? ''}'.trim();
@@ -20,11 +20,11 @@ String _displayNameFromStore(StoreController store) {
   return p.email;
 }
 
-/// Ã™Å Ã™ÂÃ˜ÂªÃ˜Â­ Ã™â€¦Ã˜Â­Ã˜Â§Ã˜Â¯Ã˜Â«Ã˜Â© Ã˜Â§Ã™â€žÃ˜Â¯Ã˜Â¹Ã™â€¦: Ã™â€¦Ã˜Â­Ã˜Â§Ã˜Â¯Ã˜Â«Ã˜Â© Ã™â€¦Ã™ÂÃ˜ÂªÃ™Ë†Ã˜Â­Ã˜Â© Ã™Ë†Ã˜Â§Ã˜Â­Ã˜Â¯Ã˜Â© Ã™â€žÃ™Æ’Ã™â€ž Ã™â€¦Ã˜Â³Ã˜ÂªÃ˜Â®Ã˜Â¯Ã™â€¦Ã˜Å’ Ã˜Â£Ã™Ë† Ã˜Â¥Ã™â€ Ã˜Â´Ã˜Â§Ã˜Â¡ Ã˜Â¬Ã˜Â¯Ã™Å Ã˜Â¯Ã˜Â©.
+/// يفتح محادثة الدعم: محادثة مفتوحة واحدة لكل مستخدم، أو إنشاء جديدة.
 Future<void> openSupportChat(BuildContext context) async {
   if (!Firebase.apps.isNotEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Firebase Ã˜ÂºÃ™Å Ã˜Â± Ã˜Â¬Ã˜Â§Ã™â€¡Ã˜Â².', style: GoogleFonts.tajawal())),
+      SnackBar(content: Text('Firebase غير جاهز.', style: GoogleFonts.tajawal())),
     );
     return;
   }
@@ -32,7 +32,7 @@ Future<void> openSupportChat(BuildContext context) async {
   if (user == null) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Ã˜Â³Ã˜Â¬Ã™â€˜Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â¯Ã˜Â®Ã™Ë†Ã™â€ž Ã™â€žÃ™ÂÃ˜ÂªÃ˜Â­ Ã™â€¦Ã˜Â­Ã˜Â§Ã˜Â¯Ã˜Â«Ã˜Â© Ã˜Â§Ã™â€žÃ˜Â¯Ã˜Â¹Ã™â€¦.', style: GoogleFonts.tajawal()),
+        content: Text('سجّل الدخول لفتح محادثة الدعم.', style: GoogleFonts.tajawal()),
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -53,7 +53,7 @@ Future<void> openSupportChat(BuildContext context) async {
     if (result.created) {
       await UserNotificationsRepository.notifyAdminsNewSupportChat(
         customerName: name,
-        preview: 'Ã˜Â¨Ã˜Â¯Ã˜Â£ Ã™â€¦Ã˜Â­Ã˜Â§Ã˜Â¯Ã˜Â«Ã˜Â© Ã˜Â¯Ã˜Â¹Ã™â€¦ Ã˜Â¬Ã˜Â¯Ã™Å Ã˜Â¯Ã˜Â©',
+        preview: 'بدأ محادثة دعم جديدة',
       );
     }
     if (!context.mounted) return;
@@ -68,7 +68,7 @@ Future<void> openSupportChat(BuildContext context) async {
   } on Object {
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Ã˜ÂªÃ˜Â¹Ã˜Â°Ã™â€˜Ã˜Â± Ã™ÂÃ˜ÂªÃ˜Â­ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â­Ã˜Â§Ã˜Â¯Ã˜Â«Ã˜Â©: unexpected error', style: GoogleFonts.tajawal())),
+      SnackBar(content: Text('تعذّر فتح المحادثة. حاول مرة أخرى.', style: GoogleFonts.tajawal())),
     );
   }
 }

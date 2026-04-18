@@ -15,7 +15,7 @@ import '../ai/gemini_image_analyze.dart';
 import '../store_controller.dart';
 import 'product_details_page.dart';
 
-/// Ã˜ÂªÃ˜Â¨Ã™Ë†Ã™Å Ã˜Â¨ Ã˜ÂªÃ˜Â­Ã™â€žÃ™Å Ã™â€ž Ã˜Â§Ã™â€žÃ˜ÂµÃ™Ë†Ã˜Â±Ã˜Â© Ã¢â‚¬â€ Ã˜ÂªÃ˜ÂµÃ™Ë†Ã™Å Ã˜Â± Ã˜Â£Ã™Ë† Ã˜Â±Ã™ÂÃ˜Â¹ Ã˜Â«Ã™â€¦ Gemini Ã™Ë†Ã˜Â§Ã™â€šÃ˜ÂªÃ˜Â±Ã˜Â§Ã˜Â­ Ã™â€¦Ã™â€ Ã˜ÂªÃ˜Â¬Ã˜Â§Ã˜Âª + Ã™ÂÃ˜Â¦Ã˜Â© Ã™ÂÃ™â€ Ã™Å  Ã˜Â¹Ã™â€ Ã˜Â¯ Ã˜Â§Ã™â€žÃ˜Â¹Ã˜Â·Ã™â€ž.
+/// تبويب تحليل الصورة — تصوير أو رفع ثم Gemini واقتراح منتجات وفئة فني عند العطل.
 class AiVisionTab extends StatefulWidget {
   const AiVisionTab({super.key, this.onBookMaintenance});
 
@@ -87,18 +87,18 @@ class _AiVisionTabState extends State<AiVisionTab> with SingleTickerProviderStat
         _geminiError = null;
       });
 
-      _appendThinking('Ã˜ÂªÃ™â€¦ Ã˜Â§Ã˜Â³Ã˜ÂªÃ™â€žÃ˜Â§Ã™â€¦ Ã˜Â§Ã™â€žÃ˜ÂµÃ™Ë†Ã˜Â±Ã˜Â© Ã™Ë†Ã˜Â¬Ã˜Â§Ã˜Â±Ã™Å  Ã˜ÂªÃ˜Â¬Ã™â€¡Ã™Å Ã˜Â² Ã˜Â§Ã™â€žÃ˜Â¨Ã™Å Ã˜Â§Ã™â€ Ã˜Â§Ã˜Âª...');
+      _appendThinking('تم استلام الصورة وجاري تجهيز البيانات...');
       await Future<void>.delayed(const Duration(milliseconds: 280));
       if (!mounted) return;
 
       final bytes = await file.readAsBytes();
       final mime = _mimeForXFile(file);
-      _appendThinking('Ã™â€šÃ˜Â±Ã˜Â§Ã˜Â¡Ã˜Â© Ã˜Â§Ã™â€žÃ˜ÂµÃ™Ë†Ã˜Â±Ã˜Â© (${(bytes.length / 1024).toStringAsFixed(1)} Ã™Æ’.Ã˜Â¨) Ã¢â‚¬â€ Ã˜Â¬Ã˜Â§Ã˜Â±Ã™Å  Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â­Ã˜Â¶Ã™Å Ã˜Â± Ã™â€žÃ™â€žÃ˜ÂªÃ˜Â­Ã™â€žÃ™Å Ã™â€ž...');
+      _appendThinking('قراءة الصورة (${(bytes.length / 1024).toStringAsFixed(1)} ك.ب) — جاري التحضير للتحليل...');
       await Future<void>.delayed(const Duration(milliseconds: 220));
       if (!mounted) return;
 
       if (!isGeminiConfigured) {
-        _appendThinking('Ã˜ÂªÃ™Ë†Ã™â€šÃ™Â: Ã™â€¦Ã™ÂÃ˜ÂªÃ˜Â§Ã˜Â­ API Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã˜Â¶Ã˜Â¨Ã™Ë†Ã˜Â·.');
+        _appendThinking('توقف: مفتاح API غير مضبوط.');
         setState(() {
           _geminiError = geminiMissingKeyUserMessage;
           _analyzing = false;
@@ -106,28 +106,28 @@ class _AiVisionTabState extends State<AiVisionTab> with SingleTickerProviderStat
         return;
       }
 
-      _appendThinking('Ã˜Â¬Ã˜Â§Ã˜Â±Ã™Å  Ã˜Â¥Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž Ã˜Â§Ã™â€žÃ˜ÂµÃ™Ë†Ã˜Â±Ã˜Â© Ã˜Â¥Ã™â€žÃ™â€° Ã™â€ Ã™â€¦Ã™Ë†Ã˜Â°Ã˜Â¬ Ã˜Â§Ã™â€žÃ˜Â°Ã™Æ’Ã˜Â§Ã˜Â¡ Ã˜Â§Ã™â€žÃ˜Â§Ã˜ÂµÃ˜Â·Ã™â€ Ã˜Â§Ã˜Â¹Ã™Å  (Gemini)...');
+      _appendThinking('جاري إرسال الصورة إلى نموذج الذكاء الاصطناعي (Gemini)...');
       String? raw;
       try {
         raw = await analyzeImageWithAI(bytes, mimeType: mime);
       } on FirebaseAIException {
-        _appendThinking('Ã™ÂÃ˜Â´Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â·Ã™â€žÃ˜Â¨: unexpected error');
+        _appendThinking('فشل الطلب');
         setState(() {
           _geminiError = 'تعذر تحليل الصورة عبر Gemini.';
           _analyzing = false;
         });
         return;
       } on Object {
-        _appendThinking('Ã˜Â­Ã˜Â¯Ã˜Â« Ã˜Â®Ã˜Â·Ã˜Â£ Ã˜Â£Ã˜Â«Ã™â€ Ã˜Â§Ã˜Â¡ Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â­Ã™â€žÃ™Å Ã™â€ž.');
+        _appendThinking('حدث خطأ أثناء التحليل.');
         setState(() {
-          _geminiError = 'unexpected error';
+          _geminiError = 'تعذر تحليل الصورة. حاول مرة أخرى.';
           _analyzing = false;
         });
         return;
       }
 
       if (!mounted) return;
-      _appendThinking('Ã˜Â¬Ã˜Â§Ã˜Â±Ã™Å  Ã˜Â§Ã˜Â³Ã˜ÂªÃ˜Â®Ã˜Â±Ã˜Â§Ã˜Â¬ Ã˜Â§Ã˜Â³Ã™â€¦ Ã˜Â§Ã™â€žÃ™â€šÃ˜Â·Ã˜Â¹Ã˜Â© Ã™Ë†Ã˜Â§Ã™â€žÃ™â€šÃ˜Â³Ã™â€¦ Ã˜Â§Ã™â€žÃ™â€¦Ã™â€šÃ˜ÂªÃ˜Â±Ã˜Â­ Ã˜Â¨Ã˜Â§Ã™â€žÃ˜Â¹Ã˜Â±Ã˜Â¨Ã™Å Ã˜Â©...');
+      _appendThinking('جاري استخراج اسم القطعة والقسم المقترح بالعربية...');
       await Future<void>.delayed(const Duration(milliseconds: 180));
 
       if (!mounted) return;
@@ -148,7 +148,11 @@ class _AiVisionTabState extends State<AiVisionTab> with SingleTickerProviderStat
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text(kIsWeb ? 'Ã˜ÂªÃ˜Â¹Ã˜Â°Ã˜Â± Ã˜Â§Ã˜Â®Ã˜ÂªÃ™Å Ã˜Â§Ã˜Â± Ã˜Â§Ã™â€žÃ˜ÂµÃ™Ë†Ã˜Â±Ã˜Â©. Ã˜Â¬Ã˜Â±Ã™â€˜Ã˜Â¨ Ã™â€¦Ã˜ÂªÃ˜ÂµÃ™ÂÃ˜Â­Ã˜Â§Ã™â€¹ Ã™Å Ã˜Â¯Ã˜Â¹Ã™â€¦ Ã˜Â§Ã˜Â®Ã˜ÂªÃ™Å Ã˜Â§Ã˜Â± Ã˜Â§Ã™â€žÃ™â€žÃ™ÂÃ˜Â§Ã˜Âª.' : 'حدث خطأ أثناء اختيار الصورة'),
+          content: Text(
+            kIsWeb
+                ? 'تعذر اختيار الصورة. جرّب متصفحاً يدعم اختيار الملفات.'
+                : 'حدث خطأ أثناء اختيار الصورة',
+          ),
           behavior: SnackBarBehavior.floating,
         ),
       );
@@ -173,7 +177,7 @@ class _AiVisionTabState extends State<AiVisionTab> with SingleTickerProviderStat
             children: [
               ListTile(
                 leading: Icon(Icons.camera_alt_rounded, color: AppColors.orange),
-                title: const Text('Ã˜Â§Ã™â€žÃ˜ÂªÃ™â€šÃ˜Â§Ã˜Â· Ã˜ÂµÃ™Ë†Ã˜Â±Ã˜Â© Ã˜Â¨Ã˜Â§Ã™â€žÃ™Æ’Ã˜Â§Ã™â€¦Ã™Å Ã˜Â±Ã˜Â§', textAlign: TextAlign.right),
+                title: const Text('التقاط صورة بالكاميرا', textAlign: TextAlign.right),
                 onTap: () {
                   Navigator.pop(ctx);
                   _pick(ImageSource.camera);
@@ -181,7 +185,7 @@ class _AiVisionTabState extends State<AiVisionTab> with SingleTickerProviderStat
               ),
               ListTile(
                 leading: Icon(Icons.photo_library_rounded, color: AppColors.orange),
-                title: const Text('Ã˜Â§Ã˜Â®Ã˜ÂªÃ™Å Ã˜Â§Ã˜Â± Ã™â€¦Ã™â€  Ã™â€¦Ã˜Â¹Ã˜Â±Ã˜Â¶ Ã˜Â§Ã™â€žÃ˜ÂµÃ™Ë†Ã˜Â±', textAlign: TextAlign.right),
+                title: const Text('اختيار من معرض الصور', textAlign: TextAlign.right),
                 onTap: () {
                   Navigator.pop(ctx);
                   _pick(ImageSource.gallery);
@@ -241,7 +245,7 @@ class _AiVisionTabState extends State<AiVisionTab> with SingleTickerProviderStat
                       Icon(Icons.auto_awesome_rounded, size: 44, color: AppColors.orange.withValues(alpha: 0.9)),
                       const SizedBox(height: 12),
                       Text(
-                        'Ã˜ÂµÃ™Ë†Ã™â€˜Ã˜Â± Ã˜Â§Ã™â€žÃ™â€šÃ˜Â·Ã˜Â¹Ã˜Â© Ã˜Â§Ã™â€žÃ™â€¦Ã™Æ’Ã˜Â³Ã™Ë†Ã˜Â±Ã˜Â© Ã˜Â£Ã™Ë† Ã˜Â§Ã˜Â±Ã™ÂÃ˜Â¹ Ã˜ÂµÃ™Ë†Ã˜Â±Ã˜ÂªÃ™â€¡Ã˜Â§ Ã™Ë†Ã˜Â³Ã™â€ Ã˜Â³Ã˜Â§Ã˜Â¹Ã˜Â¯Ã™Æ’ Ã™ÂÃ™Å  Ã˜Â¥Ã™Å Ã˜Â¬Ã˜Â§Ã˜Â¯ Ã˜Â¨Ã˜Â¯Ã˜Â§Ã˜Â¦Ã™â€ž Ã™â€¦Ã™â€  Ã˜Â§Ã™â€žÃ™â€¦Ã˜ÂªÃ˜Â¬Ã˜Â±.',
+                        'صوّر القطعة المكسورة أو ارفع صورتها وسنساعدك في إيجاد بدائل من المتاجر.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: width > 500 ? 16 : 14,
@@ -292,7 +296,7 @@ class _AiVisionTabState extends State<AiVisionTab> with SingleTickerProviderStat
                 if (!_analyzing && _suggestions.isNotEmpty) ...[
                   const SizedBox(height: 8),
                   const Text(
-                    'Ã˜Â§Ã™â€šÃ˜ÂªÃ˜Â±Ã˜Â§Ã˜Â­Ã˜Â§Ã˜Âª Ã™â€šÃ˜Â¯ Ã˜ÂªÃ™â€ Ã˜Â§Ã˜Â³Ã˜Â¨Ã™Æ’',
+                    'اقتراحات قد تناسبك',
                     textAlign: TextAlign.right,
                     style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                   ),
@@ -309,7 +313,7 @@ class _AiVisionTabState extends State<AiVisionTab> with SingleTickerProviderStat
                       padding: const EdgeInsets.symmetric(vertical: 14),
                     ),
                     icon: const Icon(Icons.refresh_rounded),
-                    label: const Text('Ã˜ÂªÃ˜Â­Ã™â€žÃ™Å Ã™â€ž Ã˜ÂµÃ™Ë†Ã˜Â±Ã˜Â© Ã˜Â£Ã˜Â®Ã˜Â±Ã™â€°'),
+                    label: const Text('تحليل صورة أخرى'),
                   ),
                 ],
               ],
@@ -343,18 +347,18 @@ Map<String, dynamic>? _parseGeminiJsonVision(String? raw) {
 
 List<Product> _buildSuggestedProducts(StoreController store) {
   const keywords = <String>[
-    'Ã˜Â³Ã˜Â¨Ã˜Â§Ã™Æ’Ã˜Â©',
-    'Ã˜ÂµÃ™â€ Ã˜Â¨Ã™Ë†Ã˜Â±',
+    'سباكة',
+    'صنبور',
     'plumb',
     'pipe',
-    'Ã˜Â£Ã˜Â¯Ã˜Â§Ã˜Â©',
-    'Ã˜Â¹Ã˜Â¯Ã˜Â©',
+    'أداة',
+    'عدة',
     'tool',
     'wrench',
-    'Ã™â€¦Ã™ÂÃ˜ÂªÃ˜Â§Ã˜Â­',
-    'Ã˜Â®Ã˜Â±Ã˜Â·Ã™Ë†Ã™â€¦',
+    'مفتاح',
+    'خرطوم',
     'valve',
-    'Ã˜Â³Ã˜Â¨Ã˜Â§Ã™Æ’',
+    'سباك',
   ];
 
   bool matches(Product p) {
@@ -389,7 +393,7 @@ List<Product> _buildSuggestedProducts(StoreController store) {
 
 Product _mockSuggestion(int index) {
   const ids = [99001, 99002, 99003];
-  const names = ['Ã˜ÂµÃ™â€¦Ã˜Â§Ã™â€¦ Ã˜Â³Ã˜Â¨Ã˜Â§Ã™Æ’Ã˜Â© Ã™â€ Ã˜Â­Ã˜Â§Ã˜Â³Ã™Å ', 'Ã˜Â¹Ã˜Â¯Ã˜Â© Ã™Å Ã˜Â¯Ã™Ë†Ã™Å Ã˜Â© Ã™â€¦Ã˜ÂªÃ˜Â¹Ã˜Â¯Ã˜Â¯Ã˜Â© Ã˜Â§Ã™â€žÃ˜Â§Ã˜Â³Ã˜ÂªÃ˜Â®Ã˜Â¯Ã˜Â§Ã™â€¦', 'Ã™â€¦Ã™Ë†Ã˜ÂµÃ™â€ž Ã˜Â®Ã˜Â±Ã˜Â·Ã™Ë†Ã™â€¦ Ã™â€¦Ã˜Â±Ã™â€ '];
+  const names = ['صمام سباكة نحاسي', 'عدة يدوية متعددة الاستخدام', 'موصل خرطوم مرن'];
   const prices = ['12.000', '8.500', '4.000'];
   final i = index.clamp(0, 2);
   return Product(
@@ -430,7 +434,7 @@ class _CaptureButton extends StatelessWidget {
               const SizedBox(width: 14),
               Flexible(
                 child: Text(
-                  'Ã˜Â§Ã˜Â¶Ã˜ÂºÃ˜Â· Ã™â€žÃ˜ÂªÃ˜ÂµÃ™Ë†Ã™Å Ã˜Â± Ã˜Â§Ã™â€žÃ™â€šÃ˜Â·Ã˜Â¹Ã˜Â© Ã˜Â§Ã™â€žÃ™â€¦Ã™Æ’Ã˜Â³Ã™Ë†Ã˜Â±Ã˜Â© Ã˜Â£Ã™Ë† Ã˜Â±Ã™ÂÃ˜Â¹ Ã˜ÂµÃ™Ë†Ã˜Â±Ã˜Â©',
+                  'اضغط لتصوير القطعة المكسورة أو رفع صورة',
                   textAlign: TextAlign.center,
                   style: TextStyle(
                     color: Colors.white,
@@ -527,7 +531,7 @@ class _ThinkingProcessBlock extends StatelessWidget {
               const SizedBox(width: 12),
               const Expanded(
                 child: Text(
-                  'Ã™â€¦Ã˜Â³Ã˜Â§Ã˜Â± Ã˜ÂªÃ™ÂÃ™Æ’Ã™Å Ã˜Â± AmmarJo',
+                  'مسار تفكير AmmarJo',
                   style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppColors.textPrimary),
                   textAlign: TextAlign.right,
                 ),
@@ -536,7 +540,7 @@ class _ThinkingProcessBlock extends StatelessWidget {
           ),
           const SizedBox(height: 16),
           const Text(
-            'Ã˜Â¬Ã˜Â§Ã˜Â±Ã™Å  Ã˜ÂªÃ˜Â­Ã™â€žÃ™Å Ã™â€ž Ã˜Â§Ã™â€žÃ™â€šÃ˜Â·Ã˜Â¹Ã˜Â© Ã˜Â¨Ã˜Â°Ã™Æ’Ã˜Â§Ã˜Â¡ AmmarJo...',
+            'جاري تحليل القطعة بذكاء AmmarJo...',
             textAlign: TextAlign.center,
             style: TextStyle(
               fontSize: 15,
@@ -608,7 +612,7 @@ class _IdentifiedResultCard extends StatelessWidget {
   bool get _showTechCta {
     final t = technicianCategoryAr?.trim() ?? '';
     if (t.isEmpty) return false;
-    return !t.contains('Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã˜Â·Ã™â€žÃ™Ë†Ã˜Â¨') && !t.contains('Ã™â€žÃ˜Â§ Ã™Å Ã˜Â­Ã˜ÂªÃ˜Â§Ã˜Â¬');
+    return !t.contains('غير مطلوب') && !t.contains('لا يحتاج');
   }
 
   @override
@@ -637,7 +641,7 @@ class _IdentifiedResultCard extends StatelessWidget {
               borderRadius: BorderRadius.circular(8),
             ),
             child: const Text(
-              'Ã™â€ Ã˜ÂªÃ™Å Ã˜Â¬Ã˜Â© Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â¹Ã˜Â±Ã™Â',
+              'نتيجة التعرف',
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: AppColors.orange),
             ),
           ),
@@ -655,7 +659,7 @@ class _IdentifiedResultCard extends StatelessWidget {
           if (categoryAr != null && categoryAr!.isNotEmpty) ...[
             const SizedBox(height: 10),
             Text(
-              'Ã™â€šÃ˜Â³Ã™â€¦ Ã˜Â§Ã™â€žÃ™â€¦Ã™â€šÃ˜ÂªÃ˜Â±Ã˜Â­: $categoryAr',
+              'قسم المقترح: $categoryAr',
               textAlign: TextAlign.right,
               style: const TextStyle(fontSize: 14, color: AppColors.textSecondary, height: 1.35),
             ),
@@ -663,7 +667,7 @@ class _IdentifiedResultCard extends StatelessWidget {
           if (technicianCategoryAr != null && technicianCategoryAr!.isNotEmpty) ...[
             const SizedBox(height: 10),
             Text(
-              'Ã™ÂÃ˜Â¦Ã˜Â© Ã˜Â§Ã™â€žÃ™ÂÃ™â€ Ã™Å  Ã˜Â§Ã™â€žÃ™â€¦Ã™â€šÃ˜ÂªÃ˜Â±Ã˜Â­Ã˜Â©: $technicianCategoryAr',
+              'فئة الفني المقترحة: $technicianCategoryAr',
               textAlign: TextAlign.right,
               style: TextStyle(fontSize: 14, color: AppColors.navy.withValues(alpha: 0.9), height: 1.35, fontWeight: FontWeight.w600),
             ),
@@ -681,7 +685,7 @@ class _IdentifiedResultCard extends StatelessWidget {
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                 ),
                 icon: const Icon(Icons.home_repair_service_rounded, size: 20),
-                label: const Text('Ã˜Â§Ã˜Â­Ã˜Â¬Ã˜Â² Ã™ÂÃ™â€ Ã™â€˜Ã™Å Ã˜Â§Ã™â€¹ Ã™â€žÃ™â€¦Ã˜Â¹Ã˜Â§Ã™â€žÃ˜Â¬Ã˜Â© Ã˜Â§Ã™â€žÃ˜Â¹Ã˜Â·Ã™â€ž', textAlign: TextAlign.center),
+                label: const Text('احجز فنّياً لمعالجة العطل', textAlign: TextAlign.center),
               ),
             ),
           ],

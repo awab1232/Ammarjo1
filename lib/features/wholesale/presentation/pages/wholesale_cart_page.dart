@@ -135,7 +135,7 @@ class _WholesaleCartPageState extends State<WholesaleCartPage> {
                               children: [
                                 Expanded(
                                   child: Text(
-                                    '${it.productName} â€¢ ${it.unitPrice.toStringAsFixed(2)} Ã— ${it.quantity}',
+                                    '${it.productName} · ${it.unitPrice.toStringAsFixed(2)} × ${it.quantity}',
                                     style: GoogleFonts.tajawal(),
                                     textAlign: TextAlign.right,
                                   ),

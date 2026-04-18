@@ -30,9 +30,9 @@ class ReviewsRepository {
 
   Future<FeatureState<Map<String, String>>> _authHeaders() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return FeatureState.failure('Ã™Å Ã˜Â±Ã˜Â¬Ã™â€° Ã˜ÂªÃ˜Â³Ã˜Â¬Ã™Å Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â¯Ã˜Â®Ã™Ë†Ã™â€ž Ã˜Â£Ã™Ë†Ã™â€žÃ˜Â§Ã™â€¹');
+    if (user == null) return FeatureState.failure('يرجى تسجيل الدخول أولاً');
     final token = await user.getIdToken();
-    if (token == null || token.isEmpty) return FeatureState.failure('Ã˜ÂªÃ˜Â¹Ã˜Â°Ã˜Â± Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â­Ã™â€šÃ™â€š Ã™â€¦Ã™â€  Ã™â€¡Ã™Ë†Ã™Å Ã˜Â© Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â³Ã˜ÂªÃ˜Â®Ã˜Â¯Ã™â€¦');
+    if (token == null || token.isEmpty) return FeatureState.failure('تعذر التحقق من هوية المستخدم');
     return FeatureState.success({
       'Authorization': 'Bearer $token',
       'Content-Type': 'application/json',
@@ -47,7 +47,7 @@ class ReviewsRepository {
         flow: 'ratings_http',
         reason: 'missing_backend_base_url',
       );
-      return FeatureState.failure('Backend URL Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã˜Â¶Ã˜Â¨Ã™Ë†Ã˜Â·');
+      return FeatureState.failure('عنوان الخادم غير مضبوط');
     }
     final headersState = await _authHeaders();
     if (headersState is! FeatureSuccess<Map<String, String>>) {
@@ -70,7 +70,7 @@ class ReviewsRepository {
         reason: 'http_${res.statusCode}',
         extra: {'path': path},
       );
-      return FeatureState.failure('Ã™ÂÃ˜Â´Ã™â€ž Ã˜ÂªÃ˜Â­Ã™â€¦Ã™Å Ã™â€ž Ã˜Â§Ã™â€žÃ˜ÂªÃ™â€šÃ™Å Ã™Å Ã™â€¦Ã˜Â§Ã˜Âª (${res.statusCode})');
+      return FeatureState.failure('فشل تحميل التقييمات (${res.statusCode})');
     }
     return FeatureState.success(jsonDecode(res.body));
   }
@@ -83,7 +83,7 @@ class ReviewsRepository {
         flow: 'ratings_http',
         reason: 'missing_backend_base_url',
       );
-      return FeatureState.failure('Backend URL Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã˜Â¶Ã˜Â¨Ã™Ë†Ã˜Â·');
+      return FeatureState.failure('عنوان الخادم غير مضبوط');
     }
     final headersState = await _authHeaders();
     if (headersState is! FeatureSuccess<Map<String, String>>) {
@@ -112,7 +112,7 @@ class ReviewsRepository {
         reason: 'http_${res.statusCode}',
         extra: {'path': path},
       );
-      return FeatureState.failure('Ã˜ÂªÃ˜Â¹Ã˜Â°Ã˜Â± Ã˜Â¥Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž Ã˜Â§Ã™â€žÃ˜ÂªÃ™â€šÃ™Å Ã™Å Ã™â€¦ (${res.statusCode})');
+      return FeatureState.failure('تعذر إرسال التقييم (${res.statusCode})');
     }
     final decoded = jsonDecode(res.body);
     if (decoded is Map<String, dynamic>) return FeatureState.success(decoded);
@@ -204,7 +204,7 @@ class ReviewsRepository {
     return FeatureState.failure('Invalid aggregate payload from backend');
   }
 
-  /// Ã™Å Ã˜ÂªÃ˜Â­Ã™â€šÃ™â€š Ã™â€¦Ã™â€  Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯ Ã™â€¦Ã™â€ Ã˜ÂªÃ˜Â¬ Ã™ÂÃ™Å  `orders/{id}.items` Ã™â€žÃ˜Â·Ã™â€žÃ˜Â¨Ã˜Â§Ã˜Âª Ã˜Â§Ã™â€žÃ˜Â¹Ã™â€¦Ã™Å Ã™â€ž (Woo `productId`).
+  /// يتحقق من وجود منتج في `orders/{id}.items` لطلبات العميل (Woo `productId`).
   Future<bool> hasCustomerPurchasedProductWooId({
     required String customerUid,
     required int productWooId,
@@ -214,8 +214,8 @@ class ReviewsRepository {
       // Legacy read-only behavior: purchase gating is no longer enforced via Firestore.
       // deprecated - migrated to Postgres ratings_reviews
       return true;
-    } on Object {
-      debugPrint('[ReviewsRepository] hasCustomerPurchasedProductWooId: unexpected error\n$StackTrace.current');
+    } on Object catch (e, st) {
+      debugPrint('[ReviewsRepository] hasCustomerPurchasedProductWooId: $e\n$st');
     }
     return true;
   }

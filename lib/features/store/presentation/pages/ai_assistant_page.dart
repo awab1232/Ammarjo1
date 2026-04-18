@@ -9,19 +9,19 @@ import '../../../../core/theme/app_colors.dart';
 import 'ai_chat_tab.dart';
 import 'ai_vision_tab.dart';
 
-/// Ã™â€¦Ã˜Â³Ã˜Â§Ã˜Â¹Ã˜Â¯ AmmarJo Ã¢â‚¬â€ Ã™â€¦Ã˜Â­Ã˜Â§Ã˜Â¯Ã˜Â«Ã˜Â© Ã™â€ Ã˜ÂµÃ™Å Ã˜Â© + Ã˜ÂªÃ˜Â­Ã™â€žÃ™Å Ã™â€ž Ã˜ÂµÃ™Ë†Ã˜Â±Ã˜Â© (Gemini).
+/// مساعد AmmarJo — محادثة نصية + تحليل صورة (Gemini).
 ///
-/// Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â¹Ã™â€žÃ™Å Ã™â€¦Ã˜Â§Ã˜Âª (`kGeminiSystemPrompt`) Ã™Ë†Ã˜Â¬Ã™â€žÃ˜Â¨ Ã˜Â³Ã™Å Ã˜Â§Ã™â€š Firestore (`getAppContextForAiMessage`) Ã™ÂÃ™Å 
-/// `lib/core/services/gemini_ai_service.dart`Ã˜â€º Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â­Ã˜Â§Ã˜Â¯Ã˜Â«Ã˜Â© Ã˜Â§Ã™â€žÃ™â€ Ã˜ÂµÃ™Å Ã˜Â© Ã™ÂÃ™Å  `ai_chat_tab.dart`.
-/// Ã˜ÂªÃ™â€¡Ã™Å Ã˜Â¦Ã˜Â© `GenerativeModel` (Ã˜Â¹Ã˜Â¨Ã˜Â± Ã˜Â­Ã˜Â²Ã™â€¦Ã˜Â© `firebase_ai` / Firebase AI Logic) Ã˜ÂªÃ˜ÂªÃ™â€¦ Ã™ÂÃ™Å  `gemini_store_chat.dart`
-/// Ã™Ë† `gemini_image_analyze.dart`Ã˜â€º Ã˜Â§Ã™â€žÃ˜Â¥Ã˜Â¹Ã˜Â¯Ã˜Â§Ã˜Â¯Ã˜Â§Ã˜Âª Ã™ÂÃ™Å  [GeminiConfig] (`gemini_config.dart`).
+/// التعليمات (`kGeminiSystemPrompt`) وجلب سياق Firestore (`getAppContextForAiMessage`) في
+/// `lib/core/services/gemini_ai_service.dart`؛ المحادثة النصية في `ai_chat_tab.dart`.
+/// تهيئة `GenerativeModel` (عبر حزمة `firebase_ai` / Firebase AI Logic) تتم في `gemini_store_chat.dart`
+/// و`gemini_image_analyze.dart`؛ الإعدادات في [GeminiConfig] (`gemini_config.dart`).
 class AiAssistantPage extends StatefulWidget {
   const AiAssistantPage({super.key, this.onBookMaintenance, this.onOpenQuantityCalculator});
 
-  /// Ã˜Â§Ã™â€žÃ˜Â§Ã™â€ Ã˜ÂªÃ™â€šÃ˜Â§Ã™â€ž Ã™â€žÃ˜ÂªÃ˜Â¨Ã™Ë†Ã™Å Ã˜Â¨ Ã˜Â§Ã™â€žÃ˜ÂµÃ™Å Ã˜Â§Ã™â€ Ã˜Â© (Ã˜Â­Ã˜Â¬Ã˜Â² Ã™ÂÃ™â€ Ã™Å ).
+  /// الانتقال لتبويب الصيانة (حجز فني).
   final VoidCallback? onBookMaintenance;
 
-  /// Ã™ÂÃ˜ÂªÃ˜Â­ Ã˜Â­Ã˜Â§Ã˜Â³Ã˜Â¨Ã˜Â© Ã˜Â§Ã™â€žÃ™Æ’Ã™â€¦Ã™Å Ã˜Â§Ã˜Âª Ã˜Â§Ã™â€žÃ˜Â°Ã™Æ’Ã™Å Ã˜Â©.
+  /// فتح حاسبة الكميات الذكية.
   final VoidCallback? onOpenQuantityCalculator;
 
   @override
@@ -63,7 +63,12 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
     if (!mounted) return;
     setState(() {});
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(k.isEmpty ? 'Ã˜ÂªÃ™â€¦ Ã™â€¦Ã˜Â³Ã˜Â­ Ã˜Â§Ã™â€žÃ™â€¦Ã™ÂÃ˜ÂªÃ˜Â§Ã˜Â­ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â¤Ã™â€šÃ˜Âª.' : 'Ã˜ÂªÃ™â€¦ Ã˜Â­Ã™ÂÃ˜Â¸ Ã˜Â§Ã™â€žÃ™â€¦Ã™ÂÃ˜ÂªÃ˜Â§Ã˜Â­ Ã™â€žÃ™â€¡Ã˜Â°Ã™â€¡ Ã˜Â§Ã™â€žÃ˜Â¬Ã™â€žÃ˜Â³Ã˜Â©.', style: GoogleFonts.tajawal())),
+      SnackBar(
+        content: Text(
+          k.isEmpty ? 'تم مسح المفتاح المؤقت.' : 'تم حفظ المفتاح لهذه الجلسة.',
+          style: GoogleFonts.tajawal(),
+        ),
+      ),
     );
   }
 
@@ -77,10 +82,15 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
       await validateGeminiApiAccess();
       if (!mounted) return;
       setState(() {
-        _connectionMessage = 'Ã˜ÂªÃ™â€¦ Ã˜Â§Ã™â€žÃ˜Â§Ã˜ÂªÃ˜ÂµÃ˜Â§Ã™â€ž Ã˜Â¨Ã˜Â®Ã˜Â¯Ã™â€¦Ã˜Â© Gemini Ã˜Â¨Ã™â€ Ã˜Â¬Ã˜Â§Ã˜Â­.';
+        _connectionMessage = 'تم الاتصال بخدمة Gemini بنجاح.';
       });
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ã¢Å“â€¦ Ã˜Â§Ã˜ÂªÃ˜ÂµÃ˜Â§Ã™â€ž Gemini Ã™Å Ã˜Â¹Ã™â€¦Ã™â€ž Ã˜Â¨Ã˜Â´Ã™Æ’Ã™â€ž Ã˜ÂµÃ˜Â­Ã™Å Ã˜Â­.', style: GoogleFonts.tajawal())),
+        SnackBar(
+          content: Text(
+            'اتصال Gemini يعمل بشكل صحيح.',
+            style: GoogleFonts.tajawal(),
+          ),
+        ),
       );
     } on GeminiServiceException {
       if (kDebugMode) {
@@ -93,13 +103,13 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('تعذر اختبار الاتصال بالمساعد الذكي.', style: GoogleFonts.tajawal())),
       );
-    } on Object {
+    } on Object catch (e, st) {
       if (kDebugMode) {
-        debugPrint('AI assistant test: unexpected error');
-        debugPrint('$StackTrace.current');
+        debugPrint('AI assistant test: unexpected error: $e');
+        debugPrint('$st');
       }
       if (!mounted) return;
-      const msg = 'Ã˜Â­Ã˜Â¯Ã˜Â« Ã˜Â®Ã˜Â·Ã˜Â£ Ã™ÂÃ™Å  Ã˜Â§Ã™â€žÃ˜Â§Ã˜ÂªÃ˜ÂµÃ˜Â§Ã™â€ž Ã˜Â¨Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â³Ã˜Â§Ã˜Â¹Ã˜Â¯ Ã˜Â§Ã™â€žÃ˜Â°Ã™Æ’Ã™Å . Ã˜ÂªÃ˜Â£Ã™Æ’Ã˜Â¯ Ã™â€¦Ã™â€  Ã˜Â§Ã˜ÂªÃ˜ÂµÃ˜Â§Ã™â€žÃ™Æ’ Ã˜Â¨Ã˜Â§Ã™â€žÃ˜Â¥Ã™â€ Ã˜ÂªÃ˜Â±Ã™â€ Ã˜Âª.';
+      const msg = 'حدث خطأ في الاتصال بالمساعد الذكي. تأكد من اتصالك بالإنترنت.';
       setState(() {
         _connectionMessage = msg;
       });
@@ -133,7 +143,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
           elevation: 0,
           foregroundColor: AppColors.textPrimary,
           title: Text(
-            'Ã™â€¦Ã˜Â³Ã˜Â§Ã˜Â¹Ã˜Â¯ AmmarJo',
+            'مساعد AmmarJo',
             style: GoogleFonts.tajawal(fontWeight: FontWeight.w700, fontSize: 18),
           ),
           centerTitle: true,
@@ -145,8 +155,8 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
             labelStyle: GoogleFonts.tajawal(fontWeight: FontWeight.w700, fontSize: 13),
             unselectedLabelStyle: GoogleFonts.tajawal(fontWeight: FontWeight.w500, fontSize: 13),
             tabs: const [
-              Tab(icon: Icon(Icons.chat_bubble_rounded), text: 'Ã™â€¦Ã˜Â­Ã˜Â§Ã˜Â¯Ã˜Â«Ã˜Â©'),
-              Tab(icon: Icon(Icons.photo_camera_rounded), text: 'Ã˜ÂµÃ™Ë†Ã˜Â±Ã˜Â©'),
+              Tab(icon: Icon(Icons.chat_bubble_rounded), text: 'محادثة'),
+              Tab(icon: Icon(Icons.photo_camera_rounded), text: 'صورة'),
             ],
           ),
         ),
@@ -170,7 +180,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
                         controller: _apiKeyCtrl,
                         obscureText: true,
                         decoration: InputDecoration(
-                          labelText: 'Ã™â€¦Ã™ÂÃ˜ÂªÃ˜Â§Ã˜Â­ API (Ã™â€¦Ã˜Â¤Ã™â€šÃ˜Âª Ã˜Â¹Ã™â€žÃ™â€° Ã™â€¡Ã˜Â°Ã˜Â§ Ã˜Â§Ã™â€žÃ˜Â¬Ã™â€¡Ã˜Â§Ã˜Â²)',
+                          labelText: 'مفتاح API (مؤقت على هذا الجهاز)',
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
                           isDense: true,
                         ),
@@ -180,7 +190,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
                       FilledButton(
                         onPressed: _applyApiKey,
                         style: FilledButton.styleFrom(backgroundColor: AppColors.orange),
-                        child: Text('Ã˜Â­Ã™ÂÃ˜Â¸ Ã™Ë†Ã˜Â§Ã™â€žÃ™â€¦Ã˜ÂªÃ˜Â§Ã˜Â¨Ã˜Â¹Ã˜Â©', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                        child: Text('حفظ والمتابعة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
                       ),
                       const SizedBox(height: 8),
                       OutlinedButton.icon(
@@ -192,7 +202,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               )
                             : const Icon(Icons.wifi_tethering_rounded),
-                        label: Text('Ã˜Â§Ã˜Â®Ã˜ÂªÃ˜Â¨Ã˜Â§Ã˜Â± Ã˜Â§Ã™â€žÃ˜Â§Ã˜ÂªÃ˜ÂµÃ˜Â§Ã™â€ž Ã˜Â¨Ã™â‚¬ Gemini', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                        label: Text('اختبار الاتصال بـ Gemini', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
                       ),
                       if (_connectionMessage != null) ...[
                         const SizedBox(height: 8),
@@ -201,7 +211,7 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
                           textAlign: TextAlign.right,
                           style: GoogleFonts.tajawal(
                             fontSize: 12,
-                            color: _connectionMessage!.contains('Ã˜Â¨Ã™â€ Ã˜Â¬Ã˜Â§Ã˜Â­') ? Colors.green.shade700 : Colors.red.shade700,
+                            color: _connectionMessage!.contains('نجاح') ? Colors.green.shade700 : Colors.red.shade700,
                           ),
                         ),
                       ],

@@ -18,7 +18,7 @@ class ReviewsSection extends StatefulWidget {
     required this.title,
     this.canReply = false,
     this.canDeleteReviews = false,
-    this.emptyText = 'Ã™â€žÃ˜Â§ Ã˜ÂªÃ™Ë†Ã˜Â¬Ã˜Â¯ Ã™â€¦Ã˜Â±Ã˜Â§Ã˜Â¬Ã˜Â¹Ã˜Â§Ã˜Âª Ã˜Â¨Ã˜Â¹Ã˜Â¯',
+    this.emptyText = 'لا توجد مراجعات بعد',
     this.productWooIdForPurchaseCheck,
   });
 
@@ -72,7 +72,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       if (reviewsState is! FeatureSuccess<List<ReviewModel>>) {
         final msg = (reviewsState is FeatureFailure<List<ReviewModel>>)
             ? reviewsState.message
-            : 'Ã˜ÂªÃ˜Â¹Ã˜Â°Ã˜Â± Ã˜ÂªÃ˜Â­Ã™â€¦Ã™Å Ã™â€ž Ã˜Â§Ã™â€žÃ˜ÂªÃ™â€šÃ™Å Ã™Å Ã™â€¦Ã˜Â§Ã˜Âª Ã˜Â­Ã˜Â§Ã™â€žÃ™Å Ã˜Â§Ã™â€¹.';
+            : 'تعذر تحميل التقييمات حالياً.';
         if (!mounted) return;
         setState(() => _error = msg);
         return;
@@ -80,7 +80,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       if (aggState is! FeatureSuccess<RatingAggregate>) {
         final msg = (aggState is FeatureFailure<RatingAggregate>)
             ? aggState.message
-            : 'Ã˜ÂªÃ˜Â¹Ã˜Â°Ã˜Â± Ã˜ÂªÃ˜Â­Ã™â€¦Ã™Å Ã™â€ž Ã™â€¦Ã™â€žÃ˜Â®Ã˜Âµ Ã˜Â§Ã™â€žÃ˜ÂªÃ™â€šÃ™Å Ã™Å Ã™â€¦Ã˜Â§Ã˜Âª.';
+            : 'تعذر تحميل ملخص التقييمات.';
         if (!mounted) return;
         setState(() => _error = msg);
         return;
@@ -92,10 +92,10 @@ class _ReviewsSectionState extends State<ReviewsSection> {
         _items = deduped;
         _aggregate = aggState.data;
       });
-    } on Object {
-      debugPrint('[ReviewsSection] _load: unexpected error\n$StackTrace.current');
+    } on Object catch (e, st) {
+      debugPrint('[ReviewsSection] _load: $e\n$st');
       if (!mounted) return;
-      setState(() => _error = 'Ã˜ÂªÃ˜Â¹Ã˜Â°Ã˜Â± Ã˜ÂªÃ˜Â­Ã™â€¦Ã™Å Ã™â€ž Ã˜Â§Ã™â€žÃ˜ÂªÃ™â€šÃ™Å Ã™Å Ã™â€¦Ã˜Â§Ã˜Âª Ã˜Â­Ã˜Â§Ã™â€žÃ™Å Ã˜Â§Ã™â€¹.');
+      setState(() => _error = 'تعذر تحميل التقييمات حالياً.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -110,7 +110,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
         targetId: widget.targetId,
         targetType: widget.targetType,
         userId: user.uid,
-        userName: user.displayName?.trim().isNotEmpty == true ? user.displayName!.trim() : 'Ã™â€¦Ã˜Â³Ã˜ÂªÃ˜Â®Ã˜Â¯Ã™â€¦',
+        userName: user.displayName?.trim().isNotEmpty == true ? user.displayName!.trim() : 'مستخدم',
         rating: _myRating,
         comment: _comment.text,
       );
@@ -118,7 +118,7 @@ class _ReviewsSectionState extends State<ReviewsSection> {
         if (!mounted) return;
         final msg = (createState is FeatureFailure<FeatureUnit>)
             ? createState.message
-            : 'Ã˜ÂªÃ˜Â¹Ã˜Â°Ã˜Â± Ã˜Â­Ã™ÂÃ˜Â¸ Ã˜Â§Ã™â€žÃ˜ÂªÃ™â€šÃ™Å Ã™Å Ã™â€¦ Ã˜Â­Ã˜Â§Ã™â€žÃ™Å Ã˜Â§Ã™â€¹';
+            : 'تعذر إرسال التقييم حالياً';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text(msg, style: GoogleFonts.tajawal())),
         );
@@ -126,15 +126,15 @@ class _ReviewsSectionState extends State<ReviewsSection> {
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ã˜ÂªÃ™â€¦ Ã˜Â­Ã™ÂÃ˜Â¸ Ã˜Â§Ã™â€žÃ˜ÂªÃ™â€šÃ™Å Ã™Å Ã™â€¦ Ã˜Â¨Ã™â€ Ã˜Â¬Ã˜Â§Ã˜Â­', style: GoogleFonts.tajawal())),
+        SnackBar(content: Text('تم إرسال التقييم بنجاح', style: GoogleFonts.tajawal())),
       );
       _comment.clear();
       await _load();
-    } on Object {
-      debugPrint('[ReviewsSection] createReview: unexpected error\n$StackTrace.current');
+    } on Object catch (e, st) {
+      debugPrint('[ReviewsSection] createReview: $e\n$st');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ã˜ÂªÃ˜Â¹Ã˜Â°Ã˜Â± Ã˜Â­Ã™ÂÃ˜Â¸ Ã˜Â§Ã™â€žÃ˜ÂªÃ™â€šÃ™Å Ã™Å Ã™â€¦ Ã˜Â­Ã˜Â§Ã™â€žÃ™Å Ã˜Â§Ã™â€¹', style: GoogleFonts.tajawal())),
+        SnackBar(content: Text('تعذر إرسال التقييم حالياً', style: GoogleFonts.tajawal())),
       );
     } finally {
       if (mounted) setState(() => _saving = false);
@@ -278,11 +278,21 @@ class _PurchaseGatedReviewForm extends StatelessWidget {
             ),
           );
         }
+        if (snap.hasError) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(vertical: 8),
+            child: Text(
+              'تعذر التحقق من سجل الشراء. حاول لاحقاً.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.tajawal(color: AppColors.textSecondary, height: 1.35),
+            ),
+          );
+        }
         if (snap.data != true) {
           return Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Text(
-              'Ã™Å Ã™â€¦Ã™Æ’Ã™â€ Ã™Æ’ Ã˜ÂªÃ™â€šÃ™Å Ã™Å Ã™â€¦ Ã™â€¡Ã˜Â°Ã˜Â§ Ã˜Â§Ã™â€žÃ™â€¦Ã™â€ Ã˜ÂªÃ˜Â¬ Ã˜Â¨Ã˜Â¹Ã˜Â¯ Ã˜Â´Ã˜Â±Ã˜Â§Ã˜Â¦Ã™â€¡ Ã™Ë†Ã˜Â¥Ã˜ÂªÃ™â€¦Ã˜Â§Ã™â€¦ Ã˜Â§Ã™â€žÃ˜Â·Ã™â€žÃ˜Â¨.',
+              'يمكنك تقييم هذا المنتج بعد شرائه وإتمام الطلب.',
               textAlign: TextAlign.center,
               style: GoogleFonts.tajawal(color: AppColors.textSecondary, height: 1.35),
             ),
@@ -341,7 +351,7 @@ class _ReviewInputFields extends StatelessWidget {
           textAlign: TextAlign.right,
           maxLines: 2,
           decoration: InputDecoration(
-            hintText: 'Ã˜Â§Ã™Æ’Ã˜ÂªÃ˜Â¨ Ã˜ÂªÃ˜Â¹Ã™â€žÃ™Å Ã™â€šÃ™Æ’',
+            hintText: 'اكتب تعليقك',
             hintStyle: GoogleFonts.tajawal(),
             border: const OutlineInputBorder(),
           ),
@@ -351,7 +361,7 @@ class _ReviewInputFields extends StatelessWidget {
           alignment: Alignment.centerLeft,
           child: FilledButton(
             onPressed: saving ? null : onSubmit,
-            child: Text('Ã˜Â¥Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž Ã˜Â§Ã™â€žÃ˜ÂªÃ™â€šÃ™Å Ã™Å Ã™â€¦', style: GoogleFonts.tajawal()),
+            child: Text('إرسال التقييم', style: GoogleFonts.tajawal()),
           ),
         ),
       ],
@@ -396,7 +406,7 @@ class _ReviewTile extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 8),
               child: Text(
-                'Ã˜ÂªÃ™â€¦ Ã˜Â¥Ã™Å Ã™â€šÃ˜Â§Ã™Â Ã˜Â­Ã˜Â°Ã™Â/Ã˜Â±Ã˜Â¯Ã™Ë†Ã˜Â¯ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â±Ã˜Â§Ã˜Â¬Ã˜Â¹Ã˜Â§Ã˜Âª Ã™ÂÃ™Å  Ã™â€¦Ã˜Â±Ã˜Â­Ã™â€žÃ˜Â© Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â±Ã˜Â­Ã™Å Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â­Ã˜Â§Ã™â€žÃ™Å Ã˜Â©.',
+                'تم إيقاف حذف/ردود المراجعات في مرحلة الترحيل الحالية.',
                 textAlign: TextAlign.right,
                 style: GoogleFonts.tajawal(fontSize: 12, color: AppColors.textSecondary),
               ),
