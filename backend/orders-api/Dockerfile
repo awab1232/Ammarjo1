@@ -16,9 +16,14 @@ WORKDIR /app
 
 COPY --from=builder /app/dist ./dist
 COPY package*.json ./
+COPY docker-entrypoint.sh ./
+COPY scripts/apply-all-sql.cjs ./scripts/
+COPY sql/migrations ./sql/migrations
 
-RUN npm ci --omit=dev
+RUN chmod +x docker-entrypoint.sh \
+  && npm ci --omit=dev
 
 EXPOSE 3000
 
-CMD ["node", "dist/main.js"]
+ENTRYPOINT ["./docker-entrypoint.sh"]
+CMD ["npm", "run", "start:prod"]
