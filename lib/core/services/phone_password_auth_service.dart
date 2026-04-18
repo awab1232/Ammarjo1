@@ -58,6 +58,8 @@ class PhonePasswordAuthService {
         return 'تعذر إصدار رمز الدخول، حاول مرة أخرى';
       case 'firebase_sign_in_failed':
         return 'فشل تسجيل الدخول، تحقق من بياناتك أو حاول لاحقاً';
+      case 'phone_mismatch':
+        return 'رقم الهاتف لا يطابق رمز التحقق. أعد المحاولة بنفس الرقم.';
       case 'backend_unavailable':
         return 'الخدمة غير متاحة حالياً، حاول لاحقاً';
       default:
@@ -119,8 +121,63 @@ class PhonePasswordAuthService {
     }
   }
 
-  /// Attach a password + phone to the currently signed-in Firebase user.
-  /// Call this after OTP verification during signup.
+  /// بعد التحقق من الهاتف عبر OTP — يستدعي `POST /auth/forgot-password` (يتحقق الخادم من تطابق الهاتف مع الـ ID token).
+  static Future<void> forgotPasswordUpdate({
+    required String phone,
+    required String password,
+  }) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw const PhonePasswordAuthException(
+        'not_authenticated',
+        'انتهت جلسة التحقق، أعد إدخال رمز OTP',
+      );
+    }
+    String? idToken;
+    try {
+      idToken = await user.getIdToken(true);
+    } on Object {
+      idToken = null;
+    }
+    if (idToken == null || idToken.isEmpty) {
+      throw const PhonePasswordAuthException(
+        'not_authenticated',
+        'انتهت جلسة التحقق، أعد إدخال رمز OTP',
+      );
+    }
+
+    final uri = _buildUri('/auth/forgot-password');
+    final bodyJson = jsonEncode({'phone': phone, 'password': password});
+
+    http.Response res;
+    try {
+      res = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json; charset=utf-8',
+              'Accept': 'application/json',
+              'Authorization': 'Bearer $idToken',
+            },
+            body: bodyJson,
+          )
+          .timeout(_timeout);
+    } on Object catch (e) {
+      if (kDebugMode) debugPrint('PhonePasswordAuth: forgot-password network error $e');
+      throw const PhonePasswordAuthException(
+        'backend_unavailable',
+        'تعذر الاتصال بالخادم، تحقق من الإنترنت',
+      );
+    }
+
+    final decoded = _safeDecode(res.body);
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      final code = _extractErrorCode(decoded) ?? 'backend_unavailable';
+      throw PhonePasswordAuthException(code, _mapErrorCodeAr(code));
+    }
+  }
+
+  /// ربط كلمة المرور بالحساب بعد التحقق من OTP أثناء التسجيل — `POST /auth/password`.
   static Future<void> setPasswordForCurrentUser({
     required String phone,
     required String password,

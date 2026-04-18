@@ -8,11 +8,12 @@ import '../../../../core/services/phone_password_auth_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/jordan_phone.dart';
 import '../../../../core/widgets/app_bar_back_button.dart';
+import 'forgot_password_page.dart';
 import 'main_navigation_page.dart';
 import 'register_page.dart';
 
 /// تسجيل الدخول برقم الهاتف + كلمة المرور.
-/// OTP أصبح مخصّصاً للتسجيل الجديد فقط (في [RegisterPage]).
+/// OTP يُستخدم في [RegisterPage] وفي [ForgotPasswordPage].
 ///
 /// (اسم الملف محفوظ للحفاظ على التوافق مع الواردات الحالية، ولكن المحتوى
 /// تحوّل إلى نموذج phone + password.)
@@ -96,6 +97,12 @@ class _PhoneOtpLoginPageState extends State<PhoneOtpLoginPage> {
   void _goToRegister() {
     Navigator.of(context).push<void>(
       MaterialPageRoute<void>(builder: (_) => const RegisterPage()),
+    );
+  }
+
+  void _goToForgotPassword() {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(builder: (_) => const ForgotPasswordPage()),
     );
   }
 
@@ -264,7 +271,22 @@ class _PhoneOtpLoginPageState extends State<PhoneOtpLoginPage> {
                   onFieldSubmitted: (_) => _loading ? null : _submit(),
                 ),
 
-                const SizedBox(height: 16),
+                Align(
+                  alignment: Alignment.centerRight,
+                  child: TextButton(
+                    onPressed: _loading ? null : _goToForgotPassword,
+                    child: Text(
+                      'نسيت كلمة المرور؟',
+                      style: GoogleFonts.tajawal(
+                        color: AppColors.orange,
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                      ),
+                    ),
+                  ),
+                ),
+
+                const SizedBox(height: 8),
 
                 // Error banner
                 if (_error != null)

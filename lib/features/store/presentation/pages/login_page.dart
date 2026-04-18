@@ -5,11 +5,12 @@ import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_bar_back_button.dart';
 import '../store_controller.dart';
+import 'forgot_password_page.dart';
 import 'phone_otp_login_page.dart';
 import 'register_page.dart';
 
 /// شاشة بوابة تسجيل الدخول — تسجيل الدخول عبر رقم الهاتف + كلمة المرور،
-/// أمّا رمز OTP فيُستخدم فقط أثناء إنشاء حساب جديد للتحقق من ملكية الرقم.
+/// ورمز OTP عند إنشاء حساب جديد أو عند استعادة كلمة المرور.
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -36,7 +37,7 @@ class _LoginPageState extends State<LoginPage> {
               borderRadius: BorderRadius.circular(14),
             ),
             child: Text(
-              'سجّل دخولك برقم الهاتف وكلمة المرور. يتم استخدام رمز التحقق OTP فقط عند إنشاء حساب جديد.',
+              'سجّل دخولك برقم الهاتف وكلمة المرور. رمز التحقق OTP يُستخدم عند إنشاء حساب جديد أو عند نسيان كلمة المرور.',
               textAlign: TextAlign.right,
               style: GoogleFonts.tajawal(
                 fontSize: 14,
@@ -68,7 +69,22 @@ class _LoginPageState extends State<LoginPage> {
               style: GoogleFonts.tajawal(fontWeight: FontWeight.w700, fontSize: 15),
             ),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 8),
+          TextButton(
+            onPressed: store.isLoading
+                ? null
+                : () {
+                    Navigator.of(context).push<void>(
+                      MaterialPageRoute<void>(builder: (_) => const ForgotPasswordPage()),
+                    );
+                  },
+            child: Text(
+              'نسيت كلمة المرور؟',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.tajawal(color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+            ),
+          ),
+          const SizedBox(height: 8),
 
           TextButton(
             onPressed: store.isLoading

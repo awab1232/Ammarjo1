@@ -7,6 +7,7 @@ import {
 } from '@nestjs/common';
 import * as bcrypt from 'bcryptjs';
 import { Pool, type PoolClient } from 'pg';
+import type { DecodedIdToken } from 'firebase-admin/auth';
 import { getFirebaseAuth } from './firebase-admin';
 
 const MIN_PASSWORD_LEN = 6;
@@ -150,6 +151,33 @@ export class PhonePasswordService {
 
     this.logger.log(`[PhonePassword] set_password uid=${uid} phone=${phone}`);
     return { ok: true, phone };
+  }
+
+  /**
+   * After Firebase phone OTP sign-in: ensure the ID token's `phone_number`
+   * matches the requested E.164 phone, then persist the new password (same as
+   * [setPasswordForFirebaseUid]).
+   */
+  async forgotPasswordAfterPhoneOtpVerification(
+    firebaseUid: string,
+    decoded: DecodedIdToken,
+    phoneRaw: string | null,
+    password: string,
+  ): Promise<{ ok: true; phone: string }> {
+    const uid = String(firebaseUid ?? '').trim();
+    if (!uid) throw new UnauthorizedException('firebase_uid_missing');
+
+    const phone = PhonePasswordService.normalizePhone(phoneRaw ?? '');
+    if (!phone) throw new BadRequestException('invalid_phone');
+
+    const tokenPhone = decoded.phone_number
+      ? PhonePasswordService.normalizePhone(String(decoded.phone_number))
+      : null;
+    if (!tokenPhone || tokenPhone !== phone) {
+      throw new BadRequestException('phone_mismatch');
+    }
+
+    return this.setPasswordForFirebaseUid(uid, phone, password);
   }
 
   /**
