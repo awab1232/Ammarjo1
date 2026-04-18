@@ -808,13 +808,47 @@ final class BackendOrdersClient {
     }
   }
 
+  static const Duration _homeCmsTtl = Duration(minutes: 3);
+  Map<String, dynamic>? _homeCmsCache;
+  DateTime? _homeCmsFetchedAt;
+  Future<Map<String, dynamic>?>? _homeCmsInFlight;
+
   /// Marketing layout: primary slider (3), offers strip, bottom banner (`GET /home/cms`).
-  Future<Map<String, dynamic>?> fetchHomeCms() async {
-    try {
-      return await _publicGetJson('/home/cms', flow: 'public_home_cms');
-    } on Object {
-      return null;
+  /// In-memory TTL + single in-flight request to avoid duplicate calls when multiple widgets mount together.
+  Future<Map<String, dynamic>?> fetchHomeCms({bool forceRefresh = false}) async {
+    final now = DateTime.now();
+    if (!forceRefresh &&
+        _homeCmsCache != null &&
+        _homeCmsFetchedAt != null &&
+        now.difference(_homeCmsFetchedAt!) <= _homeCmsTtl) {
+      return _homeCmsCache;
     }
+    if (!forceRefresh && _homeCmsInFlight != null) {
+      return _homeCmsInFlight!;
+    }
+    Future<Map<String, dynamic>?> run() async {
+      try {
+        return await _publicGetJson('/home/cms', flow: 'public_home_cms');
+      } on Object {
+        return null;
+      }
+    }
+
+    if (forceRefresh) {
+      _homeCmsInFlight = null;
+      final fresh = await run();
+      _homeCmsCache = fresh;
+      _homeCmsFetchedAt = DateTime.now();
+      return fresh;
+    }
+
+    _homeCmsInFlight = run().then((v) {
+      _homeCmsCache = v;
+      _homeCmsFetchedAt = DateTime.now();
+      _homeCmsInFlight = null;
+      return v;
+    });
+    return _homeCmsInFlight!;
   }
 
   Future<void> postChatMessageSent({

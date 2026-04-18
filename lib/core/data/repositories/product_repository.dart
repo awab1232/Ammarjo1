@@ -91,7 +91,7 @@ WpHomeBannerSlide _bannerFromBackendRow(Map<String, dynamic> row) {
 abstract class ProductRepository {
   Future<FeatureState<List<ProductCategory>>> fetchAllCategories();
   Future<FeatureState<Product?>> fetchProductByWooId(int wooId);
-  Future<FeatureState<List<WpHomeBannerSlide>>> fetchHomeBanners();
+  Future<FeatureState<List<WpHomeBannerSlide>>> fetchHomeBanners({bool forceRefresh = false});
   Future<FeatureState<PaginatedResponse<Product>>> searchProducts(
     String query, {
     int limit,
@@ -126,6 +126,11 @@ abstract class ProductRepository {
 class BackendProductRepository implements ProductRepository {
   BackendProductRepository._();
   static final BackendProductRepository instance = BackendProductRepository._();
+
+  static const Duration _homeBannersTtl = Duration(minutes: 3);
+  FeatureState<List<WpHomeBannerSlide>>? _homeBannersCache;
+  DateTime? _homeBannersFetchedAt;
+  Future<FeatureState<List<WpHomeBannerSlide>>>? _homeBannersInFlight;
 
   int _pageFromCursor(String? cursor) {
     if (cursor == null || cursor.isEmpty) return 0;
@@ -188,7 +193,35 @@ class BackendProductRepository implements ProductRepository {
   }
 
   @override
-  Future<FeatureState<List<WpHomeBannerSlide>>> fetchHomeBanners() async {
+  Future<FeatureState<List<WpHomeBannerSlide>>> fetchHomeBanners({bool forceRefresh = false}) async {
+    final now = DateTime.now();
+    if (!forceRefresh &&
+        _homeBannersCache != null &&
+        _homeBannersFetchedAt != null &&
+        now.difference(_homeBannersFetchedAt!) <= _homeBannersTtl) {
+      return _homeBannersCache!;
+    }
+    if (!forceRefresh && _homeBannersInFlight != null) {
+      return _homeBannersInFlight!;
+    }
+    Future<FeatureState<List<WpHomeBannerSlide>>> run() async => _fetchHomeBannersUncached();
+    if (forceRefresh) {
+      _homeBannersInFlight = null;
+      final fresh = await run();
+      _homeBannersCache = fresh;
+      _homeBannersFetchedAt = DateTime.now();
+      return fresh;
+    }
+    _homeBannersInFlight = run().then((r) {
+      _homeBannersCache = r;
+      _homeBannersFetchedAt = DateTime.now();
+      _homeBannersInFlight = null;
+      return r;
+    });
+    return _homeBannersInFlight!;
+  }
+
+  Future<FeatureState<List<WpHomeBannerSlide>>> _fetchHomeBannersUncached() async {
     try {
       final rows = await BackendOrdersClient.instance.fetchBanners();
       if (rows == null || rows.isEmpty) {

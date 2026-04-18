@@ -8,6 +8,7 @@ import '../../../../core/services/backend_orders_client.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/web_image_url.dart';
 import '../../../../core/widgets/ammar_cached_image.dart';
+import '../../../../core/widgets/home_page_shimmers.dart';
 import '../../domain/store_model.dart';
 import '../store_detail_page.dart';
 
@@ -76,11 +77,8 @@ class StoresHomeSectionsCardsStrip extends StatelessWidget {
     return FutureBuilder<FeatureState<List<HomeSection>>>(
       future: HomeRepository.instance.getSections(),
       builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))),
-          );
+        if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
+          return const HomeHorizontalCardsSkeleton(height: 148, cardWidth: 158, count: 5, spacing: 12);
         }
         final state = snap.data;
         final sections = switch (state) {
@@ -101,6 +99,7 @@ class StoresHomeSectionsCardsStrip extends StatelessWidget {
           height: 148,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
             itemCount: sections.length,
             separatorBuilder: (context, index) => const SizedBox(width: 12),
@@ -215,6 +214,9 @@ class StoresHomeOffersStrip extends StatelessWidget {
     return FutureBuilder<Map<String, dynamic>?>(
       future: BackendOrdersClient.instance.fetchHomeCms(),
       builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
+          return const HomeOffersStripSkeleton();
+        }
         final offers = _parseOffers(snap.data);
         if (offers.isEmpty) {
           return const SizedBox.shrink();
@@ -223,6 +225,7 @@ class StoresHomeOffersStrip extends StatelessWidget {
           height: 200,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 10),
             itemCount: offers.length,
             separatorBuilder: (context, index) => const SizedBox(width: 12),
@@ -300,11 +303,8 @@ class StoresHomeMostRequestedStrip extends StatelessWidget {
     return FutureBuilder<FeatureState<List<StoreModel>>>(
       future: futureStores,
       builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 12),
-            child: Center(child: SizedBox(width: 24, height: 24, child: CircularProgressIndicator(strokeWidth: 2))),
-          );
+        if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
+          return const HomeStoreChipsSkeleton(count: 6);
         }
         final state = snap.data;
         final all = switch (state) {
@@ -325,6 +325,7 @@ class StoresHomeMostRequestedStrip extends StatelessWidget {
           height: 132,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
             padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
             itemCount: pick.length,
             separatorBuilder: (context, index) => const SizedBox(width: 10),
@@ -355,6 +356,9 @@ class StoresHomeBottomMarketingBanner extends StatelessWidget {
     return FutureBuilder<Map<String, dynamic>?>(
       future: BackendOrdersClient.instance.fetchHomeCms(),
       builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
+          return const HomeBottomBannerSkeleton();
+        }
         final cms = snap.data;
         final bottom = cms?['bottomBanner'];
         if (bottom is! Map) return const SizedBox.shrink();

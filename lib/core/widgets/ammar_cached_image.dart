@@ -2,6 +2,7 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:shimmer/shimmer.dart';
 
 import '../theme/app_colors.dart';
 
@@ -33,6 +34,7 @@ class AmmarCachedImage extends StatelessWidget {
     this.height,
     this.httpHeaders,
     this.productTileStyle = false,
+    this.useShimmerPlaceholder = false,
   });
 
   final String? imageUrl;
@@ -41,6 +43,9 @@ class AmmarCachedImage extends StatelessWidget {
   final double? height;
   final Map<String, String>? httpHeaders;
   final bool productTileStyle;
+
+  /// When true, shows a shimmer block instead of a spinner while the image loads (hero banners, large tiles).
+  final bool useShimmerPlaceholder;
 
   static const Map<String, String> kProductImageHeaders = {'Accept': 'image/*'};
 
@@ -80,6 +85,7 @@ class AmmarCachedImage extends StatelessWidget {
       height: height,
       httpHeaders: httpHeaders,
       productTileStyle: productTileStyle,
+      useShimmerPlaceholder: useShimmerPlaceholder,
     );
   }
 }
@@ -92,6 +98,7 @@ class _AmmarCachedImageImpl extends StatefulWidget {
     this.height,
     this.httpHeaders,
     required this.productTileStyle,
+    required this.useShimmerPlaceholder,
   });
 
   final String? imageUrl;
@@ -100,6 +107,7 @@ class _AmmarCachedImageImpl extends StatefulWidget {
   final double? height;
   final Map<String, String>? httpHeaders;
   final bool productTileStyle;
+  final bool useShimmerPlaceholder;
 
   @override
   State<_AmmarCachedImageImpl> createState() => _AmmarCachedImageImplState();
@@ -162,6 +170,42 @@ class _AmmarCachedImageImplState extends State<_AmmarCachedImageImpl> {
     );
   }
 
+  Widget _loadingPlaceholder(BuildContext context) {
+    if (widget.productTileStyle) {
+      return ColoredBox(
+        color: Colors.grey[200]!,
+        child: const Center(
+          child: SizedBox(
+            width: 28,
+            height: 28,
+            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF6B00)),
+          ),
+        ),
+      );
+    }
+    if (widget.useShimmerPlaceholder) {
+      return Shimmer.fromColors(
+        baseColor: const Color(0xFFE6E8EC),
+        highlightColor: const Color(0xFFF2F4F7),
+        period: const Duration(milliseconds: 1100),
+        child: ColoredBox(
+          color: const Color(0xFFE6E8EC),
+          child: SizedBox(width: widget.width, height: widget.height),
+        ),
+      );
+    }
+    return ColoredBox(
+      color: const Color(0xFFF0F1F4),
+      child: Center(
+        child: SizedBox(
+          width: 28,
+          height: 28,
+          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.orange.withValues(alpha: 0.5)),
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final raw = (widget.imageUrl ?? '').trim();
@@ -188,28 +232,9 @@ class _AmmarCachedImageImplState extends State<_AmmarCachedImageImpl> {
       width: widget.width,
       height: widget.height,
       fit: widget.fit,
-      fadeInDuration: const Duration(milliseconds: 180),
-      placeholder: (context, _) => widget.productTileStyle
-          ? ColoredBox(
-              color: Colors.grey[200]!,
-              child: const Center(
-                child: SizedBox(
-                  width: 28,
-                  height: 28,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF6B00)),
-                ),
-              ),
-            )
-          : ColoredBox(
-              color: const Color(0xFFF0F1F4),
-              child: Center(
-                child: SizedBox(
-                  width: 28,
-                  height: 28,
-                  child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.orange.withValues(alpha: 0.5)),
-                ),
-              ),
-            ),
+      fadeInDuration: const Duration(milliseconds: 220),
+      fadeOutDuration: const Duration(milliseconds: 120),
+      placeholder: (context, _) => _loadingPlaceholder(context),
       errorWidget: (context, failedUrl, error) {
         _logLoadFailure(failedUrl, error, null);
 
