@@ -661,6 +661,9 @@ class _StoresHomePageState extends State<StoresHomePage> {
                         ),
                       ),
                       const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                      SliverToBoxAdapter(
+                        child: SizedBox(height: MediaQuery.paddingOf(context).bottom + 100),
+                      ),
                       if (kIsWeb) const SliverToBoxAdapter(child: _StoresWebInlineFooter()),
                     ],
                   ),

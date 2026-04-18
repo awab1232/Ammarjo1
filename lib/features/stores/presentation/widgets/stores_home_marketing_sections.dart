@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../../../core/contracts/feature_state.dart';
 import '../../../../core/data/repositories/home_repository.dart';
@@ -9,6 +10,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/web_image_url.dart';
 import '../../../../core/widgets/ammar_cached_image.dart';
 import '../../../../core/widgets/home_page_shimmers.dart';
+import '../../../../core/seo/seo_routes.dart';
 import '../../domain/store_model.dart';
 import '../store_detail_page.dart';
 
@@ -117,7 +119,12 @@ class StoresHomeSectionsCardsStrip extends StatelessWidget {
                   ),
                   clipBehavior: Clip.antiAlias,
                   child: InkWell(
-                    onTap: () {},
+                    onTap: () {
+                      Navigator.pushNamed(
+                        context,
+                        SeoRoutes.category(s.name),
+                      );
+                    },
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
@@ -153,15 +160,30 @@ class StoresHomeSectionsCardsStrip extends StatelessWidget {
 }
 
 class _OfferTile extends StatelessWidget {
-  const _OfferTile({required this.title, required this.subtitle, required this.imageUrl});
+  const _OfferTile({
+    required this.title,
+    required this.subtitle,
+    required this.imageUrl,
+    this.linkUrl,
+  });
 
   final String title;
   final String subtitle;
   final String imageUrl;
+  final String? linkUrl;
+
+  Future<void> _openLink() async {
+    final raw = linkUrl?.trim() ?? '';
+    if (raw.isEmpty) return;
+    final uri = Uri.tryParse(raw);
+    if (uri == null) return;
+    await launchUrl(uri, mode: LaunchMode.externalApplication);
+  }
 
   @override
   Widget build(BuildContext context) {
     final url = webSafeImageUrl(imageUrl);
+    final hasLink = (linkUrl?.trim() ?? '').isNotEmpty;
     return SizedBox(
       width: 168,
       child: Material(
@@ -169,26 +191,29 @@ class _OfferTile extends StatelessWidget {
         elevation: 0,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(color: AppColors.border)),
         clipBehavior: Clip.antiAlias,
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            Expanded(
-              child: url.isEmpty
-                  ? ColoredBox(color: AppColors.lightOrange, child: Icon(Icons.local_offer_rounded, color: AppColors.primaryOrange, size: 36))
-                  : AmmarCachedImage(imageUrl: url, fit: BoxFit.cover, width: double.infinity, height: double.infinity),
-            ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.right, style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 14)),
-                  if (subtitle.isNotEmpty)
-                    Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.right, style: GoogleFonts.tajawal(fontSize: 11, color: AppColors.textSecondary)),
-                ],
+        child: InkWell(
+          onTap: hasLink ? _openLink : null,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Expanded(
+                child: url.isEmpty
+                    ? ColoredBox(color: AppColors.lightOrange, child: Icon(Icons.local_offer_rounded, color: AppColors.primaryOrange, size: 36))
+                    : AmmarCachedImage(imageUrl: url, fit: BoxFit.cover, width: double.infinity, height: double.infinity),
               ),
-            ),
-          ],
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 10, 10),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(title, maxLines: 1, overflow: TextOverflow.ellipsis, textAlign: TextAlign.right, style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 14)),
+                    if (subtitle.isNotEmpty)
+                      Text(subtitle, maxLines: 2, overflow: TextOverflow.ellipsis, textAlign: TextAlign.right, style: GoogleFonts.tajawal(fontSize: 11, color: AppColors.textSecondary)),
+                  ],
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -234,7 +259,14 @@ class StoresHomeOffersStrip extends StatelessWidget {
               final title = (o['title'] ?? '').toString();
               final subtitle = (o['subtitle'] ?? '').toString();
               final imageUrl = (o['imageUrl'] ?? o['image'] ?? '').toString();
-              return _OfferTile(title: title.isEmpty ? 'عرض' : title, subtitle: subtitle, imageUrl: imageUrl);
+              final linkRaw = (o['linkUrl'] ?? o['link'] ?? o['url'] ?? '').toString().trim();
+              final linkUrl = linkRaw.isEmpty ? null : linkRaw;
+              return _OfferTile(
+                title: title.isEmpty ? 'عرض' : title,
+                subtitle: subtitle,
+                imageUrl: imageUrl,
+                linkUrl: linkUrl,
+              );
             },
           ),
         );
@@ -365,34 +397,46 @@ class StoresHomeBottomMarketingBanner extends StatelessWidget {
         final m = Map<String, dynamic>.from(bottom);
         final url = webSafeImageUrl((m['imageUrl'] ?? m['image'] ?? '').toString());
         if (url.isEmpty) return const SizedBox.shrink();
+        final linkRaw = (m['linkUrl'] ?? m['link'] ?? m['url'] ?? '').toString().trim();
+        final linkUri = linkRaw.isEmpty ? null : Uri.tryParse(linkRaw);
         return Padding(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(16),
-            child: SizedBox(
-              height: 120,
-              width: double.infinity,
-              child: Stack(
-                fit: StackFit.expand,
-                children: [
-                  AmmarCachedImage(imageUrl: url, fit: BoxFit.cover, width: double.infinity, height: 120),
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                      color: Colors.black.withValues(alpha: 0.45),
-                      child: Text(
-                        (m['title'] ?? '').toString(),
-                        textAlign: TextAlign.right,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14),
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                onTap: linkUri == null
+                    ? null
+                    : () async {
+                        await launchUrl(linkUri, mode: LaunchMode.externalApplication);
+                      },
+                child: SizedBox(
+                  height: 120,
+                  width: double.infinity,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      AmmarCachedImage(imageUrl: url, fit: BoxFit.cover, width: double.infinity, height: 120),
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                          color: Colors.black.withValues(alpha: 0.45),
+                          child: Text(
+                            (m['title'] ?? '').toString(),
+                            textAlign: TextAlign.right,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 14),
+                          ),
+                        ),
                       ),
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),

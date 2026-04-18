@@ -4,6 +4,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/constants/jordan_regions.dart';
 import '../../../../core/data/repositories/user_repository.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_bar_back_button.dart';
@@ -25,8 +26,8 @@ class _CustomerDeliverySettingsPageState extends State<CustomerDeliverySettingsP
   late final TextEditingController _email;
   late final TextEditingController _phone;
   late final TextEditingController _address;
-  late final TextEditingController _city;
   late final TextEditingController _country;
+  String? _selectedCity;
   bool _loading = true;
   bool _geoBusy = false;
   String? _locationText;
@@ -39,7 +40,6 @@ class _CustomerDeliverySettingsPageState extends State<CustomerDeliverySettingsP
     _email = TextEditingController();
     _phone = TextEditingController();
     _address = TextEditingController();
-    _city = TextEditingController();
     _country = TextEditingController(text: 'JO');
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       final store = context.read<StoreController>();
@@ -51,7 +51,7 @@ class _CustomerDeliverySettingsPageState extends State<CustomerDeliverySettingsP
         _email.text = saved.email;
         _phone.text = saved.phone;
         _address.text = saved.address1;
-        _city.text = saved.city;
+        _selectedCity = matchJordanRegion(saved.city);
         _country.text = saved.country.isNotEmpty ? saved.country : 'JO';
       }
       if (p != null) {
@@ -60,6 +60,9 @@ class _CustomerDeliverySettingsPageState extends State<CustomerDeliverySettingsP
           final parts = p.fullName!.trim().split(RegExp(r'\s+'));
           if (parts.isNotEmpty) _firstName.text = parts.first;
           if (parts.length > 1) _lastName.text = parts.sublist(1).join(' ');
+        }
+        if (_selectedCity == null && p.city != null && p.city!.trim().isNotEmpty) {
+          _selectedCity = matchJordanRegion(p.city);
         }
       }
       if (mounted) {
@@ -174,7 +177,6 @@ class _CustomerDeliverySettingsPageState extends State<CustomerDeliverySettingsP
     _email.dispose();
     _phone.dispose();
     _address.dispose();
-    _city.dispose();
     _country.dispose();
     super.dispose();
   }
@@ -234,7 +236,7 @@ class _CustomerDeliverySettingsPageState extends State<CustomerDeliverySettingsP
                       _tf(_email, 'البريد (اختياري)', required: false, email: true),
                       _tf(_phone, 'رقم الجوال'),
                       _tf(_address, 'العنوان التفصيلي'),
-                      _tf(_city, 'المدينة'),
+                      _cityDropdown(),
                       _tf(_country, 'رمز الدولة'),
                       const SizedBox(height: 20),
                       FilledButton(
@@ -253,7 +255,7 @@ class _CustomerDeliverySettingsPageState extends State<CustomerDeliverySettingsP
                               email: _email.text.trim(),
                               phone: _phone.text.trim(),
                               address1: _address.text.trim(),
-                              city: _city.text.trim(),
+                              city: (_selectedCity ?? '').trim(),
                               country: _country.text.trim().isNotEmpty ? _country.text.trim() : 'JO',
                             ),
                           );
@@ -270,6 +272,33 @@ class _CustomerDeliverySettingsPageState extends State<CustomerDeliverySettingsP
                 ),
         );
       },
+    );
+  }
+
+  Widget _cityDropdown() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 12),
+      child: DropdownButtonFormField<String>(
+        value: _selectedCity,
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: 'المحافظة / المدينة',
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          filled: true,
+          fillColor: Colors.white,
+        ),
+        hint: Text('اختر المحافظة', style: GoogleFonts.tajawal()),
+        items: kJordanRegions
+            .map(
+              (r) => DropdownMenuItem<String>(
+                value: r,
+                child: Text(r, textAlign: TextAlign.right, style: GoogleFonts.tajawal()),
+              ),
+            )
+            .toList(),
+        onChanged: (v) => setState(() => _selectedCity = v),
+        validator: (v) => (v == null || v.trim().isEmpty) ? 'مطلوب' : null,
+      ),
     );
   }
 

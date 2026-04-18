@@ -92,8 +92,9 @@ class _StoreCategoryPageState extends State<StoreCategoryPage> {
             state: snap.data!,
             onRetry: _reload,
             dataBuilder: (ctx, all) {
+              final catNorm = cat.toLowerCase().trim();
               final products = all
-                  .where((p) => p.isAvailable && p.shelfCategory.trim() == cat)
+                  .where((p) => p.isAvailable && p.shelfCategory.toLowerCase().trim() == catNorm)
                   .toList();
               if (products.isEmpty) {
                 return ListView(

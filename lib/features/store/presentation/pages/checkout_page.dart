@@ -6,6 +6,7 @@ import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/constants/jordan_regions.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/services/growth_analytics_service.dart';
 import '../../../../core/widgets/app_bar_back_button.dart';
@@ -32,8 +33,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
   final _email = TextEditingController();
   final _phone = TextEditingController();
   final _address = TextEditingController();
-  final _city = TextEditingController();
   final _country = TextEditingController(text: 'JO');
+  String? _selectedCity;
   double? _deliveryLat;
   double? _deliveryLng;
   String? _locationStatus;
@@ -57,7 +58,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       if (saved != null && saved.hasAny) {
         if (_phone.text.trim().isEmpty) _phone.text = saved.phone;
         if (_address.text.trim().isEmpty) _address.text = saved.address1;
-        if (_city.text.trim().isEmpty) _city.text = saved.city;
+        _selectedCity ??= matchJordanRegion(saved.city);
         if (saved.country.isNotEmpty) _country.text = saved.country;
         if (_firstName.text.trim().isEmpty) _firstName.text = saved.firstName;
         if (_lastName.text.trim().isEmpty) _lastName.text = saved.lastName;
@@ -74,8 +75,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
         if (_address.text.trim().isEmpty && p.addressLine != null && p.addressLine!.trim().isNotEmpty) {
           _address.text = p.addressLine!.trim();
         }
-        if (_city.text.trim().isEmpty && p.city != null && p.city!.trim().isNotEmpty) {
-          _city.text = p.city!.trim();
+        if (_selectedCity == null && p.city != null && p.city!.trim().isNotEmpty) {
+          _selectedCity = matchJordanRegion(p.city);
         }
         if (p.country != null && p.country!.trim().isNotEmpty) {
           _country.text = p.country!.trim();
@@ -119,7 +120,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
     _email.dispose();
     _phone.dispose();
     _address.dispose();
-    _city.dispose();
     _country.dispose();
     _couponCtrl.dispose();
     super.dispose();
@@ -298,10 +298,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                 controller: _address,
                 label: 'العنوان التفصيلي',
               ),
-              _field(
-                controller: _city,
-                label: 'المدينة',
-              ),
+              _cityDropdown(),
               _field(
                 controller: _country,
                 label: 'رمز الدولة (مثال: JO)',
@@ -369,7 +366,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             email: _email.text.trim(),
                             phone: _phone.text.trim(),
                             address1: _address.text.trim(),
-                            city: _city.text.trim(),
+                            city: (_selectedCity ?? '').trim(),
                             country: _country.text.trim(),
                                 latitude: _deliveryLat,
                                 longitude: _deliveryLng,
@@ -521,7 +518,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: FutureBuilder<StoreShippingComputation>(
-          future: store.computeShippingForCartLines(lines, userCity: _city.text.trim()),
+          future: store.computeShippingForCartLines(lines, userCity: (_selectedCity ?? '').trim()),
           builder: (context, snap) {
             final computedShipping = snap.data?.totalShipping ?? 0.0;
             final shipping = store.freeShippingByPromotion ? 0.0 : computedShipping;
@@ -619,6 +616,33 @@ class _CheckoutPageState extends State<CheckoutPage> {
             );
           },
         ),
+      ),
+    );
+  }
+
+  Widget _cityDropdown() {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 14),
+      child: DropdownButtonFormField<String>(
+        value: _selectedCity,
+        isExpanded: true,
+        decoration: InputDecoration(
+          labelText: 'المحافظة / المدينة',
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+          filled: true,
+          fillColor: Colors.white,
+        ),
+        hint: Text('اختر المحافظة', style: GoogleFonts.tajawal()),
+        items: kJordanRegions
+            .map(
+              (r) => DropdownMenuItem<String>(
+                value: r,
+                child: Text(r, textAlign: TextAlign.right, style: GoogleFonts.tajawal()),
+              ),
+            )
+            .toList(),
+        onChanged: (v) => setState(() => _selectedCity = v),
+        validator: (v) => (v == null || v.trim().isEmpty) ? 'هذا الحقل مطلوب' : null,
       ),
     );
   }
