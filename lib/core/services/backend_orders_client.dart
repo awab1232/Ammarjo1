@@ -754,11 +754,58 @@ final class BackendOrdersClient {
     return items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
   }
 
+  /// `GET /banners` may return a JSON array or `{ "items": [...] }` (legacy).
+  /// Never throws; returns `null` on failure so callers can show placeholders.
   Future<JsonList?> fetchBanners() async {
-    final body = await _publicGetJson('/banners', flow: 'public_banners');
-    final items = body?['items'];
-    if (items is! List) throw StateError('NULL_RESPONSE');
-    return items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+    final base = BackendOrdersConfig.baseUrl.trim();
+    if (base.isEmpty) {
+      BackendOrdersConfig.warnIfBackendBaseUrlMissing('public_banners');
+      return null;
+    }
+    final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}/banners');
+    try {
+      final res = await http
+          .get(
+            uri,
+            headers: const {
+              'Accept': 'application/json; charset=utf-8',
+            },
+          )
+          .timeout(const Duration(seconds: 15));
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        BackendFallbackLogger.logBackendFallbackTriggered(
+          flow: 'public_banners',
+          reason: 'http_${res.statusCode}',
+          extra: const {'path': '/banners'},
+        );
+        return null;
+      }
+      final decoded = jsonDecode(res.body);
+      List<dynamic>? raw;
+      if (decoded is List) {
+        raw = decoded;
+      } else if (decoded is Map) {
+        final m = Map<String, dynamic>.from(decoded);
+        final items = m['items'] ?? m['data'];
+        if (items is List) raw = items;
+      }
+      if (raw == null) return null;
+      return raw
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
+          .toList();
+    } on Object catch (e, st) {
+      if (kDebugMode) {
+        debugPrint('BackendOrders: fetchBanners failed: $e');
+        debugPrint('$st');
+      }
+      BackendFallbackLogger.logBackendFallbackTriggered(
+        flow: 'public_banners',
+        reason: 'parse_or_network',
+        extra: const {'path': '/banners'},
+      );
+      return null;
+    }
   }
 
   /// Marketing layout: primary slider (3), offers strip, bottom banner (`GET /home/cms`).

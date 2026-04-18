@@ -74,13 +74,16 @@ ProductCategory _categoryFromBackendRow(Map<String, dynamic> row) {
   );
 }
 
+const String _kBannerPlaceholderImage = 'https://via.placeholder.com/600x200';
+
 WpHomeBannerSlide _bannerFromBackendRow(Map<String, dynamic> row) {
+  final imageUrl = (row['imageUrl'] ?? row['image'])?.toString().trim() ?? '';
+  final rawTitle = row['title']?.toString().trim();
+  final title = (rawTitle != null && rawTitle.isNotEmpty) ? rawTitle : 'عرض خاص';
   return WpHomeBannerSlide(
-    imageUrl: row['imageUrl']?.toString() ??
-        row['image']?.toString() ??
-        (throw StateError('NULL_RESPONSE')),
+    imageUrl: imageUrl.isNotEmpty ? imageUrl : _kBannerPlaceholderImage,
     linkUrl: row['linkUrl']?.toString() ?? row['link']?.toString(),
-    title: row['title']?.toString(),
+    title: title,
   );
 }
 
@@ -186,27 +189,37 @@ class BackendProductRepository implements ProductRepository {
 
   @override
   Future<FeatureState<List<WpHomeBannerSlide>>> fetchHomeBanners() async {
-    final rows = await BackendOrdersClient.instance.fetchBanners();
-    if (rows == null) {
-      return FeatureState.success(<WpHomeBannerSlide>[
-        const WpHomeBannerSlide(
-          imageUrl: 'https://picsum.photos/seed/ammarjo-banner/600/200',
+    try {
+      final rows = await BackendOrdersClient.instance.fetchBanners();
+      if (rows == null || rows.isEmpty) {
+        return FeatureState.success(const <WpHomeBannerSlide>[
+          WpHomeBannerSlide(
+            imageUrl: _kBannerPlaceholderImage,
+            title: 'عرض خاص',
+            linkUrl: null,
+          ),
+        ]);
+      }
+      final slides = rows.map(_bannerFromBackendRow).toList();
+      if (slides.isEmpty) {
+        return FeatureState.success(const <WpHomeBannerSlide>[
+          WpHomeBannerSlide(
+            imageUrl: _kBannerPlaceholderImage,
+            title: 'عرض خاص',
+            linkUrl: null,
+          ),
+        ]);
+      }
+      return FeatureState.success(slides);
+    } on Object {
+      return FeatureState.success(const <WpHomeBannerSlide>[
+        WpHomeBannerSlide(
+          imageUrl: _kBannerPlaceholderImage,
           title: 'عرض خاص',
           linkUrl: null,
         ),
       ]);
     }
-    final slides = rows.map(_bannerFromBackendRow).where((s) => s.imageUrl.trim().isNotEmpty).toList();
-    if (slides.isEmpty) {
-      return FeatureState.success(<WpHomeBannerSlide>[
-        const WpHomeBannerSlide(
-          imageUrl: 'https://picsum.photos/seed/ammarjo-banner/600/200',
-          title: 'عرض خاص',
-          linkUrl: null,
-        ),
-      ]);
-    }
-    return FeatureState.success(slides);
   }
 
   @override

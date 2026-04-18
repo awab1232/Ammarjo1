@@ -56,6 +56,8 @@ class PhonePasswordAuthService {
         return 'تعذر التحقق من الحساب';
       case 'token_mint_failed':
         return 'تعذر إصدار رمز الدخول، حاول مرة أخرى';
+      case 'firebase_sign_in_failed':
+        return 'فشل تسجيل الدخول، تحقق من بياناتك أو حاول لاحقاً';
       case 'backend_unavailable':
         return 'الخدمة غير متاحة حالياً، حاول لاحقاً';
       default:

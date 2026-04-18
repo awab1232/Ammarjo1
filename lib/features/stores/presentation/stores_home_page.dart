@@ -16,7 +16,6 @@ import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/premium_categories_strip.dart';
 import '../../store/domain/wp_home_banner.dart';
 import '../../store/presentation/pages/customer_delivery_settings_page.dart';
-import '../../store/presentation/pages/home_page.dart';
 import '../../store/presentation/store_controller.dart';
 import '../data/store_categories_repository.dart';
 import '../data/stores_repository.dart';
@@ -229,7 +228,9 @@ class _StoresHomePageState extends State<StoresHomePage> {
                       },
                       onVisitStore: () {
                         Navigator.of(context).push<void>(
-                          MaterialPageRoute<void>(builder: (_) => const HomePage()),
+                          MaterialPageRoute<void>(
+                            builder: (_) => StoreDetailPage(store: ammarJoCatalogStoreModel()),
+                          ),
                         );
                       },
                       onAddToCart: () async {
@@ -264,7 +265,9 @@ class _StoresHomePageState extends State<StoresHomePage> {
                   },
                   onVisitStore: () {
                     Navigator.of(context).push<void>(
-                      MaterialPageRoute<void>(builder: (_) => const HomePage()),
+                      MaterialPageRoute<void>(
+                        builder: (_) => StoreDetailPage(store: ammarJoCatalogStoreModel()),
+                      ),
                     );
                   },
                   onAddToCart: () async {
@@ -533,7 +536,9 @@ class _StoresHomePageState extends State<StoresHomePage> {
                                     store: ammarJoCatalogStoreModel(),
                                     onTap: () {
                                       Navigator.of(context).push<void>(
-                                        MaterialPageRoute<void>(builder: (_) => const HomePage()),
+                                        MaterialPageRoute<void>(
+                                          builder: (_) => StoreDetailPage(store: ammarJoCatalogStoreModel()),
+                                        ),
                                       );
                                     },
                                   ),
@@ -836,15 +841,48 @@ class _StoresHomePageBannerCarousel extends StatelessWidget {
 class _StoresHomeBannerUnavailable extends StatelessWidget {
   const _StoresHomeBannerUnavailable();
 
+  static const String _placeholder = 'https://via.placeholder.com/600x200';
+
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 24),
-        child: Text(
-          'تعذر تحميل البنرات مؤقتاً',
-          textAlign: TextAlign.center,
-          style: GoogleFonts.tajawal(color: AppColors.textSecondary),
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            Image.network(
+              _placeholder,
+              height: 196,
+              width: double.infinity,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) => Container(
+                height: 196,
+                color: AppColors.surfaceSecondary,
+                alignment: Alignment.center,
+                child: Text(
+                  'عرض خاص',
+                  style: GoogleFonts.tajawal(fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: 8,
+              left: 0,
+              right: 0,
+              child: Text(
+                'تعذر تحميل البنرات — عرض بديل',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.tajawal(
+                  color: Colors.white,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  shadows: const [Shadow(offset: Offset(0, 1), blurRadius: 4, color: Colors.black54)],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

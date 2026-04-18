@@ -6,7 +6,7 @@ import 'package:http/http.dart' as http;
 import '../config/backend_orders_config.dart';
 
 abstract final class StagingStartupGuard {
-  /// Staging checks are **best-effort** Ã¢â‚¬â€ never block app launch.
+  /// Staging checks are best-effort — never block app launch.
   static Future<void> verifyOrThrow() async {
     if (!BackendOrdersConfig.stagingMode) return;
     final base = BackendOrdersConfig.baseUrl.trim().replaceAll(RegExp(r'/$'), '');
@@ -44,8 +44,8 @@ abstract final class StagingStartupGuard {
           'serviceRequests': serviceRequests.statusCode,
         }),
       );
-    } on Object {
-      debugPrint('[StagingStartupGuard] staging verification failed (continuing): unexpected error\n$StackTrace.current');
+    } on Object catch (e, st) {
+      debugPrint('[StagingStartupGuard] staging verification failed (continuing): $e\n$st');
     }
   }
 }

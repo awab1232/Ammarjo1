@@ -9,7 +9,6 @@ import '../../../core/seo/seo_service.dart';
 import '../../../core/widgets/app_bar_back_button.dart';
 import '../../../core/widgets/app_bottom_sheet.dart';
 import '../../../core/widgets/empty_state_widget.dart';
-import '../../store/presentation/pages/home_page.dart';
 import '../../store/presentation/store_controller.dart';
 import '../data/stores_repository.dart';
 import '../domain/store_model.dart';
@@ -18,9 +17,9 @@ import 'widgets/store_expanded_card.dart';
 
 enum _StoreListFilter { all, rating4, offers }
 
-/// Ã™â€¦Ã˜Â³Ã˜ÂªÃ™Ë†Ã™â€° Ã™Â¢ Ã¢â‚¬â€ Ã™â€šÃ˜Â§Ã˜Â¦Ã™â€¦Ã˜Â© Ã™â€¦Ã˜ÂªÃ˜Â§Ã˜Â¬Ã˜Â± Ã˜Â­Ã˜Â³Ã˜Â¨ Ã˜Â§Ã™â€žÃ˜ÂªÃ˜ÂµÃ™â€ Ã™Å Ã™Â Ã™â€¦Ã˜Â¹ Ã˜Â´Ã˜Â±Ã˜Â§Ã˜Â¦Ã˜Â­ Ã˜ÂªÃ˜ÂµÃ™ÂÃ™Å Ã˜Â©.
+/// مستوى ٢ — قائمة متاجر حسب التصنيف مع شرائح تصفية.
 class StoresListPage extends StatefulWidget {
-  const StoresListPage({super.key, required this.category});
+  const StoresListPage({super.key, this.category = ''});
 
   final String category;
 
@@ -55,7 +54,7 @@ class _StoresListPageState extends State<StoresListPage> {
     }
   }
 
-  /// Ã™Å Ã™â€¦Ã™â€ Ã˜Â¹ Ã˜ÂªÃ™Æ’Ã˜Â±Ã˜Â§Ã˜Â± Ã˜Â¨Ã˜Â·Ã˜Â§Ã™â€šÃ˜Â© Ã™Æ’Ã˜ÂªÃ˜Â§Ã™â€žÃ™Ë†Ã˜Â¬ Ã˜Â¹Ã™â€¦Ã˜Â§Ã˜Â± Ã˜Â¬Ã™Ë† Ã˜Â¥Ã™â€  Ã™Ë†Ã™ÂÃ˜Â¬Ã˜Â¯Ã˜Âª Ã™ÂÃ™Å  Ã™â€ Ã˜ÂªÃ˜Â§Ã˜Â¦Ã˜Â¬ Firestore.
+  /// يمنع تكرار بطاقة كتالوج عمّار جو إن وُجدت في نتائج Firestore.
   List<StoreModel> _storesExcludingCatalog() {
     return _stores
         .where((s) => s.id.toLowerCase().trim() != 'ammarjo')
@@ -91,12 +90,12 @@ class _StoresListPageState extends State<StoresListPage> {
         case FeatureAdminMissingEndpoint():
         case FeatureCriticalPublicDataFailure():
         case FeatureFailure():
-          setState(() => _loadError = 'Ã˜ÂªÃ˜Â¹Ã˜Â°Ã˜Â± Ã˜ÂªÃ˜Â­Ã™â€¦Ã™Å Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â¨Ã™Å Ã˜Â§Ã™â€ Ã˜Â§Ã˜Âª');
+          setState(() => _loadError = 'تعذر تحميل البيانات');
       }
     } on Object {
       if (!mounted) return;
-      debugPrint('Ã¢ÂÅ’ StoresList load error: unexpected error');
-      setState(() => _loadError = 'Ã˜ÂªÃ˜Â¹Ã˜Â°Ã˜Â± Ã˜ÂªÃ˜Â­Ã™â€¦Ã™Å Ã™â€ž Ã˜Â§Ã™â€žÃ˜Â¨Ã™Å Ã˜Â§Ã™â€ Ã˜Â§Ã˜Âª');
+      debugPrint('StoresList load error');
+      setState(() => _loadError = 'تعذر تحميل البيانات');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -129,13 +128,13 @@ class _StoresListPageState extends State<StoresListPage> {
           break;
       }
     } on Object {
-      debugPrint('Ã¢ÂÅ’ StoresList loadMore error: unexpected error');
+      debugPrint('StoresList loadMore error');
     } finally {
       if (mounted) setState(() => _loadingMore = false);
     }
   }
 
-  /// Ã˜ÂªÃ™â€¦Ã˜Â±Ã™Å Ã˜Â± Ã™Ë†Ã˜Â§Ã˜Â­Ã˜Â¯: Ã˜Â´Ã˜Â±Ã˜Â§Ã˜Â¦Ã˜Â­ Ã˜Â§Ã™â€žÃ˜ÂªÃ˜ÂµÃ™ÂÃ™Å Ã˜Â© + Ã˜Â¹Ã™â€¦Ã˜Â§Ã˜Â± Ã˜Â¬Ã™Ë† Ã˜Â£Ã™Ë†Ã™â€žÃ˜Â§Ã™â€¹ (Ã™â€ Ã™ÂÃ˜Â³ [StoreExpandedCard]) + Ã˜Â§Ã™â€žÃ™â€¦Ã˜ÂªÃ˜Â§Ã˜Â¬Ã˜Â± Ã˜Â§Ã™â€žÃ˜Â£Ã˜Â®Ã˜Â±Ã™â€°.
+  /// تمرير واحد: شرائح التصفية + عمّار جو أولاً (نفس [StoreExpandedCard]) + المتاجر الأخرى.
   Widget _buildBody(BuildContext context) {
     if (_loadError != null) {
       return Center(
@@ -148,7 +147,7 @@ class _StoresListPageState extends State<StoresListPage> {
             const SizedBox(height: 8),
             ElevatedButton(
               onPressed: _loadInitial,
-              child: const Text('Ã˜Â¥Ã˜Â¹Ã˜Â§Ã˜Â¯Ã˜Â© Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â­Ã˜Â§Ã™Ë†Ã™â€žÃ˜Â©'),
+              child: const Text('إعادة المحاولة'),
             ),
           ],
         ),
@@ -164,11 +163,11 @@ class _StoresListPageState extends State<StoresListPage> {
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           child: Row(
             children: [
-              _chip('Ã˜Â§Ã™â€žÃ™Æ’Ã™â€ž', _StoreListFilter.all),
+              _chip('الكل', _StoreListFilter.all),
               const SizedBox(width: 8),
-              _chip('Ã˜ÂªÃ™â€šÃ™Å Ã™Å Ã™â€¦ 4+', _StoreListFilter.rating4),
+              _chip('تقييم 4+', _StoreListFilter.rating4),
               const SizedBox(width: 8),
-              _chip('Ã˜Â¹Ã˜Â±Ã™Ë†Ã˜Â¶', _StoreListFilter.offers),
+              _chip('عروض', _StoreListFilter.offers),
             ],
           ),
         ),
@@ -178,7 +177,9 @@ class _StoresListPageState extends State<StoresListPage> {
           store: ammarJoCatalogStoreModel(),
           onVisitStore: () {
             Navigator.of(context).push<void>(
-              MaterialPageRoute<void>(builder: (_) => const HomePage()),
+              MaterialPageRoute<void>(
+                builder: (_) => StoreDetailPage(store: ammarJoCatalogStoreModel()),
+              ),
             );
           },
         ),

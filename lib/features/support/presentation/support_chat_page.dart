@@ -8,7 +8,7 @@ import '../../../core/widgets/app_bar_back_button.dart';
 import '../../store/presentation/store_controller.dart';
 import '../data/support_chat_repository.dart';
 
-/// Ã™â€¦Ã˜Â­Ã˜Â§Ã˜Â¯Ã˜Â«Ã˜Â© Ã˜Â¯Ã˜Â¹Ã™â€¦ Ã˜Â¨Ã™Å Ã™â€  Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â³Ã˜ÂªÃ˜Â®Ã˜Â¯Ã™â€¦ Ã™Ë†Ã˜Â§Ã™â€žÃ˜Â¥Ã˜Â¯Ã˜Â§Ã˜Â±Ã˜Â©.
+/// محادثة دعم بين المستخدم والإدارة.
 class SupportChatPage extends StatefulWidget {
   const SupportChatPage({
     super.key,
@@ -45,8 +45,8 @@ class _SupportChatPageState extends State<SupportChatPage> {
       } else {
         await SupportChatRepository.instance.resetUserUnreadCount(widget.chatId);
       }
-    } on Object {
-      debugPrint('[SupportChatPage] _resetUnreadOnOpen: unexpected error\n$StackTrace.current');
+    } on Object catch (e, st) {
+      debugPrint('[SupportChatPage] _resetUnreadOnOpen: $e\n$st');
     }
   }
 
@@ -54,18 +54,18 @@ class _SupportChatPageState extends State<SupportChatPage> {
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Ã˜Â¥Ã™â€ Ã™â€¡Ã˜Â§Ã˜Â¡ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â­Ã˜Â§Ã˜Â¯Ã˜Â«Ã˜Â©', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+        title: Text('إنهاء المحادثة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
         content: Text(
-          'Ã™â€¡Ã™â€ž Ã˜ÂªÃ˜Â±Ã™Å Ã˜Â¯ Ã˜Â¥Ã™â€ Ã™â€¡Ã˜Â§Ã˜Â¡ Ã™â€¡Ã˜Â°Ã™â€¡ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â­Ã˜Â§Ã˜Â¯Ã˜Â«Ã˜Â©Ã˜Å¸ Ã™â€žÃ™â€  Ã™Å Ã™â€¦Ã™Æ’Ã™â€  Ã˜Â¥Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž Ã˜Â±Ã˜Â³Ã˜Â§Ã˜Â¦Ã™â€ž Ã˜Â¬Ã˜Â¯Ã™Å Ã˜Â¯Ã˜Â© Ã˜Â­Ã˜ÂªÃ™â€° Ã˜ÂªÃ˜Â¨Ã˜Â¯Ã˜Â£ Ã™â€¦Ã˜Â­Ã˜Â§Ã˜Â¯Ã˜Â«Ã˜Â© Ã˜Â¬Ã˜Â¯Ã™Å Ã˜Â¯Ã˜Â© Ã™â€¦Ã™â€  Ã‚Â«Ã˜Â§Ã˜Â­Ã˜ÂµÃ™â€ž Ã˜Â¹Ã™â€žÃ™â€° Ã™â€¦Ã˜Â³Ã˜Â§Ã˜Â¹Ã˜Â¯Ã˜Â©Ã‚Â».',
+          'هل تريد إنهاء هذه المحادثة؟ لن يمكن إرسال رسائل جديدة حتى تبدأ محادثة جديدة من «احصل على مساعدة».',
           style: GoogleFonts.tajawal(height: 1.35),
           textAlign: TextAlign.right,
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Ã˜Â¥Ã™â€žÃ˜ÂºÃ˜Â§Ã˜Â¡', style: GoogleFonts.tajawal())),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('إلغاء', style: GoogleFonts.tajawal())),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(backgroundColor: AppColors.primaryOrange),
-            child: Text('Ã˜Â¥Ã™â€ Ã™â€¡Ã˜Â§Ã˜Â¡', style: GoogleFonts.tajawal(color: Colors.white)),
+            child: Text('إنهاء', style: GoogleFonts.tajawal(color: Colors.white)),
           ),
         ],
       ),
@@ -76,13 +76,15 @@ class _SupportChatPageState extends State<SupportChatPage> {
       await SupportChatRepository.instance.closeChat(widget.chatId);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ã˜ÂªÃ™â€¦ Ã˜Â¥Ã™â€ Ã™â€¡Ã˜Â§Ã˜Â¡ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â­Ã˜Â§Ã˜Â¯Ã˜Â«Ã˜Â©.', style: GoogleFonts.tajawal())),
+          SnackBar(content: Text('تم إنهاء المحادثة.', style: GoogleFonts.tajawal())),
         );
       }
-    } on Object {
+    } on Object catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ã˜ÂªÃ˜Â¹Ã˜Â°Ã™â€˜Ã˜Â± Ã˜Â§Ã™â€žÃ˜Â¥Ã™â€ Ã™â€¡Ã˜Â§Ã˜Â¡: unexpected error', style: GoogleFonts.tajawal())),
+          SnackBar(
+            content: Text('تعذر الإنهاء: $e', style: GoogleFonts.tajawal()),
+          ),
         );
       }
     } finally {
@@ -99,13 +101,13 @@ class _SupportChatPageState extends State<SupportChatPage> {
 
     String senderName;
     if (widget.isAdmin) {
-      senderName = 'Ã™ÂÃ˜Â±Ã™Å Ã™â€š Ã˜Â§Ã™â€žÃ˜Â¯Ã˜Â¹Ã™â€¦';
+      senderName = 'فريق الدعم';
     } else {
       final p = store.profile;
       senderName = p?.fullName?.trim().isNotEmpty == true
           ? p!.fullName!.trim()
           : '${p?.firstName ?? ''} ${p?.lastName ?? ''}'.trim();
-      if (senderName.isEmpty) senderName = p?.email ?? 'Ã˜Â¹Ã™â€¦Ã™Å Ã™â€ž';
+      if (senderName.isEmpty) senderName = p?.email ?? 'عميل';
     }
 
     try {
@@ -124,11 +126,11 @@ class _SupportChatPageState extends State<SupportChatPage> {
           );
         }
       });
-    } on Object {
-      debugPrint('[SupportChatPage] _send: unexpected error\n$StackTrace.current');
+    } on Object catch (e) {
+      debugPrint('[SupportChatPage] _send: $e');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ã˜ÂªÃ˜Â¹Ã˜Â°Ã™â€˜Ã˜Â± Ã˜Â§Ã™â€žÃ˜Â¥Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€ž: unexpected error', style: GoogleFonts.tajawal())),
+          SnackBar(content: Text('تعذر الإرسال: $e', style: GoogleFonts.tajawal())),
         );
       }
     }
@@ -145,7 +147,7 @@ class _SupportChatPageState extends State<SupportChatPage> {
               backgroundColor: const Color(0xFFFF6B00),
               foregroundColor: Colors.white,
               leading: const AppBarBackButton(),
-              title: Text('Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â³Ã˜Â§Ã˜Â¹Ã˜Â¯Ã˜Â© Ã™Ë†Ã˜Â§Ã™â€žÃ˜Â¯Ã˜Â¹Ã™â€¦', style: GoogleFonts.tajawal(color: Colors.white)),
+              title: Text('المساعدة والدعم', style: GoogleFonts.tajawal(color: Colors.white)),
             ),
             body: const Center(child: CircularProgressIndicator(color: AppColors.primaryOrange)),
           );
@@ -156,7 +158,7 @@ class _SupportChatPageState extends State<SupportChatPage> {
               backgroundColor: const Color(0xFFFF6B00),
               foregroundColor: Colors.white,
               leading: const AppBarBackButton(),
-              title: Text('Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â³Ã˜Â§Ã˜Â¹Ã˜Â¯Ã˜Â© Ã™Ë†Ã˜Â§Ã™â€žÃ˜Â¯Ã˜Â¹Ã™â€¦', style: GoogleFonts.tajawal(color: Colors.white)),
+              title: Text('المساعدة والدعم', style: GoogleFonts.tajawal(color: Colors.white)),
             ),
             body: Center(child: Text('${snap.error}', style: GoogleFonts.tajawal())),
           );
@@ -167,9 +169,9 @@ class _SupportChatPageState extends State<SupportChatPage> {
               backgroundColor: const Color(0xFFFF6B00),
               foregroundColor: Colors.white,
               leading: const AppBarBackButton(),
-              title: Text('Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â³Ã˜Â§Ã˜Â¹Ã˜Â¯Ã˜Â© Ã™Ë†Ã˜Â§Ã™â€žÃ˜Â¯Ã˜Â¹Ã™â€¦', style: GoogleFonts.tajawal(color: Colors.white)),
+              title: Text('المساعدة والدعم', style: GoogleFonts.tajawal(color: Colors.white)),
             ),
-            body: Center(child: Text('Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â­Ã˜Â§Ã˜Â¯Ã˜Â«Ã˜Â© Ã˜ÂºÃ™Å Ã˜Â± Ã™â€¦Ã™Ë†Ã˜Â¬Ã™Ë†Ã˜Â¯Ã˜Â©.', style: GoogleFonts.tajawal())),
+            body: Center(child: Text('المحادثة غير موجودة.', style: GoogleFonts.tajawal())),
           );
         }
         final data = snap.data!;
@@ -181,7 +183,7 @@ class _SupportChatPageState extends State<SupportChatPage> {
 
         return Scaffold(
           appBar: AppBar(
-            title: Text('Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â³Ã˜Â§Ã˜Â¹Ã˜Â¯Ã˜Â© Ã™Ë†Ã˜Â§Ã™â€žÃ˜Â¯Ã˜Â¹Ã™â€¦', style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.w700)),
+            title: Text('المساعدة والدعم', style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.w700)),
             backgroundColor: const Color(0xFFFF6B00),
             foregroundColor: Colors.white,
             leading: const AppBarBackButton(),
@@ -190,7 +192,7 @@ class _SupportChatPageState extends State<SupportChatPage> {
                 TextButton(
                   onPressed: _ending ? null : _endChat,
                   child: Text(
-                    'Ã˜Â¥Ã™â€ Ã™â€¡Ã˜Â§Ã˜Â¡ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â­Ã˜Â§Ã˜Â¯Ã˜Â«Ã˜Â©',
+                    'إنهاء المحادثة',
                     style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.w700),
                   ),
                 ),
@@ -204,7 +206,7 @@ class _SupportChatPageState extends State<SupportChatPage> {
                   color: Colors.red[50],
                   padding: const EdgeInsets.all(12),
                   child: Text(
-                    'Ã˜ÂªÃ™â€¦ Ã˜Â¥Ã™â€ Ã™â€¡Ã˜Â§Ã˜Â¡ Ã™â€¡Ã˜Â°Ã™â€¡ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â­Ã˜Â§Ã˜Â¯Ã˜Â«Ã˜Â©. Ã™â€žÃ™â€žÃ˜ÂªÃ™Ë†Ã˜Â§Ã˜ÂµÃ™â€ž Ã™â€¦Ã˜Â±Ã˜Â© Ã˜Â£Ã˜Â®Ã˜Â±Ã™â€° Ã˜Â§Ã˜Â¶Ã˜ÂºÃ˜Â· Ã˜Â¹Ã™â€žÃ™â€° Ã‚Â«Ã˜Â§Ã˜Â­Ã˜ÂµÃ™â€ž Ã˜Â¹Ã™â€žÃ™â€° Ã™â€¦Ã˜Â³Ã˜Â§Ã˜Â¹Ã˜Â¯Ã˜Â©Ã‚Â».',
+                    'تم إنهاء هذه المحادثة. للتواصل مرة أخرى اضغط على «احصل على مساعدة».',
                     textAlign: TextAlign.center,
                     style: GoogleFonts.tajawal(color: Colors.red[800], fontSize: 13, height: 1.35),
                   ),
@@ -219,65 +221,65 @@ class _SupportChatPageState extends State<SupportChatPage> {
   }
 
   Widget _buildMessagesList(List<SupportMessage> messages) {
-        if (messages.isEmpty) {
-          return Center(
-            child: Padding(
-              padding: const EdgeInsets.all(24),
-              child: Text(
-                'Ã˜Â§Ã˜Â¨Ã˜Â¯Ã˜Â£ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â­Ã˜Â§Ã˜Â¯Ã˜Â«Ã˜Â© Ã˜Â¨Ã™Æ’Ã˜ÂªÃ˜Â§Ã˜Â¨Ã˜Â© Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€žÃ˜ÂªÃ™Æ’ Ã˜Â£Ã˜Â¯Ã™â€ Ã˜Â§Ã™â€¡.',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.tajawal(color: AppColors.textSecondary),
-              ),
+    if (messages.isEmpty) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text(
+            'ابدأ المحادثة بكتابة رسالتك أدناه.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.tajawal(color: AppColors.textSecondary),
+          ),
+        ),
+      );
+    }
+    final myUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    return ListView.builder(
+      controller: _scroll,
+      padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
+      itemCount: messages.length,
+      itemBuilder: (context, i) {
+        final m = messages[i];
+        final senderId = m.senderId;
+        final senderName = m.senderName;
+        final text = m.text;
+        final at = m.createdAt;
+        final mine = senderId == myUid;
+        return Align(
+          alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
+          child: Container(
+            margin: const EdgeInsets.only(bottom: 10),
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+            constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.85),
+            decoration: BoxDecoration(
+              color: mine ? AppColors.primaryOrange.withValues(alpha: 0.12) : Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: AppColors.border),
             ),
-          );
-        }
-        final myUid = FirebaseAuth.instance.currentUser?.uid ?? '';
-        return ListView.builder(
-          controller: _scroll,
-          padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),
-          itemCount: messages.length,
-          itemBuilder: (context, i) {
-            final m = messages[i];
-            final senderId = m.senderId;
-            final senderName = m.senderName;
-            final text = m.text;
-            final at = m.createdAt;
-            final mine = senderId == myUid;
-            return Align(
-              alignment: mine ? Alignment.centerRight : Alignment.centerLeft,
-              child: Container(
-                margin: const EdgeInsets.only(bottom: 10),
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                constraints: BoxConstraints(maxWidth: MediaQuery.sizeOf(context).width * 0.85),
-                decoration: BoxDecoration(
-                  color: mine ? AppColors.primaryOrange.withValues(alpha: 0.12) : Colors.white,
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: AppColors.border),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(
+                  senderName,
+                  style: GoogleFonts.tajawal(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                  textAlign: TextAlign.right,
                 ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    Text(
-                      senderName,
-                      style: GoogleFonts.tajawal(fontSize: 11, fontWeight: FontWeight.w700, color: AppColors.textSecondary),
-                      textAlign: TextAlign.right,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(text, style: GoogleFonts.tajawal(fontSize: 15, height: 1.35), textAlign: TextAlign.right),
-                    Padding(
-                      padding: const EdgeInsets.only(top: 6),
-                      child: Text(
-                        '${at.hour.toString().padLeft(2, '0')}:${at.minute.toString().padLeft(2, '0')}',
-                        style: GoogleFonts.tajawal(fontSize: 10, color: AppColors.textSecondary),
-                        textAlign: TextAlign.left,
-                      ),
-                    ),
-                  ],
+                const SizedBox(height: 4),
+                Text(text, style: GoogleFonts.tajawal(fontSize: 15, height: 1.35), textAlign: TextAlign.right),
+                Padding(
+                  padding: const EdgeInsets.only(top: 6),
+                  child: Text(
+                    '${at.hour.toString().padLeft(2, '0')}:${at.minute.toString().padLeft(2, '0')}',
+                    style: GoogleFonts.tajawal(fontSize: 10, color: AppColors.textSecondary),
+                    textAlign: TextAlign.left,
+                  ),
                 ),
-              ),
-            );
-          },
+              ],
+            ),
+          ),
         );
+      },
+    );
   }
 
   Widget _buildMessageInput() {
@@ -297,7 +299,7 @@ class _SupportChatPageState extends State<SupportChatPage> {
                   maxLines: 4,
                   textAlign: TextAlign.right,
                   decoration: InputDecoration(
-                    hintText: 'Ã˜Â§Ã™Æ’Ã˜ÂªÃ˜Â¨ Ã˜Â±Ã˜Â³Ã˜Â§Ã™â€žÃ˜ÂªÃ™Æ’Ã¢â‚¬Â¦',
+                    hintText: 'اكتب رسالتك…',
                     hintStyle: GoogleFonts.tajawal(color: AppColors.textSecondary),
                     filled: true,
                     fillColor: AppColors.surfaceSecondary,
@@ -325,5 +327,3 @@ class _SupportChatPageState extends State<SupportChatPage> {
     );
   }
 }
-
-

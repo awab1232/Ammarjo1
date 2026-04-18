@@ -40,6 +40,9 @@ export class OrdersPgService implements OnModuleDestroy {
         max: Number(process.env.ORDERS_PG_POOL_MAX || 10),
         idleTimeoutMillis: 30_000,
       });
+      this.pool.on('connect', (c) => {
+        void c.query("SET client_encoding TO 'UTF8'").catch(() => undefined);
+      });
     } catch (e) {
       // Security: never log connection strings or credentials.
       console.error('[OrdersPgService] failed to init pool:', safeErrorMessage(e));

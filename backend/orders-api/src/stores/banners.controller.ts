@@ -10,9 +10,9 @@ import { TenantContextGuard } from '../identity/tenant-context.guard';
 export class BannersController {
   constructor(private readonly home: HomeService) {}
 
-  /** Legacy list shape; items come from `home_cms.slider` (see `GET /home/cms`). */
+  /** Banner slides from `home_cms.slider` (same source as `GET /home/cms` primarySlider). */
   @Get()
   list() {
-    return this.home.getBannersList();
+    return this.home.getBannersArray();
   }
 }

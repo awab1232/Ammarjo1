@@ -82,6 +82,7 @@ Future<void> main() async {
   final resolvedEnv = appEnv.isNotEmpty ? appEnv : (kDebugMode ? 'staging' : 'production');
   final tracesSampleRate = resolvedEnv == 'production' ? 0.1 : 1.0;
   Future<void> runner() async {
+    WidgetsFlutterBinding.ensureInitialized();
     FlutterError.onError = (details) {
       FlutterError.dumpErrorToConsole(details);
       unawaited(
@@ -92,7 +93,6 @@ Future<void> main() async {
       );
     };
     await runZonedGuarded<Future<void>>(() async {
-      WidgetsFlutterBinding.ensureInitialized();
       await _appMain();
     }, (error, stack) async {
       await sentryCaptureExceptionSafe(error, stackTrace: stack);

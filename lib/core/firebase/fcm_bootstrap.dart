@@ -4,7 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import '../services/backend_user_client.dart';
 
-/// Ã˜ÂªÃ™â€¡Ã™Å Ã˜Â¦Ã˜Â© FCM Ã™Ë†Ã˜Â­Ã™ÂÃ˜Â¸ Ã˜Â§Ã™â€žÃ˜Â±Ã™â€¦Ã˜Â² Ã˜ÂªÃ˜Â­Ã˜Âª `users/{uid}` (Ã™â€žÃ˜Â§Ã˜Â³Ã˜ÂªÃ˜Â®Ã˜Â¯Ã˜Â§Ã™â€¦ Ã˜Â®Ã˜Â§Ã˜Â¯Ã™â€¦ Ã™â€žÃ˜Â§Ã˜Â­Ã™â€šÃ˜Â§Ã™â€¹ Ã˜Â£Ã™Ë† Ã˜Â£Ã˜Â¯Ã™Ë†Ã˜Â§Ã˜Âª Firebase).
+/// تهيئة FCM وحفظ رمز الجهاز تحت `users/{uid}` لمزامنة الإشعارات.
 abstract final class FcmBootstrap {
   static Future<void> registerIfSignedIn() async {
     if (kIsWeb) {

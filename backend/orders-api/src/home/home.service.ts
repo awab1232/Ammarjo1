@@ -25,6 +25,11 @@ export class HomeService {
           idleTimeoutMillis: 30_000,
         })
       : null;
+    if (this.pool) {
+      this.pool.on('connect', (c) => {
+        void c.query("SET client_encoding TO 'UTF8'").catch(() => undefined);
+      });
+    }
   }
 
   private requireDb(): Pool {
@@ -256,9 +261,9 @@ export class HomeService {
     });
   }
 
-  /** Shape expected by legacy `GET /banners` (Flutter `fetchBanners`). */
-  async getBannersList(): Promise<{ items: HomeCmsSlide[] }> {
+  /** Public slider list for `GET /banners` (JSON array of slides). */
+  async getBannersArray(): Promise<HomeCmsSlide[]> {
     const cms = await this.getPublicCms();
-    return { items: cms.primarySlider };
+    return cms.primarySlider;
   }
 }

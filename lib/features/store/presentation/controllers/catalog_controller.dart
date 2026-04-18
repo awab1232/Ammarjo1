@@ -5,6 +5,7 @@ import 'package:flutter/foundation.dart' show ChangeNotifier, debugPrint, kDebug
 import '../../../../core/config/home_sections_config.dart';
 import '../../../../core/config/shipping_policy.dart';
 import '../../../../core/contracts/feature_state.dart';
+import '../../../../core/data/repositories/product_repository.dart';
 import '../../../../core/network/network_errors.dart';
 import '../../data/backend_catalog_client.dart';
 import '../../../../core/data/repositories/store_settings_repository.dart';
@@ -140,7 +141,7 @@ class CatalogController extends ChangeNotifier {
     errorMessage = null;
     _productOffset = 0;
     catalogHasMore = true;
-    products = [];
+    products.clear();
     notifyListeners();
     final sw = Stopwatch()..start();
     try {
@@ -256,9 +257,15 @@ class CatalogController extends ChangeNotifier {
 
   Future<void> loadWpHomeBanners() async {
     try {
-      wpHomeBanners = <WpHomeBannerSlide>[];
+      final state = await BackendProductRepository.instance.fetchHomeBanners();
+      switch (state) {
+        case FeatureSuccess(:final data):
+          wpHomeBanners = data;
+        default:
+          wpHomeBanners = const <WpHomeBannerSlide>[];
+      }
     } on Object {
-      wpHomeBanners = <WpHomeBannerSlide>[];
+      wpHomeBanners = const <WpHomeBannerSlide>[];
     }
     notifyListeners();
   }
