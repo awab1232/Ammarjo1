@@ -9,6 +9,7 @@ import 'package:provider/provider.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/services/growth_analytics_service.dart';
 import '../../../../core/widgets/app_bar_back_button.dart';
+import '../../../../core/widgets/home_page_shimmers.dart';
 import '../../domain/models.dart';
 import '../store_controller.dart';
 import 'login_page.dart';
@@ -411,11 +412,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           }
                         },
                   child: store.isLoading
-                      ? const SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                        )
+                      ? const InlineLightButtonShimmer(size: 24)
                       : Text(
                           'تأكيد الطلب',
                           style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 16),

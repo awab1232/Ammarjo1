@@ -1,7 +1,7 @@
 ﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/home_page_shimmers.dart';
 import '../../data/wholesale_repository.dart';
 import '../../domain/wholesale_order_model.dart';
 
@@ -113,7 +113,13 @@ class _WholesaleOrdersSectionState extends State<WholesaleOrdersSection> {
       );
     }
     if (_isLoading && _orders.isEmpty) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.primaryOrange));
+      return ListView(
+        physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+        padding: const EdgeInsets.all(12),
+        children: const [
+          HomeStoreListSkeleton(rows: 5),
+        ],
+      );
     }
     if (_orders.isEmpty) {
       return Center(child: Text('لا توجد طلبات واردة', style: GoogleFonts.tajawal()));
@@ -137,7 +143,7 @@ class _WholesaleOrdersSectionState extends State<WholesaleOrdersSection> {
               return _isLoadingMore
                   ? const Padding(
                       padding: EdgeInsets.symmetric(vertical: 10),
-                      child: Center(child: CircularProgressIndicator(color: AppColors.primaryOrange)),
+                      child: HomeStoreListSkeleton(rows: 1),
                     )
                   : const SizedBox.shrink();
             }

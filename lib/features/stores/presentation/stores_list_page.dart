@@ -204,11 +204,9 @@ class _StoresListPageState extends State<StoresListPage> {
           delegate: SliverChildBuilderDelegate((context, i) {
             if (i >= filtered.length) {
               if (!_loadingMore) return const SizedBox.shrink();
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                child: Center(
-                  child: CircularProgressIndicator(color: AppColors.orange),
-                ),
+              return Padding(
+                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                child: _buildShimmerCard(),
               );
             }
             final s = filtered[i];

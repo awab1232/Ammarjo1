@@ -9,6 +9,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/web_image_url.dart';
 import '../../../../core/widgets/app_bar_back_button.dart';
 import '../../../../core/widgets/ammar_cached_image.dart';
+import '../../../../core/widgets/home_page_shimmers.dart';
 import '../../../communication/presentation/unified_chat_page.dart';
 import '../../../reviews/presentation/widgets/reviews_section.dart';
 import '../../../reviews/data/reviews_repository.dart';
@@ -80,7 +81,7 @@ class _WholesalerDetailPageState extends State<WholesalerDetailPage> {
       }
     } on Object {
       debugPrint('[WholesalerDetailPage] _loadProducts failed.');
-      if (mounted) setState(() => _error = 'تعذر تحميل المنتجات حالياً.');
+      if (mounted) setState(() => _error = 'تعذّر تحميل المنتجات حالياً.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -347,13 +348,24 @@ class _WholesalerDetailPageState extends State<WholesalerDetailPage> {
             ),
             if (_loading)
               const Padding(
-                padding: EdgeInsets.all(32),
-                child: Center(child: CircularProgressIndicator(color: AppColors.primaryOrange)),
+                padding: EdgeInsets.symmetric(horizontal: 12, vertical: 16),
+                child: HomeStoreListSkeleton(rows: 5),
               )
             else if (_error != null)
               Padding(
                 padding: const EdgeInsets.all(24),
-                child: Text(_error!, style: GoogleFonts.tajawal(color: AppColors.error)),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(_error!, textAlign: TextAlign.center, style: GoogleFonts.tajawal(color: AppColors.error, height: 1.4)),
+                    const SizedBox(height: 14),
+                    FilledButton(
+                      onPressed: _loadProducts,
+                      style: FilledButton.styleFrom(backgroundColor: AppColors.primaryOrange),
+                      child: Text('إعادة المحاولة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                    ),
+                  ],
+                ),
               )
             else ...[
               if (_filtered().isEmpty)
@@ -369,7 +381,13 @@ class _WholesalerDetailPageState extends State<WholesalerDetailPage> {
                       leading: p.imageUrl.trim().isNotEmpty
                           ? ClipRRect(
                               borderRadius: BorderRadius.circular(8),
-                              child: Image.network(webSafeImageUrl(p.imageUrl), width: 56, height: 56, fit: BoxFit.cover),
+                              child: AmmarCachedImage(
+                                imageUrl: webSafeImageUrl(p.imageUrl),
+                                width: 56,
+                                height: 56,
+                                fit: BoxFit.cover,
+                                useShimmerPlaceholder: true,
+                              ),
                             )
                           : const Icon(Icons.inventory_2_outlined),
                       title: Text(p.name, textAlign: TextAlign.right, style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),

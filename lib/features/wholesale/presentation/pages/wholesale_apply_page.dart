@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/firebase/user_notifications_repository.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/home_page_shimmers.dart';
 import '../../../store/presentation/store_controller.dart';
 import '../../data/wholesale_repository.dart';
 
@@ -253,7 +254,7 @@ class _WholesaleApplyPageState extends State<WholesaleApplyPage> {
                       ),
                       onPressed: _isLoading ? null : _submitApplication,
                       child: _isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
+                          ? const InlineLightButtonShimmer(size: 26)
                           : Text(
                               'إرسال الطلب',
                               style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18),

@@ -13,6 +13,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_bar_back_button.dart';
 import '../../../../core/widgets/app_bottom_sheet.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../core/widgets/home_page_shimmers.dart';
 import '../../../communication/data/unified_chat_repository.dart';
 import '../../../communication/domain/unified_chat_models.dart';
 import '../../../communication/presentation/unified_chat_page.dart';
@@ -372,11 +373,9 @@ class _TechnicianListBodyState extends State<_TechnicianListBody> {
               separatorBuilder: (context, index) => const SizedBox(height: 12),
               itemBuilder: (context, index) {
                 if (index >= techs.length) {
-                  return const Center(
-                    child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 8),
-                      child: CircularProgressIndicator(color: AppColors.orange),
-                    ),
+                  return const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: HomeStoreListSkeleton(rows: 2),
                   );
                 }
                 final tech = techs[index];

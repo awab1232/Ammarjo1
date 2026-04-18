@@ -4,10 +4,11 @@ import 'package:provider/provider.dart';
 
 import '../../../core/contracts/feature_state.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/widgets/feature_state_builder.dart';
-import '../../../core/utils/web_image_url.dart';
 import '../../../core/widgets/ammar_cached_image.dart';
 import '../../../core/widgets/app_bar_back_button.dart';
+import '../../../core/widgets/feature_state_builder.dart';
+import '../../../core/widgets/home_page_shimmers.dart';
+import '../../../core/utils/web_image_url.dart';
 import '../../../core/seo/seo_routes.dart';
 import '../../../core/seo/seo_service.dart';
 import '../../store/presentation/store_controller.dart';
@@ -16,7 +17,7 @@ import '../domain/store_model.dart';
 import '../domain/store_shelf_product.dart';
 
 /// كل منتجات قسم واحد داخل متجر (`shelfCategory` يطابق [categoryName]).
-class StoreCategoryPage extends StatelessWidget {
+class StoreCategoryPage extends StatefulWidget {
   const StoreCategoryPage({
     super.key,
     required this.store,
@@ -27,8 +28,29 @@ class StoreCategoryPage extends StatelessWidget {
   final String categoryName;
 
   @override
+  State<StoreCategoryPage> createState() => _StoreCategoryPageState();
+}
+
+class _StoreCategoryPageState extends State<StoreCategoryPage> {
+  late Future<FeatureState<List<StoreShelfProduct>>> _future;
+  int _reloadKey = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _future = StoresRepository.instance.fetchStoreShelfProducts(widget.store.id);
+  }
+
+  void _reload() {
+    setState(() {
+      _reloadKey++;
+      _future = StoresRepository.instance.fetchStoreShelfProducts(widget.store.id);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final cat = categoryName.trim();
+    final cat = widget.categoryName.trim();
     SeoService.apply(
       SeoData(
         title: '$cat | AmmarJo',
@@ -43,15 +65,24 @@ class StoreCategoryPage extends StatelessWidget {
       appBar: AppBar(
         leading: const AppBarBackButton(),
         title: Text(
-          cat.isEmpty ? store.name : cat,
+          cat.isEmpty ? widget.store.name : cat,
           style: GoogleFonts.tajawal(fontWeight: FontWeight.w700),
         ),
       ),
       body: FutureBuilder<FeatureState<List<StoreShelfProduct>>>(
-        future: StoresRepository.instance.fetchStoreShelfProducts(store.id),
+        key: ValueKey<int>(_reloadKey),
+        future: _future,
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
-            return const Center(child: CircularProgressIndicator(color: AppColors.primaryOrange));
+            return ListView(
+              physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+              children: [
+                SizedBox(
+                  height: MediaQuery.sizeOf(context).height * 0.72,
+                  child: const ProductGridShimmer(),
+                ),
+              ],
+            );
           }
           if (!snap.hasData) {
             return const SizedBox.shrink();
@@ -59,24 +90,31 @@ class StoreCategoryPage extends StatelessWidget {
           return buildFeatureStateUi<List<StoreShelfProduct>>(
             context: context,
             state: snap.data!,
+            onRetry: _reload,
             dataBuilder: (ctx, all) {
               final products = all
                   .where((p) => p.isAvailable && p.shelfCategory.trim() == cat)
                   .toList();
               if (products.isEmpty) {
-                return Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text(
-                      'لا منتجات في هذا القسم.',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.tajawal(color: AppColors.textSecondary),
+                return ListView(
+                  physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Center(
+                        child: Text(
+                          'لا منتجات في هذا القسم.',
+                          textAlign: TextAlign.center,
+                          style: GoogleFonts.tajawal(color: AppColors.textSecondary),
+                        ),
+                      ),
                     ),
-                  ),
+                  ],
                 );
               }
               return GridView.builder(
                 padding: const EdgeInsets.all(12),
+                physics: const BouncingScrollPhysics(),
                 gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
                   crossAxisCount: 2,
                   mainAxisSpacing: 12,
@@ -87,7 +125,7 @@ class StoreCategoryPage extends StatelessWidget {
                 itemBuilder: (context, i) {
                   final p = products[i];
                   final img = webSafeFirstProductImage(p.imageUrls);
-                  return _CategoryProductCard(store: store, product: p, imageUrl: img);
+                  return _CategoryProductCard(store: widget.store, product: p, imageUrl: img);
                 },
               );
             },
@@ -97,7 +135,6 @@ class StoreCategoryPage extends StatelessWidget {
     );
   }
 }
-
 
 class _CategoryProductCard extends StatelessWidget {
   const _CategoryProductCard({
@@ -130,7 +167,12 @@ class _CategoryProductCard extends StatelessWidget {
                       color: AppColors.lightOrange,
                       child: Icon(Icons.image_outlined, color: AppColors.primaryOrange.withValues(alpha: 0.5)),
                     )
-                  : AmmarCachedImage(imageUrl: imageUrl, fit: BoxFit.cover, productTileStyle: true),
+                  : AmmarCachedImage(
+                      imageUrl: imageUrl,
+                      fit: BoxFit.cover,
+                      productTileStyle: true,
+                      useShimmerPlaceholder: true,
+                    ),
             ),
           ),
           Padding(

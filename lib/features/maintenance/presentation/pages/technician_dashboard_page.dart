@@ -6,6 +6,7 @@ import '../../../../core/contracts/feature_state.dart';
 import '../../../../core/services/permission_service.dart';
 import '../../../../core/session/backend_identity_controller.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/home_page_shimmers.dart';
 import '../../../../core/widgets/app_bar_back_button.dart';
 import '../../../../core/widgets/ammar_cached_image.dart';
 import '../../../support/presentation/open_support_chat.dart';
@@ -177,7 +178,13 @@ class _TechnicianDashboardPageState extends State<TechnicianDashboardPage> {
               color: AppColors.primaryOrange,
               onRefresh: () => _loadRequests(user.uid),
               child: _loading
-                  ? const Center(child: CircularProgressIndicator(color: AppColors.primaryOrange))
+                  ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                      padding: const EdgeInsets.all(16),
+                      children: const [
+                        HomeStoreListSkeleton(rows: 5),
+                      ],
+                    )
                   : _error != null
                       ? ListView(
                           padding: const EdgeInsets.all(24),

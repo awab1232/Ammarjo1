@@ -7,6 +7,7 @@ import '../../../core/contracts/feature_state.dart';
 import '../../../core/widgets/feature_state_builder.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_bar_back_button.dart';
+import '../../../core/widgets/home_page_shimmers.dart';
 import '../../store/presentation/store_controller.dart';
 import '../data/stores_repository.dart';
 import '../domain/store_model.dart';
@@ -23,6 +24,7 @@ class StoresSearchPage extends StatefulWidget {
 
 class _StoresSearchPageState extends State<StoresSearchPage> {
   final _query = TextEditingController();
+  int _reloadNonce = 0;
 
   @override
   void dispose() {
@@ -68,6 +70,7 @@ class _StoresSearchPageState extends State<StoresSearchPage> {
           Expanded(
             child: BackendOrdersConfig.useBackendStoreReads && _query.text.trim().isNotEmpty
                 ? FutureBuilder<FeatureState<List<StoreModel>>>(
+                    key: ValueKey<String>('search-$_reloadNonce-${_query.text}'),
                     future: StoresRepository.instance.searchStoresByText(
                       _query.text,
                       city: city,
@@ -75,26 +78,41 @@ class _StoresSearchPageState extends State<StoresSearchPage> {
                     ),
                     builder: (context, snap) {
                       if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
-                        return const Center(child: CircularProgressIndicator(color: AppColors.primaryOrange));
+                        return ListView(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          children: const [
+                            SizedBox(height: 12),
+                            HomeStoreListSkeleton(rows: 6),
+                          ],
+                        );
                       }
                       if (!snap.hasData) return const SizedBox.shrink();
                       return buildFeatureStateUi<List<StoreModel>>(
                         context: context,
                         state: snap.data!,
+                        onRetry: () => setState(() => _reloadNonce++),
                         dataBuilder: (ctx, all) => _buildResultsList(all),
                       );
                     },
                   )
                 : FutureBuilder<FeatureState<List<StoreModel>>>(
+                    key: ValueKey<String>('list-$_reloadNonce-${city ?? ''}'),
                     future: StoresRepository.instance.fetchApprovedStores(city: city),
                     builder: (context, snap) {
                       if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
-                        return const Center(child: CircularProgressIndicator(color: AppColors.primaryOrange));
+                        return ListView(
+                          padding: const EdgeInsets.symmetric(horizontal: 12),
+                          children: const [
+                            SizedBox(height: 12),
+                            HomeStoreListSkeleton(rows: 6),
+                          ],
+                        );
                       }
                       if (!snap.hasData) return const SizedBox.shrink();
                       return buildFeatureStateUi<List<StoreModel>>(
                         context: context,
                         state: snap.data!,
+                        onRetry: () => setState(() => _reloadNonce++),
                         dataBuilder: (ctx, all) {
                           final filtered = _filter(all, _query.text);
                           return _buildResultsList(filtered);

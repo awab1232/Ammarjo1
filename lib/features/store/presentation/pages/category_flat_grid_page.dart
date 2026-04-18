@@ -1,8 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+
 import '../../../../core/contracts/feature_state.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_bar_back_button.dart';
+import '../../../../core/widgets/home_page_shimmers.dart';
 import '../../domain/models.dart';
 import '../../domain/product_derived_categories.dart';
 import '../store_controller.dart';
@@ -29,7 +32,7 @@ class CategoryFlatGridPage extends StatefulWidget {
 }
 
 class _CategoryFlatGridPageState extends State<CategoryFlatGridPage> {
-  List<Product> _products = [];
+  List<Product> _products = List<Product>.empty();
   var _loading = true;
   String? _error;
 
@@ -60,7 +63,7 @@ class _CategoryFlatGridPageState extends State<CategoryFlatGridPage> {
       final preset = widget.presetProducts;
       if (preset != null) {
         if (preset.isEmpty) {
-          list = [];
+          list = List<Product>.empty();
         } else {
           final byId = {for (final p in store.products) p.id: p};
           list = [
@@ -79,7 +82,7 @@ class _CategoryFlatGridPageState extends State<CategoryFlatGridPage> {
             _ => <Product>[],
           };
         } else {
-          list = [];
+          list = List<Product>.empty();
         }
       }
       if (!mounted) return;
@@ -90,7 +93,7 @@ class _CategoryFlatGridPageState extends State<CategoryFlatGridPage> {
     } on Object {
       if (!mounted) return;
       setState(() {
-        _error = 'unexpected error';
+        _error = 'تعذّر تحميل المنتجات. تحقق من الاتصال ثم أعد المحاولة.';
         _loading = false;
       });
     }
@@ -119,11 +122,39 @@ class _CategoryFlatGridPageState extends State<CategoryFlatGridPage> {
         color: AppColors.orange,
         onRefresh: _load,
         child: _loading
-            ? const Center(child: CircularProgressIndicator(color: AppColors.orange))
+            ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                children: const [
+                  SizedBox(height: 12),
+                  ProductGridShimmer(childAspectRatio: 0.58, itemCount: 8),
+                ],
+              )
             : _error != null
                 ? ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    children: [Padding(padding: const EdgeInsets.all(24), child: Center(child: Text(_error!)))],
+                    physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(24),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _error!,
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.tajawal(fontSize: 15, height: 1.4),
+                              ),
+                              const SizedBox(height: 16),
+                              FilledButton(
+                                onPressed: _load,
+                                style: FilledButton.styleFrom(backgroundColor: AppColors.orange),
+                                child: Text('إعادة المحاولة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
                   )
                 : _products.isEmpty
                     ? ListView(

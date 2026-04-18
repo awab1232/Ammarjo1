@@ -5,6 +5,7 @@ import '../../../../core/contracts/feature_state.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_bottom_sheet.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../core/widgets/home_page_shimmers.dart';
 import '../../data/wholesale_repository.dart';
 import '../../domain/quantity_price_tier.dart';
 import '../../domain/wholesale_product_model.dart';
@@ -24,7 +25,13 @@ class WholesalerProductsPage extends StatelessWidget {
           stream: WholesaleRepository.instance.watchWholesalerProducts(wholesalerId),
           builder: (context, snap) {
             if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
-              return const Center(child: CircularProgressIndicator(color: AppColors.primaryOrange));
+              return ListView(
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                padding: const EdgeInsets.all(12),
+                children: const [
+                  HomeStoreListSkeleton(rows: 6),
+                ],
+              );
             }
             final items = switch (snap.data) {
               FeatureSuccess(:final data) => data,
@@ -132,8 +139,8 @@ class _WholesaleProductEditorDialogState
   final _image = TextEditingController();
   final _unit = TextEditingController();
   final _stock = TextEditingController();
-  final List<(TextEditingController, TextEditingController)> _tiers = [];
-  final List<_WholesaleVariantInput> _variants = [];
+  final List<(TextEditingController, TextEditingController)> _tiers = List<(TextEditingController, TextEditingController)>.empty();
+  final List<_WholesaleVariantInput> _variants = List<_WholesaleVariantInput>.empty();
   bool _saving = false;
   String? _categoryId;
   bool _hasVariants = false;

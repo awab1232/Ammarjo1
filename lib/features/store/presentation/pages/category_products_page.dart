@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+
 import '../../../../core/contracts/feature_state.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_bottom_sheet.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../core/widgets/home_page_shimmers.dart';
 import '../../domain/models.dart';
 import '../store_controller.dart';
 import '../widgets/compact_product_card.dart';
@@ -33,9 +36,9 @@ class CategoryProductsPage extends StatefulWidget {
 }
 
 class _CategoryProductsPageState extends State<CategoryProductsPage> {
-  List<ProductCategory> _children = [];
+  List<ProductCategory> _children = List<ProductCategory>.empty();
   final Map<int, List<Product>> _productsBySub = {};
-  List<Product> _parentOnlyProducts = [];
+  List<Product> _parentOnlyProducts = List<Product>.empty();
   var _loading = true;
   String? _error;
   int? _highlightedSubId;
@@ -58,18 +61,18 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
       final childrenState = await store.fetchChildCategories(widget.categoryId);
       final children = switch (childrenState) {
         FeatureSuccess(:final data) => data,
-        _ => <ProductCategory>[],
+        _ => List<ProductCategory>.empty(),
       };
 
       if (children.isEmpty) {
         final allState = await store.fetchProductsByCategory(widget.categoryId, perPage: 100);
         final all = switch (allState) {
           FeatureSuccess(:final data) => data,
-          _ => <Product>[],
+          _ => List<Product>.empty(),
         };
         if (!mounted) return;
         setState(() {
-          _children = [];
+          _children = List<ProductCategory>.empty();
           _parentOnlyProducts = all;
           _productsBySub.clear();
           _loading = false;
@@ -88,7 +91,7 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
       for (var i = 0; i < children.length; i++) {
         map[children[i].id] = switch (listStates[i]) {
           FeatureSuccess(:final data) => data,
-          _ => <Product>[],
+          _ => List<Product>.empty(),
         };
       }
 
@@ -97,7 +100,7 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
         _productsBySub
           ..clear()
           ..addAll(map);
-        _parentOnlyProducts = [];
+        _parentOnlyProducts = List<Product>.empty();
         _sectionKeys
           ..clear()
           ..addAll(keys);
@@ -176,14 +179,51 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
         color: AppColors.orange,
         onRefresh: _load,
         child: _loading
-            ? const Center(child: CircularProgressIndicator(color: AppColors.orange))
+            ? ListView(
+                physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                children: [
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: ammarShimmerWrap(
+                      child: Container(
+                        height: 36,
+                        width: double.infinity,
+                        decoration: BoxDecoration(
+                          color: Colors.white,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  const ProductGridShimmer(childAspectRatio: 0.65, itemCount: 8),
+                ],
+              )
             : _error != null
                 ? ListView(
-                    physics: const AlwaysScrollableScrollPhysics(),
+                    physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
                     children: [
                       Padding(
                         padding: const EdgeInsets.all(24),
-                        child: Center(child: Text(_error!, textAlign: TextAlign.center)),
+                        child: Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                _error!,
+                                textAlign: TextAlign.center,
+                                style: GoogleFonts.tajawal(fontSize: 15, height: 1.4),
+                              ),
+                              const SizedBox(height: 16),
+                              FilledButton(
+                                onPressed: _load,
+                                style: FilledButton.styleFrom(backgroundColor: AppColors.primaryOrange),
+                                child: Text('إعادة المحاولة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
                     ],
                   )
@@ -209,7 +249,7 @@ class _CategoryProductsPageState extends State<CategoryProductsPage> {
                             delegate: SliverChildBuilderDelegate(
                               (context, index) {
                                 final sub = _children[index];
-                                final products = _productsBySub[sub.id] ?? <Product>[];
+                                final products = _productsBySub[sub.id] != null ? _productsBySub[sub.id]! : List<Product>.empty();
                                 return _SubcategorySection(
                                   key: _sectionKeys[sub.id],
                                   sub: sub,

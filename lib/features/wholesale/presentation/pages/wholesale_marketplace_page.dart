@@ -7,6 +7,7 @@ import '../../../../core/contracts/feature_state.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/web_image_url.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../core/widgets/home_page_shimmers.dart';
 import '../../data/wholesale_repository.dart';
 import '../../domain/wholesaler_model.dart';
 import 'wholesaler_detail_page.dart';
@@ -174,7 +175,14 @@ class _WholesaleMarketplacePageState extends State<WholesaleMarketplacePage> {
             ),
             Expanded(
               child: _loading
-                  ? const Center(child: CircularProgressIndicator(color: AppColors.primaryOrange))
+                  ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      children: const [
+                        SizedBox(height: 8),
+                        HomeStoreListSkeleton(rows: 6),
+                      ],
+                    )
                   : rows.isEmpty
                       ? EmptyStateWidget(
                           type: EmptyStateType.wholesale,

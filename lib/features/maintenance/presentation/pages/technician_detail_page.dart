@@ -9,6 +9,7 @@ import '../../../../core/contracts/feature_unit.dart';
 import '../../../../core/services/chat_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_bar_back_button.dart';
+import '../../../../core/widgets/home_page_shimmers.dart';
 import '../../../communication/presentation/unified_chat_page.dart';
 import '../../../communication/presentation/widgets/unified_communication_bar.dart';
 import '../../../communication/presentation/listing_peer_chat_dialer.dart';
@@ -56,9 +57,7 @@ class TechnicianDetailPage extends StatelessWidget {
     showDialog<void>(
       context: context,
       barrierDismissible: false,
-      builder: (_) => const Center(
-        child: CircularProgressIndicator(color: Color(0xFFFF6B00)),
-      ),
+      builder: (_) => const DialogLoadingPanel(message: 'جاري فتح المحادثة…'),
     );
     ChatService()
         .getOrCreateChat(

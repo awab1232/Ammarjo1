@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/contracts/feature_state.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/home_page_shimmers.dart';
 import '../../data/wholesale_repository.dart';
 import '../../domain/wholesale_order_model.dart';
 
@@ -16,7 +17,15 @@ class WholesalerAnalyticsSection extends StatelessWidget {
     return FutureBuilder<FeatureState<List<WholesaleOrderModel>>>(
       future: WholesaleRepository.instance.getWholesalerIncomingOrders(wholesalerId),
       builder: (context, snap) {
-        if (!snap.hasData) return const Center(child: CircularProgressIndicator(color: AppColors.primaryOrange));
+        if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
+          return const Padding(
+            padding: EdgeInsets.all(24),
+            child: HomeStoreListSkeleton(rows: 4),
+          );
+        }
+        if (!snap.hasData) {
+          return Center(child: Text('تعذّر تحميل الإحصائيات', style: GoogleFonts.tajawal(color: AppColors.textSecondary)));
+        }
         final orders = switch (snap.data) {
           FeatureSuccess(:final data) => data,
           _ => <WholesaleOrderModel>[],

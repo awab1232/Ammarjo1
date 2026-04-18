@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/contracts/feature_state.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/home_page_shimmers.dart';
 import '../../../store/presentation/store_controller.dart';
 import '../../data/wholesale_repository.dart';
 import '../../domain/wholesale_order_model.dart';
@@ -97,7 +98,17 @@ class _WholesaleCheckoutPageState extends State<WholesaleCheckoutPage> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator(color: AppColors.primaryOrange)));
+      return Scaffold(
+        appBar: AppBar(title: Text('دفع الجملة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800))),
+        body: ListView(
+          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+          padding: const EdgeInsets.all(16),
+          children: const [
+            SizedBox(height: 8),
+            HomeStoreListSkeleton(rows: 5),
+          ],
+        ),
+      );
     }
     final subtotal = _items.fold<double>(0, (s, i) => s + i.total);
     return Scaffold(

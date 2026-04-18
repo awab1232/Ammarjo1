@@ -7,6 +7,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/store_product_discount.dart';
 import '../../../../core/utils/web_image_url.dart';
 import '../../../../core/widgets/ammar_cached_image.dart';
+import '../../../../core/widgets/home_page_shimmers.dart';
 import '../../../store/domain/models.dart';
 import '../../../store/presentation/pages/product_details_page.dart';
 import '../../../store/presentation/store_controller.dart';
@@ -130,8 +131,8 @@ class _StoreProductsPreviewStrip extends StatelessWidget {
       builder: (context, snap) {
         if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
           return const Padding(
-            padding: EdgeInsets.symmetric(vertical: 16),
-            child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+            padding: EdgeInsets.symmetric(vertical: 8),
+            child: HomeHorizontalCardsSkeleton(height: 92, cardWidth: 76, count: 5, spacing: 8),
           );
         }
         final rows = snap.data ?? const <Map<String, dynamic>>[];

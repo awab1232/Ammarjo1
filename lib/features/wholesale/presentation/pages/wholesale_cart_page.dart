@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/contracts/feature_state.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/home_page_shimmers.dart';
 import '../wholesale_cart_state.dart';
 import 'wholesale_checkout_page.dart';
 
@@ -92,7 +93,17 @@ class _WholesaleCartPageState extends State<WholesaleCartPage> {
   @override
   Widget build(BuildContext context) {
     if (_loading) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator(color: AppColors.primaryOrange)));
+      return Scaffold(
+        appBar: AppBar(title: Text('سلة الجملة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800))),
+        body: ListView(
+          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+          padding: const EdgeInsets.all(16),
+          children: const [
+            SizedBox(height: 8),
+            HomeStoreListSkeleton(rows: 5),
+          ],
+        ),
+      );
     }
     final grouped = <String, List<WholesaleCartItem>>{};
     for (final i in _items) {
@@ -106,13 +117,7 @@ class _WholesaleCartPageState extends State<WholesaleCartPage> {
             IconButton(
               tooltip: 'حفظ السلة في السحابة',
               onPressed: _syncing ? null : _syncToCloud,
-              icon: _syncing
-                  ? const SizedBox(
-                      width: 22,
-                      height: 22,
-                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                    )
-                  : const Icon(Icons.cloud_upload_outlined),
+              icon: _syncing ? const InlineLightButtonShimmer(size: 22) : const Icon(Icons.cloud_upload_outlined),
             ),
         ],
       ),

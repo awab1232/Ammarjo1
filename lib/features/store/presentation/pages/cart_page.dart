@@ -10,6 +10,7 @@ import '../../../../core/widgets/app_bottom_sheet.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/utils/web_image_url.dart';
 import '../../../../core/widgets/ammar_cached_image.dart';
+import '../../../../core/widgets/home_page_shimmers.dart';
 import '../../domain/models.dart';
 import '../store_controller.dart';
 import 'checkout_page.dart';
@@ -132,11 +133,7 @@ class _CartPageState extends State<CartPage> {
               bottom: _syncing
                   ? const PreferredSize(
                       preferredSize: Size.fromHeight(3),
-                      child: LinearProgressIndicator(
-                        minHeight: 3,
-                        color: AppColors.orange,
-                        backgroundColor: AppColors.orangeLight,
-                      ),
+                      child: CartSyncShimmerBar(),
                     )
                   : null,
             ),

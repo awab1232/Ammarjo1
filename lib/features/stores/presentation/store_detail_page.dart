@@ -8,6 +8,7 @@ import '../../../core/contracts/feature_state.dart';
 import '../../../core/data/repositories/user_repository.dart';
 import '../../../core/services/chat_service.dart';
 import '../../../core/widgets/ammar_cached_image.dart';
+import '../../../core/widgets/home_page_shimmers.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/utils/jordan_phone.dart';
 import '../../../core/utils/web_image_url.dart';
@@ -144,9 +145,7 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
       showDialog<void>(
         context: context,
         barrierDismissible: false,
-        builder: (_) => const Center(
-          child: CircularProgressIndicator(color: Color(0xFFFF6B00)),
-        ),
+        builder: (_) => const DialogLoadingPanel(message: 'جاري فتح المحادثة…'),
       );
       final chatId = await ChatService().getOrCreateChat(
         otherUserId: store.ownerId,
@@ -469,7 +468,15 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
             ),
           ),
           SliverToBoxAdapter(
-            child: _StoreProductsByCategorySection(store: store, catalogFuture: _catalogFuture),
+            child: _StoreProductsByCategorySection(
+              store: store,
+              catalogFuture: _catalogFuture,
+              onRetryCatalog: () {
+                setState(() {
+                  _catalogFuture = _loadCatalog();
+                });
+              },
+            ),
           ),
           const SliverToBoxAdapter(child: SizedBox(height: 24)),
           ],
@@ -484,10 +491,12 @@ class _StoreProductsByCategorySection extends StatelessWidget {
   const _StoreProductsByCategorySection({
     required this.store,
     required this.catalogFuture,
+    required this.onRetryCatalog,
   });
 
   final StoreModel store;
   final Future<({List<String> categoryNames, List<StoreShelfProduct> products})> catalogFuture;
+  final VoidCallback onRetryCatalog;
 
   @override
   Widget build(BuildContext context) {
@@ -498,19 +507,27 @@ class _StoreProductsByCategorySection extends StatelessWidget {
           return Padding(
             padding: const EdgeInsets.all(24),
             child: Center(
-              child: Text(
-                'الخدمة غير متاحة مؤقتاً. حاول لاحقاً.',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.tajawal(color: AppColors.textSecondary),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    'تعذّر تحميل منتجات المتجر. تحقق من الاتصال ثم أعد المحاولة.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.tajawal(color: AppColors.textSecondary, height: 1.4),
+                  ),
+                  const SizedBox(height: 14),
+                  FilledButton(
+                    onPressed: onRetryCatalog,
+                    style: FilledButton.styleFrom(backgroundColor: AppColors.primaryOrange),
+                    child: Text('إعادة المحاولة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                  ),
+                ],
               ),
             ),
           );
         }
         if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
-          return const Padding(
-            padding: EdgeInsets.all(32),
-            child: Center(child: CircularProgressIndicator(color: AppColors.primaryOrange)),
-          );
+          return const StoreDetailCatalogShimmer();
         }
         final data = snap.data;
         if (data == null) {

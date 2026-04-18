@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import '../../../../core/contracts/feature_state.dart';
 import '../../../../core/theme/app_colors.dart';
+import '../../../../core/widgets/home_page_shimmers.dart';
 import '../../data/wholesale_repository.dart';
 import '../../domain/wholesale_product_model.dart';
 import '../../domain/wholesaler_model.dart';
@@ -19,7 +20,7 @@ class WholesalerProductsMarketPage extends StatefulWidget {
 
 class _WholesalerProductsMarketPageState extends State<WholesalerProductsMarketPage> {
   static const int _pageSize = 20;
-  final List<WholesaleProduct> _products = [];
+  List<WholesaleProduct> _products = List<WholesaleProduct>.empty();
   String? _nextCursor;
   bool _loading = false;
   bool _loadingMore = false;
@@ -146,7 +147,13 @@ class _WholesalerProductsMarketPageState extends State<WholesalerProductsMarketP
               ),
             Expanded(
               child: _loading
-                  ? const Center(child: CircularProgressIndicator(color: AppColors.primaryOrange))
+                  ? ListView(
+                      physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+                      padding: const EdgeInsets.all(12),
+                      children: const [
+                        HomeStoreListSkeleton(rows: 6),
+                      ],
+                    )
                   : Builder(
                       builder: (context) {
                         final visible = _visible;

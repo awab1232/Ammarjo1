@@ -18,6 +18,7 @@ import '../../../../core/utils/jordan_phone.dart';
 import '../../../../core/utils/web_image_url.dart';
 import '../../../../core/widgets/ammar_cached_image.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
+import '../../../../core/widgets/home_page_shimmers.dart';
 import '../../../../core/widgets/premium_categories_strip.dart';
 import '../../../communication/data/unified_chat_repository.dart';
 import '../../../communication/domain/unified_chat_models.dart';
@@ -55,6 +56,7 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
 
   String? _filterCategoryId;
   int _techSpecRetryKey = 0;
+  int _bannerRetryKey = 0;
   String _selectedSpecialtyLabel = '';
 
   Future<({String description, Uint8List? imageBytes})?> _askServiceDescription(BuildContext context, String techName) async {
@@ -340,18 +342,13 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
             child: SizedBox(
               height: 150,
               child: FutureBuilder<FeatureState<List<WpHomeBannerSlide>>>(
-                future: context.read<ProductRepository>().fetchHomeBanners(),
+                key: ValueKey<int>(_bannerRetryKey),
+                future: context.read<ProductRepository>().fetchHomeBanners(forceRefresh: _bannerRetryKey > 0),
                 builder: (context, snap) {
-                  if (snap.connectionState == ConnectionState.waiting) {
-                    return Container(
-                      height: 150,
-                      margin: const EdgeInsets.all(16),
-                      alignment: Alignment.center,
-                      child: const SizedBox(
-                        width: 28,
-                        height: 28,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      ),
+                  if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
+                    return const Padding(
+                      padding: EdgeInsets.all(16),
+                      child: HomeBannerSkeleton(height: 150, horizontalPadding: 0, verticalPadding: 0),
                     );
                   }
                   if (!snap.hasData) {
@@ -360,6 +357,7 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
                   return buildFeatureStateUi<List<WpHomeBannerSlide>>(
                     context: context,
                     state: snap.data!,
+                    onRetry: () => setState(() => _bannerRetryKey++),
                     dataBuilder: (context, slides) {
                       return Container(
                         height: 150,
@@ -367,7 +365,7 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
                         child: slides.isEmpty
                             ? Center(
                                 child: Text(
-                                  'Service temporarily unavailable',
+                                  'لا توجد بنرات حالياً.',
                                   style: GoogleFonts.tajawal(color: AppColors.textSecondary),
                                 ),
                               )
@@ -379,7 +377,7 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
                                   if (url.isEmpty) {
                                     return Center(
                                       child: Text(
-                                        'Service temporarily unavailable',
+                                        'صورة البانر غير متاحة',
                                         style: GoogleFonts.tajawal(color: AppColors.textSecondary),
                                       ),
                                     );
@@ -391,6 +389,7 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
                                       width: double.infinity,
                                       height: 150,
                                       fit: BoxFit.cover,
+                                      useShimmerPlaceholder: true,
                                     ),
                                   );
                                 },
@@ -463,8 +462,8 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
                 }
                 if (snap.connectionState == ConnectionState.waiting && snap.data == null) {
                   return const Padding(
-                    padding: EdgeInsets.all(48),
-                    child: Center(child: CircularProgressIndicator(color: AppColors.orange)),
+                    padding: EdgeInsets.fromLTRB(12, 8, 12, 16),
+                    child: HomeHorizontalCardsSkeleton(height: 96, cardWidth: 104, count: 8, spacing: 10),
                   );
                 }
                 final categories = switch (snap.data) {
