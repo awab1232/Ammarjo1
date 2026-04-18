@@ -619,6 +619,14 @@ final class BackendAdminClient {
     return _get('/admin/rest/home-sections');
   }
 
+  Future<Map<String, dynamic>?> fetchHomeCms() {
+    return _get('/admin/rest/home-cms');
+  }
+
+  Future<Map<String, dynamic>?> patchHomeCms(Map<String, dynamic> body) {
+    return _patch('/admin/rest/home-cms', body: body);
+  }
+
   Future<Map<String, dynamic>?> fetchStoreTypes() {
     return _get('/admin/rest/store-types');
   }

@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { HomeModule } from '../home/home.module';
 import { AlgoliaSyncService } from '../search/algolia-sync.service';
 import { CategoriesController, CategoriesMutateController } from './categories.controller';
 import { CategoriesService } from './categories.service';
@@ -17,6 +18,7 @@ import { StoreRequestsController } from './store-requests.controller';
 import { StoreRequestsService } from './store-requests.service';
 
 @Module({
+  imports: [HomeModule],
   controllers: [
     // IMPORTANT: StoresPublicController MUST be registered before StoresController
     // so that public routes like GET /stores/store-types are not shadowed by the

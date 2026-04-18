@@ -827,6 +827,19 @@ class AdminRepository {
     return FeatureState.success(items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList());
   }
 
+  Future<FeatureState<Map<String, dynamic>>> fetchHomeCms() async {
+    final raw = await BackendAdminClient.instance.fetchHomeCms();
+    if (raw == null) return FeatureState.failure('تعذر جلب إعدادات الصفحة الرئيسية');
+    return FeatureState.success(Map<String, dynamic>.from(raw));
+  }
+
+  Future<FeatureState<FeatureUnit>> patchHomeCms(Map<String, dynamic> body) async {
+    final res = await BackendAdminClient.instance.patchHomeCms(body);
+    if (res == null) return FeatureState.failure('تعذر حفظ إعدادات الصفحة الرئيسية');
+    HomeRepository.instance.invalidateAll();
+    return FeatureState.success(FeatureUnit.value);
+  }
+
   Future<FeatureState<List<Map<String, dynamic>>>> fetchStoreTypes() async {
     final raw = await BackendAdminClient.instance.fetchStoreTypes();
     final items = raw?['items'];

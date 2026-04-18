@@ -34,8 +34,7 @@ import { AuthModule } from './auth/auth.module';
 import { CartModule } from './cart/cart.module';
 import { TelegramBotModule } from './telegram/telegram-bot.module';
 import { BlogController } from './blog/blog.controller';
-import { HomeController } from './home/home.controller';
-import { HomeService } from './home/home.service';
+import { HomeModule } from './home/home.module';
 import { AppController } from './app.controller';
 
 @Module({
@@ -66,10 +65,10 @@ import { AppController } from './app.controller';
     EventsInternalModule,
     OpsDashboardModule,
     TelegramBotModule,
+    HomeModule,
   ],
-  controllers: [AppController, HealthController, InternalHealthController, BlogController, HomeController],
+  controllers: [AppController, HealthController, InternalHealthController, BlogController],
   providers: [
-    HomeService,
     { provide: APP_GUARD, useClass: TenantContextGuard },
     { provide: APP_GUARD, useClass: ApiPolicyGuard },
     { provide: APP_GUARD, useClass: RbacGuard },

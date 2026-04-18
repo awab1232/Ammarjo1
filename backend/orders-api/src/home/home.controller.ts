@@ -12,6 +12,12 @@ export class HomeController {
     return this.homeService.getSections(storeTypeId);
   }
 
+  /** Slider (3 slides), offers strip, bottom banner — editable via admin `home-cms`. */
+  @Get('/cms')
+  getCms() {
+    return this.homeService.getPublicCms();
+  }
+
   @Get('/home-sections/:id/sub-categories')
   async getSubCategoriesBySection(@Param('id') id: string) {
     return this.homeService.getSubCategories(id);

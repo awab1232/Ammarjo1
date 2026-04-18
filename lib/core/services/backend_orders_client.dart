@@ -761,6 +761,15 @@ final class BackendOrdersClient {
     return items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
   }
 
+  /// Marketing layout: primary slider (3), offers strip, bottom banner (`GET /home/cms`).
+  Future<Map<String, dynamic>?> fetchHomeCms() async {
+    try {
+      return await _publicGetJson('/home/cms', flow: 'public_home_cms');
+    } on Object {
+      return null;
+    }
+  }
+
   Future<void> postChatMessageSent({
     required String conversationId,
     required String senderId,
@@ -1293,7 +1302,10 @@ final class BackendOrdersClient {
       );
     }
     try {
-      final res = await _publicGetJson('/home-sections/${Uri.encodeComponent(sid)}/sub-categories', flow: 'sub_categories_list');
+      final res = await _publicGetJson(
+        '/home/home-sections/${Uri.encodeComponent(sid)}/sub-categories',
+        flow: 'sub_categories_list',
+      );
       if (res == null) {
         return (
           state: FeatureState.failure<List<SubCategory>>('FAILED_TO_LOAD_SUB_CATEGORIES'),

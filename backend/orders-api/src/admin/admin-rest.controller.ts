@@ -116,6 +116,13 @@ class PatchHomeSectionBody {
   sortOrder?: number;
 }
 
+/** JSON arrays / object for home page marketing (`GET /home/cms`). */
+class PatchHomeCmsBody {
+  primarySlider?: unknown;
+  offers?: unknown;
+  bottomBanner?: unknown;
+}
+
 class CreateSubCategoryBody {
   homeSectionId?: string;
   name?: string;
@@ -414,6 +421,22 @@ export class AdminRestController {
   @RequirePermissions('stores.manage')
   homeSections(@Req() req: RequestWithFirebase) {
     return this.admin.listHomeSections(req.firebaseUid!);
+  }
+
+  @Get('home-cms')
+  @RequirePermissions('stores.manage')
+  homeCms(@Req() req: RequestWithFirebase) {
+    return this.admin.getHomeCms(req.firebaseUid!);
+  }
+
+  @Patch('home-cms')
+  @RequirePermissions('stores.manage')
+  patchHomeCms(@Req() req: RequestWithFirebase, @Body() body: PatchHomeCmsBody) {
+    return this.admin.patchHomeCms(req.firebaseUid!, {
+      primarySlider: body.primarySlider,
+      offers: body.offers,
+      bottomBanner: body.bottomBanner,
+    });
   }
 
   @Get('store-types')

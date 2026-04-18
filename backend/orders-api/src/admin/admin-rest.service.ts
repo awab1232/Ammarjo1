@@ -8,6 +8,7 @@ import {
 import { Pool, type PoolClient } from 'pg';
 
 import { logAuditJson } from '../common/audit-log';
+import { HomeService } from '../home/home.service';
 import { isValidPersistedRole, normalizeDbRoleToAppRole } from '../identity/db-user-role.util';
 
 function logAdminAction(input: {
@@ -166,6 +167,19 @@ export class AdminRestService {
       );
       CREATE INDEX IF NOT EXISTS idx_sub_categories_section_active_sort
         ON sub_categories (home_section_id, is_active, sort_order, created_at);
+
+      CREATE TABLE IF NOT EXISTS home_cms (
+        id smallint PRIMARY KEY,
+        slider jsonb NOT NULL DEFAULT '[]'::jsonb,
+        offers jsonb NOT NULL DEFAULT '[]'::jsonb,
+        bottom_banner jsonb,
+        updated_at timestamptz NOT NULL DEFAULT now(),
+        CONSTRAINT home_cms_singleton CHECK (id = 1)
+      );
+      INSERT INTO home_cms (id) VALUES (1) ON CONFLICT DO NOTHING;
+      INSERT INTO system_versions (key, version) VALUES ('home_cms_version', 1)
+      ON CONFLICT (key) DO NOTHING;
+
       ALTER TABLE stores ADD COLUMN IF NOT EXISTS is_featured boolean NOT NULL DEFAULT false;
       ALTER TABLE stores ADD COLUMN IF NOT EXISTS is_boosted boolean NOT NULL DEFAULT false;
       ALTER TABLE stores ADD COLUMN IF NOT EXISTS boost_expires_at timestamptz;
@@ -1288,6 +1302,50 @@ export class AdminRestService {
       await this.logAudit(client, adminUid, 'delete_promotion', 'promotion', id, {});
       logAdminAction({ adminUid, action: 'delete_promotion', targetId: id, targetType: 'promotion' });
       return { ok: true as const };
+    });
+  }
+
+  async getHomeCms(adminUid: string): Promise<Record<string, unknown>> {
+    logAdminAction({ adminUid, action: 'get_home_cms' });
+    return this.withClient(async (client) => {
+      const rowQ = await client.query(`SELECT slider, offers, bottom_banner FROM home_cms WHERE id = 1 LIMIT 1`);
+      const version = await this.getVersion(client, 'home_cms_version');
+      const row = rowQ.rows[0] as Record<string, unknown> | undefined;
+      if (!row) {
+        return { ...HomeService.defaultCmsPayload(), version } as unknown as Record<string, unknown>;
+      }
+      const merged = HomeService.mergeCmsFromDb(row['slider'], row['offers'], row['bottom_banner'], version);
+      return merged as unknown as Record<string, unknown>;
+    });
+  }
+
+  async patchHomeCms(
+    adminUid: string,
+    body: {
+      primarySlider?: unknown;
+      offers?: unknown;
+      bottomBanner?: unknown;
+    },
+  ): Promise<{ ok: true; version: number }> {
+    return this.withClient(async (client) => {
+      const rowQ = await client.query(`SELECT slider, offers, bottom_banner FROM home_cms WHERE id = 1 LIMIT 1`);
+      const cur = (rowQ.rows[0] ?? {}) as Record<string, unknown>;
+      const nextSlider = body.primarySlider !== undefined ? body.primarySlider : cur['slider'];
+      const nextOffers = body.offers !== undefined ? body.offers : cur['offers'];
+      const nextBottom = body.bottomBanner !== undefined ? body.bottomBanner : cur['bottom_banner'];
+      await client.query(
+        `UPDATE home_cms SET
+           slider = $1::jsonb,
+           offers = $2::jsonb,
+           bottom_banner = $3::jsonb,
+           updated_at = now()
+         WHERE id = 1`,
+        [JSON.stringify(nextSlider ?? []), JSON.stringify(nextOffers ?? []), nextBottom == null ? null : JSON.stringify(nextBottom)],
+      );
+      const version = await this.bumpVersion(client, 'home_cms_version');
+      await this.logAudit(client, adminUid, 'patch_home_cms', 'home_cms', '1', body as Record<string, unknown>);
+      logAdminAction({ adminUid, action: 'patch_home_cms', targetId: '1', targetType: 'home_cms' });
+      return { ok: true as const, version };
     });
   }
 

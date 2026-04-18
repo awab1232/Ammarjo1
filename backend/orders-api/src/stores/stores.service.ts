@@ -294,20 +294,6 @@ export class StoresService {
         imageUrl: 'https://picsum.photos/seed/mock-store-4/600/400',
         logoUrl: 'https://picsum.photos/seed/mock-store-4-logo/200/200',
       },
-      {
-        ...base,
-        id: '00000000-0000-0000-0000-000000000005',
-        ownerId: 'seed_owner_mock_5',
-        name: 'مطعم الشام',
-        description: 'وجبات شامية أصيلة وأطباق شعبية.',
-        category: 'مطاعم',
-        storeType: 'retail',
-        storeTypeId: null,
-        storeTypeKey: 'retail',
-        imageUrl: 'https://picsum.photos/seed/mock-store-5/600/400',
-        logoUrl: 'https://picsum.photos/seed/mock-store-5-logo/200/200',
-        freeDelivery: true,
-      },
     ];
   }
 

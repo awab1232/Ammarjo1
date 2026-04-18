@@ -26,6 +26,7 @@ import '../domain/store_type_model.dart';
 import 'apply_store_page.dart';
 import 'store_detail_page.dart';
 import 'widgets/store_card.dart';
+import 'widgets/stores_home_marketing_sections.dart';
 import 'widgets/stores_search_product_tile.dart';
 import '../../tenders/presentation/pages/tender_request_screen.dart';
 
@@ -72,6 +73,10 @@ class _StoresHomePageState extends State<StoresHomePage> {
   String _selectedStoreCategoryName = '';
   String? _selectedStoreTypeId;
   List<StoreTypeModel> _storeTypes = const <StoreTypeModel>[];
+
+  /// Stable future for [FutureBuilder] so each rebuild does not restart requests.
+  String _storesFetchKey = '';
+  Future<FeatureState<List<StoreModel>>>? _storesFetchMemo;
 
   bool get _hasSearchQuery => _searchController.text.trim().isNotEmpty;
 
@@ -297,6 +302,16 @@ class _StoresHomePageState extends State<StoresHomePage> {
     SeoService.apply(SeoService.homeFallback, updatePath: true);
     final storeController = context.watch<StoreController>();
     final city = storeController.profile?.city?.trim();
+    final storeKey = '${city ?? ''}|${widget.storeCategoryFilter}|$_selectedStoreTypeId';
+    if (_storesFetchKey != storeKey) {
+      _storesFetchKey = storeKey;
+      _storesFetchMemo = StoresRepository.instance.fetchApprovedStores(
+        city: city,
+        category: widget.storeCategoryFilter,
+        storeTypeId: _selectedStoreTypeId,
+      );
+    }
+    final storeListFuture = _storesFetchMemo!;
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -328,8 +343,28 @@ class _StoresHomePageState extends State<StoresHomePage> {
                       SliverToBoxAdapter(
                         child: _StoresHomePageBannerCarousel(page: widget.homeBannersPageKey),
                       ),
-                      const SliverToBoxAdapter(child: SizedBox(height: 20)),
                       if (widget.storeCategoryFilter == null) ...[
+                        const SliverToBoxAdapter(
+                          child: StoresHomeMarketingSectionTitle(
+                            title: 'أقسام المتاجر',
+                            subtitle: 'تُدار من لوحة التحكم: المتاجر ← الأقسام الرئيسية',
+                          ),
+                        ),
+                        const SliverToBoxAdapter(child: StoresHomeSectionsCardsStrip()),
+                        const SliverToBoxAdapter(child: SizedBox(height: 8)),
+                        const SliverToBoxAdapter(
+                          child: StoresHomeMarketingSectionTitle(
+                            title: 'عروض اليوم',
+                            subtitle: 'تُعدّل من لوحة التحكم: إدارة البنرات والصفحة الرئيسية',
+                          ),
+                        ),
+                        const SliverToBoxAdapter(child: StoresHomeOffersStrip()),
+                        const SliverToBoxAdapter(
+                          child: StoresHomeMarketingSectionTitle(title: 'المتاجر الأكثر طلباً'),
+                        ),
+                        SliverToBoxAdapter(child: StoresHomeMostRequestedStrip(futureStores: storeListFuture)),
+                        const SliverToBoxAdapter(child: StoresHomeBottomMarketingBanner()),
+                        const SliverToBoxAdapter(child: SizedBox(height: 12)),
                         SliverToBoxAdapter(
                           child: SizedBox(
                             height: 54,
@@ -448,7 +483,7 @@ class _StoresHomePageState extends State<StoresHomePage> {
                             ),
                           ),
                         ),
-                        const SliverToBoxAdapter(child: SizedBox(height: 24)),
+                        const SliverToBoxAdapter(child: SizedBox(height: 16)),
                       ] else
                         const SliverToBoxAdapter(child: SizedBox(height: 8)),
                       SliverToBoxAdapter(
@@ -469,11 +504,7 @@ class _StoresHomePageState extends State<StoresHomePage> {
                       const SliverToBoxAdapter(child: SizedBox(height: 12)),
                       SliverToBoxAdapter(
                         child: FutureBuilder<FeatureState<List<StoreModel>>>(
-                          future: StoresRepository.instance.fetchApprovedStores(
-                                city: city,
-                                category: widget.storeCategoryFilter,
-                                storeTypeId: _selectedStoreTypeId,
-                              ),
+                          future: storeListFuture,
                           builder: (context, snap) {
                             if (snap.connectionState == ConnectionState.waiting) {
                               return const Padding(
@@ -750,7 +781,7 @@ class _StoresHomePageBannerCarousel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      height: 160,
+      height: 196,
       child: FutureBuilder<FeatureState<List<WpHomeBannerSlide>>>(
         future: context.read<ProductRepository>().fetchHomeBanners(),
         builder: (context, snap) {
@@ -769,8 +800,8 @@ class _StoresHomePageBannerCarousel extends StatelessWidget {
               }
               final width = MediaQuery.of(context).size.width;
               final desktop = width >= 1200;
-              return Container(
-                margin: const EdgeInsets.symmetric(vertical: 8),
+              return Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 child: PageView.builder(
                   controller: PageController(viewportFraction: desktop ? 1.0 : 0.92),
                   itemCount: slides.length,
@@ -786,7 +817,7 @@ class _StoresHomePageBannerCarousel extends StatelessWidget {
                             : AmmarCachedImage(
                                 imageUrl: url,
                                 width: double.infinity,
-                                height: 160,
+                                height: 196,
                                 fit: BoxFit.cover,
                               ),
                       ),
@@ -808,9 +839,13 @@ class _StoresHomeBannerUnavailable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Center(
-      child: Text(
-        'Service temporarily unavailable',
-        style: GoogleFonts.tajawal(color: AppColors.textSecondary),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 24),
+        child: Text(
+          'تعذر تحميل البنرات مؤقتاً',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.tajawal(color: AppColors.textSecondary),
+        ),
       ),
     );
   }
