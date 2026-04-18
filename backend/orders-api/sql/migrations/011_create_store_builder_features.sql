@@ -27,6 +27,46 @@ CREATE TABLE IF NOT EXISTS store_categories (
   updated_at timestamptz NOT NULL DEFAULT NOW()
 );
 
+-- 008 already created store_categories (catalog shape: order_index, no parent_id).
+-- CREATE IF NOT EXISTS is then a no-op; add hybrid-builder columns before indexes.
+ALTER TABLE store_categories ADD COLUMN IF NOT EXISTS parent_id uuid;
+ALTER TABLE store_categories ADD COLUMN IF NOT EXISTS image_url text NOT NULL DEFAULT '';
+ALTER TABLE store_categories ADD COLUMN IF NOT EXISTS sort_order int NOT NULL DEFAULT 0;
+ALTER TABLE store_categories ADD COLUMN IF NOT EXISTS is_ai_generated boolean NOT NULL DEFAULT true;
+ALTER TABLE store_categories ADD COLUMN IF NOT EXISTS updated_at timestamptz NOT NULL DEFAULT NOW();
+
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1
+    FROM information_schema.columns
+    WHERE table_schema = 'public'
+      AND table_name = 'store_categories'
+      AND column_name = 'order_index'
+  ) THEN
+    UPDATE store_categories SET sort_order = COALESCE(order_index, sort_order);
+  END IF;
+END $$;
+
+DO $$
+BEGIN
+  IF NOT EXISTS (
+    SELECT 1
+    FROM pg_constraint c
+    JOIN pg_class t ON c.conrelid = t.oid
+    JOIN pg_namespace n ON n.oid = t.relnamespace
+    WHERE n.nspname = 'public'
+      AND t.relname = 'store_categories'
+      AND c.conname = 'store_categories_parent_id_fkey'
+  ) THEN
+    ALTER TABLE store_categories
+      ADD CONSTRAINT store_categories_parent_id_fkey
+      FOREIGN KEY (parent_id) REFERENCES store_categories(id) ON DELETE SET NULL;
+  END IF;
+EXCEPTION
+  WHEN duplicate_object THEN NULL;
+END $$;
+
 CREATE INDEX IF NOT EXISTS idx_store_categories_store_id ON store_categories (store_id);
 CREATE INDEX IF NOT EXISTS idx_store_categories_parent_id ON store_categories (parent_id);
 CREATE INDEX IF NOT EXISTS idx_store_categories_store_sort ON store_categories (store_id, sort_order ASC, created_at ASC);
