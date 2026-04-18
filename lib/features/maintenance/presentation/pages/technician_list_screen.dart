@@ -40,7 +40,7 @@ class TechnicianListScreen extends StatelessWidget {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setStateModal) => AlertDialog(
-          title: Text('Ø´Ø±Ø­ Ù…Ø§ ÙŠØ­ØªØ§Ø¬Ù‡ Ù…Ù† Ø§Ù„ÙÙ†ÙŠ', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+          title: Text('شرح ما يحتاجه من الفني', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -52,7 +52,7 @@ class TechnicianListScreen extends StatelessWidget {
                   textAlign: TextAlign.right,
                   style: GoogleFonts.tajawal(),
                   decoration: InputDecoration(
-                    hintText: 'Ø§ÙƒØªØ¨ ØªÙØ§ØµÙŠÙ„ Ø§Ù„Ø·Ù„Ø¨ Ù„Ù„ÙÙ†ÙŠ $techName',
+                    hintText: 'اكتب تفاصيل الطلب للفني $techName',
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
                 ),
@@ -66,7 +66,7 @@ class TechnicianListScreen extends StatelessWidget {
                     setStateModal(() => imageBytes = bytes);
                   },
                   icon: const Icon(Icons.image_outlined),
-                  label: Text(imageBytes == null ? 'Ø¥Ø¶Ø§ÙØ© ØµÙˆØ±Ø© (Ø§Ø®ØªÙŠØ§Ø±ÙŠØ©)' : 'ØªØºÙŠÙŠØ± Ø§Ù„ØµÙˆØ±Ø©', style: GoogleFonts.tajawal()),
+                  label: Text(imageBytes == null ? 'إضافة صورة (اختياري)' : 'تغيير الصورة', style: GoogleFonts.tajawal()),
                 ),
                 if (imageBytes != null)
                   Padding(
@@ -92,11 +92,11 @@ class TechnicianListScreen extends StatelessWidget {
             ),
           ),
           actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Ø¥Ù„ØºØ§Ø¡', style: GoogleFonts.tajawal())),
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text('إلغاء', style: GoogleFonts.tajawal())),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: AppColors.orange),
               onPressed: () => Navigator.pop(ctx, _TechRequestDraft(description: ctrl.text.trim(), imageBytes: imageBytes)),
-              child: Text('Ø¥Ø±Ø³Ø§Ù„', style: GoogleFonts.tajawal(color: Colors.white)),
+              child: Text('إرسال', style: GoogleFonts.tajawal(color: Colors.white)),
             ),
           ],
         ),
@@ -111,13 +111,13 @@ class TechnicianListScreen extends StatelessWidget {
     final store = context.read<StoreController>();
     final email = store.profile?.email.trim() ?? '';
     if (email.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ø³Ø¬Ù‘Ù„ Ø§Ù„Ø¯Ø®ÙˆÙ„ Ø£ÙˆÙ„Ø§Ù‹.', style: GoogleFonts.tajawal())));
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('سجّل الدخول أولاً.', style: GoogleFonts.tajawal())));
       return;
     }
     final techEmail = (tech.email ?? '').trim();
     if (techEmail.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ù‡Ø°Ø§ Ø§Ù„ÙÙ†ÙŠ ØºÙŠØ± Ù…ÙˆØµÙˆÙ„ Ø¨Ø­Ø³Ø§Ø¨ Ø­Ø§Ù„ÙŠØ§Ù‹.', style: GoogleFonts.tajawal())),
+        SnackBar(content: Text('هذا الفني غير موصول بحساب حالياً.', style: GoogleFonts.tajawal())),
       );
       return;
     }
@@ -125,7 +125,7 @@ class TechnicianListScreen extends StatelessWidget {
     if (req == null || req.description.isEmpty) return;
     final requestId = await ServiceRequestsRepository.instance.createServiceRequestWithImage(
       technicianId: tech.id,
-      title: 'Ø·Ù„Ø¨ ÙÙ†ÙŠ: ${tech.displayName}',
+      title: 'طلب فني: ${tech.displayName}',
       categoryId: category.id,
       customerEmail: email,
       description: req.description,
@@ -144,7 +144,7 @@ class TechnicianListScreen extends StatelessWidget {
         peerPhone: (tech.phone ?? '').trim(),
         technicianId: tech.id,
         peerDisplayName: tech.displayName,
-        contextTitle: 'Ø·Ù„Ø¨ ÙÙ†ÙŠ #$requestId',
+        contextTitle: 'طلب فني #$requestId',
         contextSubtitle: category.labelAr,
         contextImageUrl: tech.photoUrl,
         peerFirebaseUid: tech.id,
@@ -168,17 +168,17 @@ class TechnicianListScreen extends StatelessWidget {
     if (!context.mounted) return;
     if (chatId != null && chatId.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('ØªÙ… Ø¥Ù†Ø´Ø§Ø¡ Ø·Ù„Ø¨Ùƒ Ø§Ù„ÙÙ†ÙŠ. ÙŠÙ…ÙƒÙ†Ùƒ Ø§Ù„ØªÙˆØ§ØµÙ„ Ù…Ø¹ Ø§Ù„ÙÙ†ÙŠ Ù‡Ù†Ø§.', style: GoogleFonts.tajawal())),
+        SnackBar(content: Text('تم إنشاء طلبك الفني. يمكنك التواصل مع الفني هنا.', style: GoogleFonts.tajawal())),
       );
       await Navigator.of(context).push<void>(
         MaterialPageRoute<void>(
-          builder: (_) => UnifiedChatPage.resume(existingChatId: chatId!, threadTitle: 'Ø·Ù„Ø¨ ÙÙ†ÙŠ #$requestId'),
+          builder: (_) => UnifiedChatPage.resume(existingChatId: chatId!, threadTitle: 'طلب فني #$requestId'),
         ),
       );
       return;
     }
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('ØªÙ… Ø¥Ø±Ø³Ø§Ù„ Ø§Ù„Ø·Ù„Ø¨ Ø¨Ù†Ø¬Ø§Ø­ØŒ ÙˆØ³ÙŠØªÙ… Ø§Ù„ØªÙˆØ§ØµÙ„ Ù…Ø¹Ùƒ Ù‚Ø±ÙŠØ¨Ø§Ù‹.', style: GoogleFonts.tajawal())),
+      SnackBar(content: Text('تم إرسال الطلب بنجاح، وسيتم التواصل معك قريباً.', style: GoogleFonts.tajawal())),
     );
   }
 
@@ -244,7 +244,7 @@ class _TechnicianListBodyState extends State<_TechnicianListBody> {
       });
     } on Object {
       debugPrint('TechnicianListScreen: technicians load failed.');
-      if (mounted) setState(() => _loadError = 'ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª');
+      if (mounted) setState(() => _loadError = 'تعذر تحميل البيانات');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -331,7 +331,7 @@ class _TechnicianListBodyState extends State<_TechnicianListBody> {
                   const SizedBox(height: 16),
                   Text(_loadError!, style: GoogleFonts.tajawal()),
                   const SizedBox(height: 8),
-                  ElevatedButton(onPressed: _loadInitial, child: const Text('Ø¥Ø¹Ø§Ø¯Ø© Ø§Ù„Ù…Ø­Ø§ÙˆÙ„Ø©')),
+                  ElevatedButton(onPressed: _loadInitial, child: const Text('إعادة المحاولة')),
                 ],
               ),
             );
@@ -397,11 +397,11 @@ class _TechnicianListBodyState extends State<_TechnicianListBody> {
                   title: Text(tech.displayName, style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
                   subtitle: Text(
                     [
-                      tech.specialties.join(' â€¢ '),
+                      tech.specialties.join(' · '),
                       if (tech.bio != null && tech.bio!.trim().isNotEmpty) tech.bio!,
                       if (tech.phone != null && tech.phone!.trim().isNotEmpty)
-                        '${tech.phone} Â· ${tech.city ?? ''}',
-                      '${'â­' * stars} ${tech.rating.toStringAsFixed(1)} â€¢ ~${tech.distanceKm.toStringAsFixed(1)} ÙƒÙ…',
+                        '${tech.phone} · ${tech.city ?? ''}',
+                      '${List.filled(stars, '★').join()} ${tech.rating.toStringAsFixed(1)} · ~${tech.distanceKm.toStringAsFixed(1)} كم',
                     ].where((s) => s.isNotEmpty).join('\n'),
                     style: GoogleFonts.tajawal(fontSize: 12, color: AppColors.textSecondary, height: 1.35),
                   ),
@@ -412,7 +412,7 @@ class _TechnicianListBodyState extends State<_TechnicianListBody> {
                       backgroundColor: AppColors.orange,
                       foregroundColor: Colors.white,
                     ),
-                    child: Text('Ø§Ø·Ù„Ø¨', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                    child: Text('اطلب', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
                   ),
                 ),
               );

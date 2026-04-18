@@ -32,7 +32,7 @@ import '../../domain/maintenance_models.dart';
 import 'technician_detail_page.dart';
 import 'technician_list_screen.dart';
 
-/// AmmarJo Maintenance â€” ÙÙ†ÙŠÙˆÙ† Ù…Ø¹ØªÙ…Ø¯ÙˆÙ† ÙˆØ­Ø¬Ø² Ø®Ø¯Ù…Ø©.
+/// AmmarJo Maintenance — فنيون معتمدون وحجز خدمة.
 class MaintenancePage extends StatefulWidget {
   const MaintenancePage({
     super.key,
@@ -64,7 +64,7 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (context, setStateModal) => AlertDialog(
-          title: Text('Ø´Ø±Ø­ Ø§Ù„Ø·Ù„Ø¨', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+          title: Text('شرح الطلب', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
           content: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -76,7 +76,7 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
                   textAlign: TextAlign.right,
                   style: GoogleFonts.tajawal(),
                   decoration: InputDecoration(
-                    hintText: 'Ø§ÙƒØªØ¨ ÙˆØµÙ Ø§Ù„Ù…Ø´ÙƒÙ„Ø© Ø£Ùˆ Ø§Ù„Ù…Ø·Ù„ÙˆØ¨ Ù…Ù† Ø§Ù„ÙÙ†ÙŠ $techName',
+                    hintText: 'اكتب وصف المشكلة أو المطلوب من الفني $techName',
                     hintStyle: GoogleFonts.tajawal(color: AppColors.textSecondary),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -91,7 +91,7 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
                     setStateModal(() => imageBytes = bytes);
                   },
                   icon: const Icon(Icons.image_outlined),
-                  label: Text(imageBytes == null ? 'Ø¥Ø¶Ø§ÙØ© ØµÙˆØ±Ø© (Ø§Ø®ØªÙŠØ§Ø±ÙŠØ©)' : 'ØªØºÙŠÙŠØ± Ø§Ù„ØµÙˆØ±Ø©', style: GoogleFonts.tajawal()),
+                  label: Text(imageBytes == null ? 'إضافة صورة (اختياري)' : 'تغيير الصورة', style: GoogleFonts.tajawal()),
                 ),
                 if (imageBytes != null)
                   Padding(
@@ -119,12 +119,12 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
           actions: [
             TextButton(
               onPressed: () => Navigator.pop(ctx),
-              child: Text('Ø¥Ù„ØºØ§Ø¡', style: GoogleFonts.tajawal()),
+              child: Text('إلغاء', style: GoogleFonts.tajawal()),
             ),
             FilledButton(
               style: FilledButton.styleFrom(backgroundColor: AppColors.orange),
               onPressed: () => Navigator.pop(ctx, (description: ctrl.text.trim(), imageBytes: imageBytes)),
-              child: Text('Ø¥Ø±Ø³Ø§Ù„', style: GoogleFonts.tajawal(color: Colors.white)),
+              child: Text('إرسال', style: GoogleFonts.tajawal(color: Colors.white)),
             ),
           ],
         ),
@@ -154,14 +154,14 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
     final email = store.profile?.email.trim() ?? '';
     if (email.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ø³Ø¬Ù‘Ù„ Ø§Ù„Ø¯Ø®ÙˆÙ„ Ù„Ø­Ø¬Ø² Ø§Ù„ÙÙ†ÙŠ.', style: GoogleFonts.tajawal())),
+        SnackBar(content: Text('سجّل الدخول لحجز الفني.', style: GoogleFonts.tajawal())),
       );
       return;
     }
     final techEmail = (tech.email ?? '').trim();
     if (techEmail.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ù‡Ø°Ø§ Ø§Ù„ÙÙ†ÙŠ ØªØ¬Ø±ÙŠØ¨ÙŠ Ø­Ø§Ù„ÙŠØ§Ù‹. Ø§Ø®ØªØ± ÙÙ†ÙŠÙ‘Ø§Ù‹ Ù…Ø³Ø¬Ù„Ø§Ù‹ Ø¨Ø­Ø³Ø§Ø¨ Ø­Ù‚ÙŠÙ‚ÙŠ.', style: GoogleFonts.tajawal())),
+        SnackBar(content: Text('هذا الفني تجريبي حالياً. اختر فنياً مسجلاً بحساب حقيقي.', style: GoogleFonts.tajawal())),
       );
       return;
     }
@@ -172,7 +172,7 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
     try {
       requestId = await ServiceRequestsRepository.instance.createServiceRequestWithImage(
         technicianId: tech.id,
-        title: 'Ø·Ù„Ø¨ ÙÙ†ÙŠ: ${tech.displayName} â€” $categoryHint',
+        title: 'طلب فني: ${tech.displayName} — $categoryHint',
         categoryId: categoryId,
         customerEmail: email,
         description: req.description,
@@ -182,7 +182,7 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
     } on Object {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('ØªØ¹Ø°Ø± Ø¥Ø±Ø³Ø§Ù„ Ø§Ù„Ø·Ù„Ø¨ Ø­Ø§Ù„ÙŠØ§Ù‹. Ø­Ø§ÙˆÙ„ Ù…Ø±Ø© Ø£Ø®Ø±Ù‰.', style: GoogleFonts.tajawal())),
+        SnackBar(content: Text('تعذر إرسال الطلب حالياً. حاول مرة أخرى.', style: GoogleFonts.tajawal())),
       );
       return;
     }
@@ -198,7 +198,7 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
         peerPhone: (tech.phone ?? '').trim(),
         technicianId: tech.id,
         peerDisplayName: tech.displayName,
-        contextTitle: 'Ø·Ù„Ø¨ ÙÙ†ÙŠ #$requestId',
+        contextTitle: 'طلب فني #$requestId',
         contextSubtitle: categoryHint,
         contextImageUrl: tech.photoUrl,
         peerFirebaseUid: tech.id,
@@ -207,7 +207,7 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
       await UnifiedChatRepository.instance.sendText(
         chatId: chatId,
         senderEmail: email,
-        text: 'Ø·Ù„Ø¨ Ø®Ø¯Ù…Ø© Ø¬Ø¯ÙŠØ¯:\n${req.description}',
+        text: 'طلب خدمة جديد:\n${req.description}',
       );
       final uname = store.profile?.fullName?.trim().isNotEmpty == true
           ? store.profile!.fullName!.trim()
@@ -227,18 +227,18 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
     if (!context.mounted) return;
     if (chatId != null && chatId.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('ØªÙ… Ø¥Ù†Ø´Ø§Ø¡ Ø·Ù„Ø¨Ùƒ Ø§Ù„ÙÙ†ÙŠ. ÙŠÙ…ÙƒÙ†Ùƒ Ø§Ù„ØªÙˆØ§ØµÙ„ Ù…Ø¹ Ø§Ù„ÙÙ†ÙŠ Ù‡Ù†Ø§.', style: GoogleFonts.tajawal())),
+        SnackBar(content: Text('تم إنشاء طلبك الفني. يمكنك التواصل مع الفني هنا.', style: GoogleFonts.tajawal())),
       );
       await Navigator.of(context).push<void>(
         MaterialPageRoute<void>(
-          builder: (_) => UnifiedChatPage.resume(existingChatId: chatId!, threadTitle: 'Ø·Ù„Ø¨ ÙÙ†ÙŠ #$requestId'),
+          builder: (_) => UnifiedChatPage.resume(existingChatId: chatId!, threadTitle: 'طلب فني #$requestId'),
         ),
       );
       return;
     }
     final categoryName = MaintenanceServiceCategory.labelForId(categoryId);
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('ØªÙ… Ø¥Ø±Ø³Ø§Ù„ Ø·Ù„Ø¨Ùƒ Ø¥Ù„Ù‰ $categoryName Ø¨Ù†Ø¬Ø§Ø­.', style: GoogleFonts.tajawal())),
+      SnackBar(content: Text('تم إرسال طلبك إلى $categoryName بنجاح.', style: GoogleFonts.tajawal())),
     );
   }
 
@@ -271,7 +271,7 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
               )
             : null,
         title: Text(
-          'Ø¹Ù…Ù‘Ø§Ø± Ø¬Ùˆ Ù„Ù„ØµÙŠØ§Ù†Ø©',
+          'عمّار جو للصيانة',
           style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 18, color: Colors.white),
         ),
         actions: [
@@ -287,7 +287,7 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
                   alignment: Alignment.center,
                   children: [
                     IconButton(
-                      tooltip: 'Ù„ÙˆØ­Ø© Ø§Ù„ÙÙ†ÙŠ',
+                      tooltip: 'لوحة الفني',
                       icon: const Icon(Icons.dashboard_customize_outlined),
                       onPressed: widget.onOpenTechnicianDashboard,
                     ),
@@ -319,7 +319,7 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
             child: Align(
               alignment: Alignment.centerRight,
               child: Text(
-                'Ù„Ø§ ØªØ´ÙŠÙ„ Ù‡Ù… Ø§Ù„ØµÙŠØ§Ù†Ø©.. Ø£ÙØ¶Ù„ Ø§Ù„ÙÙ†ÙŠÙŠÙ† Ø¨Ø«Ù‚Ø© ÙˆØ§Ø­ØªØ±Ø§Ù.',
+                'لا تشيل هم الصيانة.. أفضل الفنيين بثقة واحتراف.',
                 textAlign: TextAlign.right,
                 maxLines: 2,
                 style: GoogleFonts.tajawal(
@@ -409,7 +409,7 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
                 crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
                   Text(
-                    'Ø§Ø®ØªØ± Ù†ÙˆØ¹ Ø§Ù„Ø®Ø¯Ù…Ø©',
+                    'اختر نوع الخدمة',
                     style: GoogleFonts.tajawal(
                       fontSize: 17,
                       fontWeight: FontWeight.w800,
@@ -423,7 +423,7 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
                       Icon(Icons.swipe_rounded, size: 14, color: AppColors.primaryOrange.withValues(alpha: 0.9)),
                       const SizedBox(width: 6),
                       Text(
-                        'Ø§Ø³Ø­Ø¨ Ù„Ø¹Ø±Ø¶ ÙƒÙ„ Ø§Ù„ØªØ®ØµØµØ§Øª',
+                        'اسحب لعرض كل التخصصات',
                         style: GoogleFonts.tajawal(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
                       ),
                     ],
@@ -446,8 +446,8 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
                       children: [
                         Text(
                           isTimeout
-                              ? 'Ø§Ù†ØªÙ‡Øª Ù…Ù‡Ù„Ø© Ø§Ù„Ø§ØªØµØ§Ù„ØŒ ÙŠØ±Ø¬Ù‰ Ø§Ù„ØªØ­Ù‚Ù‚ Ù…Ù† Ø§ØªØµØ§Ù„Ùƒ Ø¨Ø§Ù„Ø¥Ù†ØªØ±Ù†Øª'
-                              : 'ØªØ¹Ø°Ù‘Ø± ØªØ­Ù…ÙŠÙ„ Ø§Ù„ØªØ®ØµØµØ§Øª: ${snap.error}',
+                              ? 'انتهت مهلة الاتصال، يرجى التحقق من اتصالك بالإنترنت'
+                              : 'تعذّر تحميل التخصصات: ${snap.error}',
                           textAlign: TextAlign.center,
                           style: GoogleFonts.tajawal(color: AppColors.textSecondary),
                         ),
@@ -455,7 +455,7 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
                         FilledButton(
                           onPressed: () => setState(() => _techSpecRetryKey++),
                           style: FilledButton.styleFrom(backgroundColor: AppColors.orange),
-                          child: Text('Ø¥Ø¹Ø§Ø¯Ø© Ø§Ù„Ù…Ø­Ø§ÙˆÙ„Ø©', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                          child: Text('إعادة المحاولة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
                         ),
                       ],
                     ),
@@ -509,7 +509,7 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
                 child: Align(
                   alignment: AlignmentDirectional.centerStart,
                   child: ActionChip(
-                    label: Text('Ø¥Ø¸Ù‡Ø§Ø± ÙƒÙ„ Ø§Ù„ÙÙ†ÙŠÙŠÙ†', style: GoogleFonts.tajawal(fontWeight: FontWeight.w600)),
+                    label: Text('إظهار كل الفنيين', style: GoogleFonts.tajawal(fontWeight: FontWeight.w600)),
                     onPressed: () => setState(() => _filterCategoryId = null),
                     backgroundColor: AppColors.accentLight,
                     side: const BorderSide(color: AppColors.accent),
@@ -529,7 +529,7 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
                   ),
                   const SizedBox(width: 10),
                   Text(
-                    'ÙÙ†Ù‘ÙŠÙˆÙ† Ù…ØªØ§Ø­ÙˆÙ†',
+                    'فنّيون متاحون',
                     style: GoogleFonts.tajawal(fontSize: 18, fontWeight: FontWeight.w800, color: AppColors.heading),
                   ),
                 ],
@@ -539,17 +539,17 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
           SliverToBoxAdapter(
             child: FutureBuilder<FeatureState<List<TechnicianProfile>>>(
               future: TechniciansRepository.instance.fetchTechnicians(),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
+              builder: (context, snap) {
+                if (snap.hasError) {
                   return Padding(
                     padding: const EdgeInsets.all(24),
                     child: Text(
-                      'ØªØ¹Ø°Ù‘Ø± ØªØ­Ù…ÙŠÙ„ Ø§Ù„ÙÙ†ÙŠÙŠÙ†: ${snapshot.error}',
+                      'تعذّر تحميل الفنيين: ${snap.error}',
                       style: GoogleFonts.tajawal(color: AppColors.textSecondary),
                     ),
                   );
                 }
-                final state = snapshot.requireData;
+                final state = snap.requireData;
                 final allRaw = switch (state) {
                   FeatureSuccess(:final data) => data,
                   _ => <TechnicianProfile>[],
@@ -579,14 +579,14 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
                     return _TechnicianCard(
                       tech: tech,
                       categoryHint: _filterCategoryId != null
-                          ? (MaintenanceServiceCategory.grid.where((c) => c.id == _filterCategoryId).firstOrNull?.labelAr ?? 'Ø®Ø¯Ù…Ø©')
-                          : 'ØµÙŠØ§Ù†Ø©',
+                          ? (MaintenanceServiceCategory.grid.where((c) => c.id == _filterCategoryId).firstOrNull?.labelAr ?? 'خدمة')
+                          : 'صيانة',
                       onBook: () => _bookTechnician(
                         context,
                         tech,
                         _filterCategoryId != null
-                            ? (MaintenanceServiceCategory.grid.where((c) => c.id == _filterCategoryId).firstOrNull?.labelAr ?? 'Ø®Ø¯Ù…Ø©')
-                            : 'ØµÙŠØ§Ù†Ø©',
+                            ? (MaintenanceServiceCategory.grid.where((c) => c.id == _filterCategoryId).firstOrNull?.labelAr ?? 'خدمة')
+                            : 'صيانة',
                       ),
                     );
                   },
@@ -616,11 +616,11 @@ class _MaintenanceWebInlineFooter extends StatelessWidget {
         runSpacing: 16,
         spacing: 16,
         children: [
-          _footerColumn(context, 'Ø¹Ù† AmmarJo', const [('Ù…Ù† Ù†Ø­Ù†', '/about'), ('Ù…Ø¯ÙˆÙ†ØªÙ†Ø§', '/blog')]),
+          _footerColumn(context, 'عن AmmarJo', const [('من نحن', '/about'), ('مدونتنا', '/blog')]),
           _footerColumn(
             context,
-            'Ø§Ù„Ù‚ÙˆØ§Ù†ÙŠÙ†',
-            const [('Ø³ÙŠØ§Ø³Ø© Ø§Ù„Ø®ØµÙˆØµÙŠØ©', '/privacy'), ('Ø´Ø±ÙˆØ· Ø§Ù„Ø§Ø³ØªØ®Ø¯Ø§Ù…', '/terms'), ('Ø³ÙŠØ§Ø³Ø© Ø§Ù„Ø§Ø³ØªØ±Ø¬Ø§Ø¹', '/return-policy')],
+            'القوانين',
+            const [('سياسة الخصوصية', '/privacy'), ('شروط الاستخدام', '/terms'), ('سياسة الاسترجاع', '/return-policy')],
           ),
         ],
       ),
@@ -723,7 +723,7 @@ class _TechnicianCard extends StatelessWidget {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    tech.specialties.join(' â€¢ '),
+                    tech.specialties.join(' · '),
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: GoogleFonts.tajawal(fontSize: 12.5, color: AppColors.textSecondary, height: 1.3),
@@ -741,7 +741,7 @@ class _TechnicianCard extends StatelessWidget {
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
                       child: Text(
-                        '${tech.phone} Â· ${tech.city ?? tech.locationLabel}',
+                        '${tech.phone} · ${tech.city ?? tech.locationLabel}',
                         style: GoogleFonts.tajawal(fontSize: 11.5, color: AppColors.textSecondary),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -771,7 +771,7 @@ class _TechnicianCard extends StatelessWidget {
                       const SizedBox(width: 4),
                       Flexible(
                         child: Text(
-                          '~${tech.distanceKm.toStringAsFixed(1)} ÙƒÙ… â€¢ ${tech.locationLabel}',
+                          '~${tech.distanceKm.toStringAsFixed(1)} كم · ${tech.locationLabel}',
                           style: GoogleFonts.tajawal(fontSize: 11.5, color: AppColors.textSecondary),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
@@ -783,7 +783,7 @@ class _TechnicianCard extends StatelessWidget {
                   Row(
                     children: [
                       Text(
-                        'Ø¹Ø±Ø¶ Ø§Ù„ØªÙØ§ØµÙŠÙ„ ÙˆØ§Ù„ØªÙˆØ§ØµÙ„',
+                        'عرض التفاصيل والتواصل',
                         style: GoogleFonts.tajawal(fontSize: 12.5, fontWeight: FontWeight.w700, color: AppColors.accent),
                       ),
                       const Spacer(),

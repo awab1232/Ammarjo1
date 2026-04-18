@@ -1,13 +1,13 @@
 import 'dart:async';
 
-/// ÙŠÙ„Ù [source] Ø¨Ø­ÙŠØ« ÙŠÙØ·Ø¨Ù‘ÙŽÙ‚ [TimeoutException] ÙÙ‚Ø· Ø¥Ø°Ø§ Ù„Ù… ÙŠØµÙ„ **Ø£ÙŠ** Ø­Ø¯Ø« Ø®Ù„Ø§Ù„ [timeout].
-/// Ø¨Ø¹Ø¯ Ø£ÙˆÙ„ Ø­Ø¯Ø« ÙŠÙÙ„ØºÙ‰ Ø§Ù„Ù…Ø¤Ù‚Øª ÙˆÙŠÙÙ…Ø±Ù‘ÙŽØ± Ø¨Ø§Ù‚ÙŠ Ø§Ù„Ø£Ø­Ø¯Ø§Ø« Ø¯ÙˆÙ† Ù‚ÙŠÙˆØ¯ Ø²Ù…Ù†ÙŠØ© Ø¨ÙŠÙ† Ø§Ù„Ø­Ø¯Ø« ÙˆØ§Ù„Ø¢Ø®Ø±.
+/// يلف [source] بحيث يُطبَّق [TimeoutException] فقط إذا لم يصل **أي** حدث خلال [timeout].
+/// بعد أول حدث يُلغى المؤقت ويُمرَّر باقي الأحداث دون قيود زمنية بين الحدث والآخر.
 ///
-/// ÙŠØ³ØªØ®Ø¯Ù… `StreamSubscription?` ÙˆØ¢Ù…Ù† Ø¹Ù†Ø¯ Ø§Ù„Ø¥Ù„ØºØ§Ø¡ â€” Ù„ØªØ¬Ù†Ù‘Ø¨ [LateInitializationError] Ù…Ø¹ `late`.
+/// يستخدم `StreamSubscription?` ويُلغى عند الإلغاء — لتجنّب [LateInitializationError] مع `late`.
 Stream<T> streamWithFirstEventTimeout<T>(
   Stream<T> source, {
   Duration timeout = const Duration(seconds: 90),
-  String timeoutMessage = 'Ø§Ù†ØªÙ‡Øª Ù…Ù‡Ù„Ø© Ø§Ù„ØªØ­Ù…ÙŠÙ„',
+  String timeoutMessage = 'انتهت مهلة التحميل',
 }) {
   return Stream<T>.multi((controller) {
     var got = false;

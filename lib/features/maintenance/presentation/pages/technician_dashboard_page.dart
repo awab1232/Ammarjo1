@@ -13,7 +13,7 @@ import '../../data/service_requests_repository.dart';
 import '../../domain/maintenance_models.dart';
 import '../utils/service_request_status_localizer.dart';
 
-/// Ù„ÙˆØ­Ø© Ø§Ù„ÙÙ†ÙŠ â€” Ø§Ù„Ø·Ù„Ø¨Ø§Øª Ø§Ù„ÙˆØ§Ø±Ø¯Ø© ÙˆØ§Ù„Ø£Ø±Ø¨Ø§Ø­ Ø§Ù„ØªÙ‚Ø±ÙŠØ¨ÙŠØ©.
+/// لوحة الفني — الطلبات الواردة والأرباح التقريبية.
 class TechnicianDashboardPage extends StatefulWidget {
   const TechnicianDashboardPage({super.key});
 
@@ -73,7 +73,7 @@ class _TechnicianDashboardPageState extends State<TechnicianDashboardPage> {
       debugPrint('TechnicianDashboardPage: load failed.');
       if (!mounted) return;
       setState(() {
-        _error = 'ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ø·Ù„Ø¨Ø§Øª. ØªØ­Ù‚Ù‚ Ù…Ù† Ø§Ù„Ø§ØªØµØ§Ù„ ÙˆØ­Ø§ÙˆÙ„ Ù…Ø±Ø© Ø£Ø®Ø±Ù‰.';
+        _error = 'تعذر تحميل الطلبات. تحقق من الاتصال وحاول مرة أخرى.';
       });
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -131,11 +131,11 @@ class _TechnicianDashboardPageState extends State<TechnicianDashboardPage> {
         backgroundColor: AppColors.navy,
         foregroundColor: Colors.white,
         leading: const AppBarBackButton(),
-        title: Text('Ù„ÙˆØ­Ø© Ø§Ù„ÙÙ†ÙŠ', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+        title: Text('لوحة الفني', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
         centerTitle: true,
         actions: [
           IconButton(
-            tooltip: 'Ø§Ø­ØµÙ„ Ø¹Ù„Ù‰ Ù…Ø³Ø§Ø¹Ø¯Ø©',
+            tooltip: 'احصل على مساعدة',
             icon: const Icon(Icons.support_agent, color: Colors.white),
             onPressed: () => openSupportChat(context),
           ),
@@ -144,7 +144,7 @@ class _TechnicianDashboardPageState extends State<TechnicianDashboardPage> {
               alignment: Alignment.center,
               children: [
                 const IconButton(
-                  tooltip: 'Ø§Ù„Ø±Ø³Ø§Ø¦Ù„ Ø§Ù„ÙˆØ§Ø±Ø¯Ø©',
+                  tooltip: 'الرسائل الواردة',
                   onPressed: null,
                   icon: Icon(Icons.notifications_active_rounded),
                 ),
@@ -167,7 +167,7 @@ class _TechnicianDashboardPageState extends State<TechnicianDashboardPage> {
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Text(
-                  'Ø³Ø¬Ù‘Ù„ Ø§Ù„Ø¯Ø®ÙˆÙ„ Ù„Ø¹Ø±Ø¶ Ø·Ù„Ø¨Ø§ØªÙƒ.',
+                  'سجّل الدخول لعرض طلباتك.',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.tajawal(color: AppColors.textSecondary),
                 ),
@@ -196,7 +196,7 @@ class _TechnicianDashboardPageState extends State<TechnicianDashboardPage> {
                             Center(
                               child: FilledButton(
                                 onPressed: () => _loadRequests(user.uid),
-                                child: Text('Ø¥Ø¹Ø§Ø¯Ø© Ø§Ù„Ù…Ø­Ø§ÙˆÙ„Ø©', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                                child: Text('إعادة المحاولة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
                               ),
                             ),
                           ],
@@ -216,7 +216,7 @@ class _TechnicianDashboardPageState extends State<TechnicianDashboardPage> {
                                           border: Border.all(color: Colors.red.shade200),
                                         ),
                                         child: Text(
-                                          'Ù„Ø¯ÙŠÙƒ ${incoming.length} Ø·Ù„Ø¨/Ø±Ø³Ø§Ù„Ø© Ø¬Ø¯ÙŠØ¯Ø© Ù…Ù† Ø§Ù„Ø¹Ù…Ù„Ø§Ø¡.',
+                                          'لديك ${incoming.length} طلب/رسالة جديدة من العملاء.',
                                           style: GoogleFonts.tajawal(
                                             color: Colors.red.shade900,
                                             fontWeight: FontWeight.w700,
@@ -236,7 +236,7 @@ class _TechnicianDashboardPageState extends State<TechnicianDashboardPage> {
                               child: Padding(
                                 padding: const EdgeInsets.symmetric(horizontal: 16),
                                 child: Text(
-                                  'Ø·Ù„Ø¨Ø§Øª Ù…Ø±ØªØ¨Ø·Ø© Ø¨Ø­Ø³Ø§Ø¨Ùƒ',
+                                  'طلبات مرتبطة بحسابك',
                                   style: GoogleFonts.tajawal(fontSize: 17, fontWeight: FontWeight.w800, color: AppColors.navy),
                                 ),
                               ),
@@ -259,7 +259,7 @@ class _TechnicianDashboardPageState extends State<TechnicianDashboardPage> {
                                   ? Padding(
                                       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                                       child: Text(
-                                        'Ù„Ø§ ØªÙˆØ¬Ø¯ Ø±Ø³Ø§Ø¦Ù„ Ø¬Ø¯ÙŠØ¯Ø©.',
+                                        'لا توجد رسائل جديدة.',
                                         textAlign: TextAlign.right,
                                         style: GoogleFonts.tajawal(color: AppColors.textSecondary),
                                       ),
@@ -291,7 +291,7 @@ class _TechnicianDashboardPageState extends State<TechnicianDashboardPage> {
                                               ),
                                               const SizedBox(height: 4),
                                               Text(
-                                                n.description?.trim().isNotEmpty == true ? n.description!.trim() : 'Ø·Ù„Ø¨ Ø®Ø¯Ù…Ø© Ø¬Ø¯ÙŠØ¯',
+                                                n.description?.trim().isNotEmpty == true ? n.description!.trim() : 'طلب خدمة جديد',
                                                 style: GoogleFonts.tajawal(fontSize: 13, color: AppColors.textSecondary),
                                                 textAlign: TextAlign.right,
                                               ),
@@ -306,7 +306,7 @@ class _TechnicianDashboardPageState extends State<TechnicianDashboardPage> {
                                 child: Padding(
                                   padding: const EdgeInsets.all(32),
                                   child: Text(
-                                    'Ù„Ø§ ØªÙˆØ¬Ø¯ Ø·Ù„Ø¨Ø§Øª Ø¨Ø¹Ø¯. Ø¹Ù†Ø¯ Ù‚Ø¨ÙˆÙ„Ùƒ ÙƒÙÙ†ÙŠ Ø³ÙŠØ¸Ù‡Ø± Ø§Ù„Ø¹Ù…Ù„Ø§Ø¡ Ù‡Ù†Ø§.',
+                                    'لا توجد طلبات بعد. عند قبولك كفني سيظهر العملاء هنا.',
                                     textAlign: TextAlign.center,
                                     style: GoogleFonts.tajawal(color: AppColors.textSecondary, height: 1.4),
                                   ),
@@ -335,7 +335,7 @@ class _TechnicianDashboardPageState extends State<TechnicianDashboardPage> {
                                               debugPrint('TechnicianDashboardPage: update request status failed.');
                                               if (!mounted) return;
                                               ScaffoldMessenger.of(this.context).showSnackBar(
-                                                SnackBar(content: Text('ØªØ¹Ø°Ø± ØªØ­Ø¯ÙŠØ« Ø­Ø§Ù„Ø© Ø§Ù„Ø·Ù„Ø¨.', style: GoogleFonts.tajawal())),
+                                                SnackBar(content: Text('تعذر تحديث حالة الطلب.', style: GoogleFonts.tajawal())),
                                               );
                                             }
                                           },
@@ -376,18 +376,18 @@ class _EarningsCard extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Ø£Ø±Ø¨Ø§Ø­ Ù…ÙÙƒÙ…Ù‘Ù„Ø© (ØªÙ‚Ø±ÙŠØ¨ÙŠØ©)',
+                    'أرباح مُكمَّلة (تقريبية)',
                     style: GoogleFonts.tajawal(color: Colors.white70, fontSize: 13),
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    isPlaceholder ? 'â€”' : '${jod.toStringAsFixed(2)} Ø¯.Ø£',
+                    isPlaceholder ? '—' : '${jod.toStringAsFixed(2)} د.أ',
                     style: GoogleFonts.tajawal(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w800),
                   ),
                   if (isPlaceholder) ...[
                     const SizedBox(height: 8),
                     Text(
-                      'ØªÙØ­Ø³Ø¨ Ø§Ù„Ø£Ø±Ø¨Ø§Ø­ Ù…Ù† Ø§Ù„Ø®Ø§Ø¯Ù… Ø¹Ù†Ø¯ ØªÙˆÙØ± ÙˆØ§Ø¬Ù‡Ø© Ù„Ù‡Ø§.',
+                      'تُحسب الأرباح من الخادم عند توفر واجهة لها.',
                       style: GoogleFonts.tajawal(color: Colors.white54, fontSize: 12, height: 1.3),
                     ),
                   ],
@@ -454,7 +454,7 @@ class _RequestTile extends StatelessWidget {
                 children: [
                   Text(request.title, style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
                   Text(
-                    '${getServiceRequestStatusArabic(request.status)} â€¢ ${request.createdAt.toString().substring(0, 16)}',
+                    '${getServiceRequestStatusArabic(request.status)} · ${request.createdAt.toString().substring(0, 16)}',
                     style: GoogleFonts.tajawal(fontSize: 12, color: AppColors.textSecondary),
                   ),
                 ],
@@ -462,7 +462,7 @@ class _RequestTile extends StatelessWidget {
             ),
             if (request.imageUrl != null && request.imageUrl!.trim().isNotEmpty)
               Tooltip(
-                message: 'Ø¹Ø±Ø¶ Ø§Ù„ØµÙˆØ±Ø©',
+                message: 'عرض الصورة',
                 child: InkWell(
                   borderRadius: BorderRadius.circular(20),
                   onTap: () => _openImageViewer(context, request.imageUrl!.trim()),
@@ -480,12 +480,12 @@ class _RequestTile extends StatelessWidget {
             if (request.status == 'assigned' || request.status == 'pending')
               TextButton(
                 onPressed: () => onAction('start'),
-                child: Text('Ø¨Ø¯Ø¡', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                child: Text('بدء', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
               )
             else if (request.status == 'in_progress')
               TextButton(
                 onPressed: () => onAction('complete'),
-                child: Text('Ø¥Ù†Ù‡Ø§Ø¡', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                child: Text('إنهاء', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
               ),
           ],
         ),

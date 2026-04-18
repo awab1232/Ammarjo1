@@ -147,7 +147,7 @@ class TechnicianDetailPage extends StatelessWidget {
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  tech.specialties.join(' â€¢ '),
+                  tech.specialties.join(' · '),
                   textAlign: TextAlign.center,
                   style: GoogleFonts.tajawal(color: AppColors.textSecondary),
                 ),

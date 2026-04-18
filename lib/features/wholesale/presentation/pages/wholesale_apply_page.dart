@@ -8,7 +8,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../store/presentation/store_controller.dart';
 import '../../data/wholesale_repository.dart';
 
-/// Ù†Ù…ÙˆØ°Ø¬ Ø§Ù†Ø¶Ù…Ø§Ù… ÙƒØªØ§Ø¬Ø± Ø¬Ù…Ù„Ø© â€” ÙŠÙØ®Ø²Ù‘ÙŽÙ† ÙÙŠ `wholesaler_requests`.
+/// نموذج انضمام كتاجر جملة — يُخزَّن في `wholesaler_requests`.
 class WholesaleApplyPage extends StatefulWidget {
   const WholesaleApplyPage({super.key});
 

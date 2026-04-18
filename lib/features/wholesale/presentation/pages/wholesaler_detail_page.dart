@@ -20,7 +20,7 @@ import '../../domain/wholesaler_model.dart';
 import 'wholesaler_product_detail_page.dart';
 import 'wholesaler_products_market_page.dart';
 
-/// ØµÙØ­Ø© ØªÙØ§ØµÙŠÙ„ ØªØ§Ø¬Ø± Ø¬Ù…Ù„Ø© â€” Ø¨Ø§Ù†Ø±ØŒ Ø¨Ø±ÙˆÙØ§ÙŠÙ„ØŒ Ø¨Ø­Ø«ØŒ Ù…Ù†ØªØ¬Ø§ØªØŒ ØªÙˆØµÙŠÙ„ØŒ Ù…Ø­Ø§Ø¯Ø«Ø© (Ø¨Ø¯ÙˆÙ† Ø¹Ø±Ø¶ Ø±Ù‚Ù… Ø§Ù„Ù‡Ø§ØªÙ).
+/// صفحة تفاصيل تاجر جملة — بانر، بروفايل، بحث، منتجات، توصيل، محادثة (بدون عرض رقم الهاتف).
 class WholesalerDetailPage extends StatefulWidget {
   const WholesalerDetailPage({super.key, required this.wholesaler});
 
@@ -32,7 +32,7 @@ class WholesalerDetailPage extends StatefulWidget {
 
 class _WholesalerDetailPageState extends State<WholesalerDetailPage> {
   final _search = TextEditingController();
-  List<WholesaleProduct> _products = [];
+  List<WholesaleProduct> _products = List<WholesaleProduct>.empty();
   bool _loading = true;
   String? _error;
   String? _filterCategoryId;
@@ -80,7 +80,7 @@ class _WholesalerDetailPageState extends State<WholesalerDetailPage> {
       }
     } on Object {
       debugPrint('[WholesalerDetailPage] _loadProducts failed.');
-      if (mounted) setState(() => _error = 'ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ù…Ù†ØªØ¬Ø§Øª Ø­Ø§Ù„ÙŠØ§Ù‹.');
+      if (mounted) setState(() => _error = 'تعذر تحميل المنتجات حالياً.');
     } finally {
       if (mounted) setState(() => _loading = false);
     }
@@ -91,13 +91,13 @@ class _WholesalerDetailPageState extends State<WholesalerDetailPage> {
     final myEmail = store.profile?.email.trim() ?? '';
     if (myEmail.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ø³Ø¬Ù‘Ù„ Ø§Ù„Ø¯Ø®ÙˆÙ„ Ù„ÙØªØ­ Ø§Ù„Ù…Ø­Ø§Ø¯Ø«Ø©', style: GoogleFonts.tajawal())),
+        SnackBar(content: Text('سجّل الدخول لفتح المحادثة', style: GoogleFonts.tajawal())),
       );
       return;
     }
     if (w.ownerId.trim().isEmpty || w.email.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ù„Ø§ ÙŠØªÙˆÙØ± Ø¨Ø±ÙŠØ¯ Ù…Ø³Ø¬Ù‘Ù„ Ù„Ù‡Ø°Ø§ Ø§Ù„ØªØ§Ø¬Ø± Ø­Ø§Ù„ÙŠØ§Ù‹', style: GoogleFonts.tajawal())),
+        SnackBar(content: Text('لا يتوفر بريد مسجّل لهذا التاجر حالياً', style: GoogleFonts.tajawal())),
       );
       return;
     }
@@ -124,7 +124,7 @@ class _WholesalerDetailPageState extends State<WholesalerDetailPage> {
       debugPrint('[WholesalerDetailPage] _openChat failed.');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('ØªØ¹Ø°Ø± ÙØªØ­ Ø§Ù„Ù…Ø­Ø§Ø¯Ø«Ø© Ø­Ø§Ù„ÙŠØ§Ù‹.', style: GoogleFonts.tajawal())),
+        SnackBar(content: Text('تعذر فتح المحادثة حالياً.', style: GoogleFonts.tajawal())),
       );
     }
   }
@@ -156,8 +156,8 @@ class _WholesalerDetailPageState extends State<WholesalerDetailPage> {
                 ),
               ),
               const SizedBox(height: 8),
-              Text('ØªÙ‚ÙŠÙŠÙ…Ø§Øª ØªØ§Ø¬Ø± Ø§Ù„Ø¬Ù…Ù„Ø©', textAlign: TextAlign.center, style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 17)),
-              ReviewsSection(targetId: w.id, targetType: 'wholesaler', title: 'ÙƒÙ„ Ø§Ù„Ù…Ø±Ø§Ø¬Ø¹Ø§Øª'),
+              Text('تقييمات تاجر الجملة', textAlign: TextAlign.center, style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 17)),
+              ReviewsSection(targetId: w.id, targetType: 'wholesaler', title: 'كل المراجعات'),
             ],
           ),
         ),
@@ -179,9 +179,9 @@ class _WholesalerDetailPageState extends State<WholesalerDetailPage> {
   Widget build(BuildContext context) {
     final banners = _bannerUrls();
     final deliveryLine = [
-      if (w.deliveryDays != null) 'Ù…Ø¯Ø© Ø§Ù„ØªÙˆØµÙŠÙ„: ${w.deliveryDays} ÙŠÙˆÙ…',
-      if (w.deliveryFee != null) 'Ø±Ø³ÙˆÙ… Ø§Ù„ØªÙˆØµÙŠÙ„: ${w.deliveryFee!.toStringAsFixed(2)} Ø¯.Ø£',
-    ].join(' Â· ');
+      if (w.deliveryDays != null) 'مدة التوصيل: ${w.deliveryDays} يوم',
+      if (w.deliveryFee != null) 'رسوم التوصيل: ${w.deliveryFee!.toStringAsFixed(2)} د.أ',
+    ].join(' · ');
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -196,7 +196,7 @@ class _WholesalerDetailPageState extends State<WholesalerDetailPage> {
               );
             },
             icon: const Icon(Icons.inventory_2_outlined, color: Colors.white),
-            label: Text('ÙƒÙ„ Ø§Ù„Ù…Ù†ØªØ¬Ø§Øª', style: GoogleFonts.tajawal(color: Colors.white, fontSize: 13)),
+            label: Text('كل المنتجات', style: GoogleFonts.tajawal(color: Colors.white, fontSize: 13)),
           ),
         ],
       ),
@@ -276,7 +276,7 @@ class _WholesalerDetailPageState extends State<WholesalerDetailPage> {
                           onPressed: _openChat,
                           style: FilledButton.styleFrom(backgroundColor: AppColors.primaryOrange),
                           icon: const Icon(Icons.chat_bubble_outline_rounded),
-                          label: Text('Ù…Ø­Ø§Ø¯Ø«Ø© Ù…Ø¹ Ø§Ù„ØªØ§Ø¬Ø±', style: GoogleFonts.tajawal(color: Colors.white)),
+                          label: Text('محادثة مع التاجر', style: GoogleFonts.tajawal(color: Colors.white)),
                         ),
                       ],
                     ),
@@ -303,7 +303,7 @@ class _WholesalerDetailPageState extends State<WholesalerDetailPage> {
                       Padding(
                         padding: const EdgeInsetsDirectional.only(end: 8),
                         child: FilterChip(
-                          label: Text('ÙƒÙ„ Ø§Ù„Ø£Ù‚Ø³Ø§Ù…', style: GoogleFonts.tajawal(fontSize: 12)),
+                          label: Text('كل الأقسام', style: GoogleFonts.tajawal(fontSize: 12)),
                           selected: _filterCategoryId == null,
                           onSelected: (_) => setState(() => _filterCategoryId = null),
                           selectedColor: AppColors.primaryOrange.withValues(alpha: 0.25),
@@ -333,7 +333,7 @@ class _WholesalerDetailPageState extends State<WholesalerDetailPage> {
                 onChanged: (_) => setState(() {}),
                 textAlign: TextAlign.right,
                 decoration: InputDecoration(
-                  hintText: 'Ø¨Ø­Ø« ÙÙŠ Ù…Ù†ØªØ¬Ø§Øª Ù‡Ø°Ø§ Ø§Ù„ØªØ§Ø¬Ø±',
+                  hintText: 'بحث في منتجات هذا التاجر',
                   hintStyle: GoogleFonts.tajawal(),
                   prefixIcon: const Icon(Icons.search_rounded),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -343,7 +343,7 @@ class _WholesalerDetailPageState extends State<WholesalerDetailPage> {
             const SizedBox(height: 12),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Text('Ø§Ù„Ù…Ù†ØªØ¬Ø§Øª', textAlign: TextAlign.right, style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 16)),
+              child: Text('المنتجات', textAlign: TextAlign.right, style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 16)),
             ),
             if (_loading)
               const Padding(
@@ -359,7 +359,7 @@ class _WholesalerDetailPageState extends State<WholesalerDetailPage> {
               if (_filtered().isEmpty)
                 Padding(
                   padding: const EdgeInsets.all(24),
-                  child: Text('Ù„Ø§ Ù…Ù†ØªØ¬Ø§Øª Ù…Ø·Ø§Ø¨Ù‚Ø©.', textAlign: TextAlign.center, style: GoogleFonts.tajawal(color: AppColors.textSecondary)),
+                  child: Text('لا منتجات مطابقة.', textAlign: TextAlign.center, style: GoogleFonts.tajawal(color: AppColors.textSecondary)),
                 )
               else
                 ..._filtered().map(
@@ -373,7 +373,7 @@ class _WholesalerDetailPageState extends State<WholesalerDetailPage> {
                             )
                           : const Icon(Icons.inventory_2_outlined),
                       title: Text(p.name, textAlign: TextAlign.right, style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
-                      subtitle: Text('Ø§Ù„ÙˆØ­Ø¯Ø©: ${p.unit}', textAlign: TextAlign.right, style: GoogleFonts.tajawal(fontSize: 12)),
+                      subtitle: Text('الوحدة: ${p.unit}', textAlign: TextAlign.right, style: GoogleFonts.tajawal(fontSize: 12)),
                       trailing: const Icon(Icons.chevron_left),
                       onTap: () {
                         Navigator.of(context).push<void>(

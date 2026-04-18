@@ -3,7 +3,7 @@ import '../../../core/services/backend_orders_client.dart';
 import '../domain/maintenance_models.dart';
 import 'technicians_seed_data.dart';
 
-/// Ù…Ø³ØªÙˆØ¯Ø¹ Ø§Ù„ÙÙ†ÙŠÙŠÙ† â€” backend first Ù…Ø¹ Ø¯Ù…Ø¬ Ø¹ÙŠÙ‘Ù†Ø© Ø«Ø§Ø¨ØªØ© Ø¹Ù†Ø¯ Ø§Ù„Ø­Ø§Ø¬Ø©.
+/// مستودع الفنيين — backend first مع دمج عيّنة ثابتة عند الحاجة.
 class TechniciansRepository {
   TechniciansRepository._();
   static final TechniciansRepository instance = TechniciansRepository._();

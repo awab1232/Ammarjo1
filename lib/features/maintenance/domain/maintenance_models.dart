@@ -113,16 +113,16 @@ class TechnicianProfile {
   final String? categoryId;
   final String? phone;
   final String? city;
-  /// Ù†Ø¨Ø°Ø© Ù‚ØµÙŠØ±Ø© Ù„Ù„Ø¹Ø±Ø¶ ÙÙŠ Ø§Ù„Ø¨Ø·Ø§Ù‚Ø§Øª.
+  /// نبذة قصيرة للعرض في البطاقات.
   final String? bio;
-  /// Ù…Ø«Ø§Ù„: `approved` | `pending` â€” Ù„Ù„ÙÙ„ØªØ±Ø© ÙˆØ§Ù„Ø¥Ø¯Ø§Ø±Ø©.
+  /// مثال: `approved` | `pending` — للفلترة والإدارة.
   final String? status;
 
   factory TechnicianProfile.fromMap(String id, Map<String, dynamic> d) {
     final specs = d['specialties'];
     return TechnicianProfile(
       id: id,
-      displayName: d['displayName'] as String? ?? 'ÙÙ†ÙŠ',
+      displayName: d['displayName'] as String? ?? 'فني',
       specialties: specs is List ? specs.map((e) => e.toString()).toList() : const <String>[],
       rating: (d['rating'] as num?)?.toDouble() ?? 4.5,
       distanceKm: (d['distanceKm'] as num?)?.toDouble() ?? 1.0,

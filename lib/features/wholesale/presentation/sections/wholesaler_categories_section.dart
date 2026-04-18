@@ -6,7 +6,7 @@ import '../../../../core/theme/app_colors.dart';
 import '../../data/wholesale_repository.dart';
 import '../../domain/wholesaler_category_model.dart';
 
-/// Ø¥Ø¯Ø§Ø±Ø© Ø£Ù‚Ø³Ø§Ù… ØªØ§Ø¬Ø± Ø§Ù„Ø¬Ù…Ù„Ø© â€” Ù…Ù† Ù„ÙˆØ­Ø© Ø§Ù„ØªØ­ÙƒÙ… Ø£Ùˆ Ø§Ù„Ø£Ø¯Ù…Ù†.
+/// إدارة أقسام تاجر الجملة — من لوحة التحكم أو الأدمن.
 class WholesalerCategoriesSection extends StatefulWidget {
   const WholesalerCategoriesSection({super.key, required this.wholesalerId});
 
@@ -97,17 +97,17 @@ class _WholesalerCategoriesSectionState extends State<WholesalerCategoriesSectio
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('Ø­Ø°Ù Ø§Ù„Ù‚Ø³Ù…ØŸ', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+        title: Text('حذف القسم؟', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
         content: Text(
-          'Ù„Ù† ØªÙØ­Ø°Ù Ø§Ù„Ù…Ù†ØªØ¬Ø§Øª ØªÙ„Ù‚Ø§Ø¦ÙŠØ§Ù‹ â€” Ø±Ø¨Ù‘Ø· Ø§Ù„Ù…Ù†ØªØ¬Ø§Øª Ø¨Ø£Ù‚Ø³Ø§Ù… Ø£Ø®Ø±Ù‰ Ø¥Ù† Ù„Ø²Ù….',
+          'لن تُحذف المنتجات تلقائياً — ربّط المنتجات بأقسام أخرى إن لزم.',
           style: GoogleFonts.tajawal(),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('Ø¥Ù„ØºØ§Ø¡', style: GoogleFonts.tajawal())),
+          TextButton(onPressed: () => Navigator.pop(ctx, false), child: Text('إلغاء', style: GoogleFonts.tajawal())),
           FilledButton(
             onPressed: () => Navigator.pop(ctx, true),
             style: FilledButton.styleFrom(backgroundColor: Colors.red),
-            child: Text('Ø­Ø°Ù', style: GoogleFonts.tajawal(color: Colors.white)),
+            child: Text('حذف', style: GoogleFonts.tajawal(color: Colors.white)),
           ),
         ],
       ),

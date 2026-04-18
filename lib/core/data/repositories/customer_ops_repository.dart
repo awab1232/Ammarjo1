@@ -62,7 +62,7 @@ class TrackOrderItem {
     final updated = _parseDate(d['updatedAt']);
     final est = _parseDate(d['estimatedDeliveryDate']);
     final rawItems = d['items'];
-    List<Map<String, dynamic>> parsed = const [];
+    List<Map<String, dynamic>> parsed = List<Map<String, dynamic>>.empty();
     if (rawItems is List) {
       parsed = rawItems.map((e) => e is Map<String, dynamic> ? e : <String, dynamic>{}).toList();
     }
@@ -75,7 +75,7 @@ class TrackOrderItem {
     }
     return TrackOrderItem(
       id: id,
-      title: d['title'] as String? ?? 'Ø·Ù„Ø¨',
+      title: d['title'] as String? ?? 'طلب',
       status: (d['status'] as String?) ?? 'pending',
       createdAt: created,
       firebaseOrderId: d['firebaseOrderId'] as String?,
@@ -225,9 +225,9 @@ class CustomerOpsRepository {
     String? rootOrderId,
   }) async {}
 
-  /// Ø·Ù„Ø¨Ø§Øª Ø§Ù„Ù…ØªØ¬Ø± Ù…Ù† **`users/{uid}/orders`** â€” Ù†ÙØ³ [uid] Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù… ÙÙŠ [syncOrderToFirestore]
-  /// (ÙŠÙÙØ¶Ù‘ÙŽÙ„ `FirebaseAuth.currentUser.uid` Ø¹Ù†Ø¯ ÙˆØ¬ÙˆØ¯ Ø¬Ù„Ø³Ø©).
-  /// [limit] ÙŠÙÙ‚ÙŠÙ‘Ø¯ Ø§Ù„Ø­Ø¬Ù… (Ø§ÙØªØ±Ø§Ø¶ÙŠ 20) â€” Ø²ÙØ¯ Ø§Ù„Ø­Ø¯Ù‘ ÙÙŠ Ø§Ù„ÙˆØ§Ø¬Ù‡Ø© Ù„ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ù…Ø²ÙŠØ¯.
+  /// طلبات المتجر من **`users/{uid}/orders`** — نفس [uid] المستخدم في [syncOrderToFirestore]
+  /// (يُفضَّل `FirebaseAuth.currentUser.uid` عند وجود جلسة).
+  /// [limit] يُقيّد الحجم (افتراضي 20) — زِد الحدّ في الواجهة لتحميل المزيد.
   Stream<FeatureState<List<TrackOrderItem>>> watchOrders(String email, {int limit = 20}) async* {
     while (true) {
       try {
