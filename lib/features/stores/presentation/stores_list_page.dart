@@ -3,6 +3,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 import '../../../core/contracts/feature_state.dart';
+import '../../../core/data/repositories/home_repository.dart';
+import '../../../core/models/home_section.dart';
+import '../../../core/models/sub_category.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/seo/seo_routes.dart';
 import '../../../core/seo/seo_service.dart';
@@ -37,10 +40,210 @@ class _StoresListPageState extends State<StoresListPage> {
   bool _loadingMore = false;
   String? _loadError;
 
+  final ScrollController _scrollController = ScrollController();
+  final TextEditingController _searchController = TextEditingController();
+  final Map<String, GlobalKey> _groupHeaderKeys = <String, GlobalKey>{};
+
+  /// أقسام فرعية من الـ API مع متاجر كل قسم (`GET /stores/by-subcategory/:id`).
+  List<({SubCategory sub, List<StoreModel> stores})>? _subcategoryGroups;
+  bool _groupingBusy = false;
+  String? _groupingError;
+
+  bool get _useGroupedLayout =>
+      _subcategoryGroups != null && _subcategoryGroups!.isNotEmpty && widget.category.trim().isNotEmpty;
+
+  void _onSearchChanged() => setState(() {});
+
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _loadInitial());
+    _searchController.addListener(_onSearchChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _loadInitial();
+      if (!mounted) return;
+      await _tryAttachSubcategoryGrouping();
+    });
+  }
+
+  @override
+  void dispose() {
+    _searchController.removeListener(_onSearchChanged);
+    _searchController.dispose();
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  static bool _namesMatch(String a, String b) {
+    return a.trim().toLowerCase() == b.trim().toLowerCase();
+  }
+
+  Future<void> _tryAttachSubcategoryGrouping({bool forceRefresh = false}) async {
+    if (widget.category.trim().isEmpty) return;
+    setState(() {
+      _groupingBusy = true;
+      _groupingError = null;
+    });
+    try {
+      final sectionsState = await HomeRepository.instance.getSections(forceRefresh: forceRefresh);
+      if (!mounted) return;
+      if (sectionsState is! FeatureSuccess<List<HomeSection>>) {
+        setState(() {
+          _groupingBusy = false;
+          _subcategoryGroups = null;
+        });
+        return;
+      }
+      HomeSection? matched;
+      for (final s in sectionsState.data) {
+        if (_namesMatch(s.name, widget.category)) {
+          matched = s;
+          break;
+        }
+      }
+      if (matched == null) {
+        setState(() {
+          _groupingBusy = false;
+          _subcategoryGroups = null;
+        });
+        return;
+      }
+      final subsState = await HomeRepository.instance.getSubCategories(matched.id, forceRefresh: forceRefresh);
+      if (!mounted) return;
+      if (subsState is! FeatureSuccess<List<SubCategory>> || subsState.data.isEmpty) {
+        setState(() {
+          _groupingBusy = false;
+          _subcategoryGroups = null;
+        });
+        return;
+      }
+      final subs = subsState.data;
+      final pairs = await Future.wait(
+        subs.map((sub) async {
+          final r = await StoresRepository.instance.getStoresBySubCategory(sub.id);
+          final raw = switch (r) {
+            FeatureSuccess<List<StoreModel>>(:final data) => data,
+            _ => const <StoreModel>[],
+          };
+          final withoutCatalog = raw.where((s) => s.id.toLowerCase().trim() != 'ammarjo').toList();
+          return (sub: sub, stores: withoutCatalog);
+        }),
+      );
+      if (!mounted) return;
+      _groupHeaderKeys.clear();
+      for (final p in pairs) {
+        _groupHeaderKeys.putIfAbsent(p.sub.id, () => GlobalKey());
+      }
+      setState(() {
+        _subcategoryGroups = pairs;
+        _groupingBusy = false;
+      });
+    } on Object catch (e) {
+      debugPrint('StoresList subcategory grouping: $e');
+      if (!mounted) return;
+      setState(() {
+        _groupingBusy = false;
+        _groupingError = 'تعذر تحميل التصنيفات الفرعية';
+        _subcategoryGroups = null;
+      });
+    }
+  }
+
+  void _scrollToSubcategory(String subId) {
+    final key = _groupHeaderKeys[subId];
+    final ctx = key?.currentContext;
+    if (ctx != null) {
+      Scrollable.ensureVisible(
+        ctx,
+        duration: const Duration(milliseconds: 420),
+        curve: Curves.easeOutCubic,
+        alignment: 0.05,
+      );
+    }
+  }
+
+  List<({SubCategory sub, List<StoreModel> stores})> _visibleGrouped() {
+    final base = _subcategoryGroups;
+    if (base == null) return List<({SubCategory sub, List<StoreModel> stores})>.empty();
+    final q = _searchController.text.trim().toLowerCase();
+    return [
+      for (final g in base)
+        (
+          sub: g.sub,
+          stores: _applyFilter(g.stores)
+              .where(
+                (s) =>
+                    q.isEmpty ||
+                    s.name.toLowerCase().contains(q) ||
+                    s.description.toLowerCase().contains(q),
+              )
+              .toList(),
+        ),
+    ];
+  }
+
+  Widget _buildSearchBar() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      child: TextField(
+        controller: _searchController,
+        textAlign: TextAlign.right,
+        decoration: InputDecoration(
+          hintText: 'ابحث في المتاجر…',
+          hintStyle: GoogleFonts.tajawal(color: AppColors.textSecondary),
+          prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primaryOrange),
+          suffixIcon: _searchController.text.trim().isEmpty
+              ? null
+              : IconButton(
+                  icon: const Icon(Icons.clear_rounded),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() {});
+                  },
+                ),
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14)),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSubcategoryChipsStrip() {
+    final groups = _subcategoryGroups;
+    if (groups == null || groups.isEmpty) return const SizedBox.shrink();
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 4),
+      child: SizedBox(
+        height: 44,
+        child: ListView.separated(
+          scrollDirection: Axis.horizontal,
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          itemCount: groups.length + 1,
+          separatorBuilder: (context, index) => const SizedBox(width: 8),
+          itemBuilder: (context, i) {
+            if (i == 0) {
+              return ActionChip(
+                label: Text('الكل', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                onPressed: () {
+                  if (_scrollController.hasClients) {
+                    _scrollController.animateTo(
+                      0,
+                      duration: const Duration(milliseconds: 380),
+                      curve: Curves.easeOutCubic,
+                    );
+                  }
+                },
+              );
+            }
+            final sub = groups[i - 1].sub;
+            return ActionChip(
+              label: Text(sub.name, style: GoogleFonts.tajawal(fontWeight: FontWeight.w600)),
+              onPressed: () => _scrollToSubcategory(sub.id),
+            );
+          },
+        ),
+      ),
+    );
   }
 
   List<StoreModel> _applyFilter(List<StoreModel> list) {
@@ -134,7 +337,7 @@ class _StoresListPageState extends State<StoresListPage> {
     }
   }
 
-  /// تمرير واحد: شرائح التصفية + عمّار جو أولاً (نفس [StoreExpandedCard]) + المتاجر الأخرى.
+  /// شريط بحث + تصفية + (اختياري) تجميع حسب تصنيفات فرعية من الـ API عند تطابق اسم القسم مع [widget.category].
   Widget _buildBody(BuildContext context) {
     if (_loadError != null) {
       return Center(
@@ -155,8 +358,17 @@ class _StoresListPageState extends State<StoresListPage> {
     }
 
     final filtered = _applyFilter(_storesExcludingCatalog());
+    final q = _searchController.text.trim().toLowerCase();
+    final flatForSearch = q.isEmpty
+        ? filtered
+        : filtered
+            .where(
+              (s) => s.name.toLowerCase().contains(q) || s.description.toLowerCase().contains(q),
+            )
+            .toList();
 
     final slivers = <Widget>[
+      if (widget.category.trim().isNotEmpty) SliverToBoxAdapter(child: _buildSearchBar()),
       SliverToBoxAdapter(
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
@@ -172,6 +384,29 @@ class _StoresListPageState extends State<StoresListPage> {
           ),
         ),
       ),
+      if (_groupingBusy && !_useGroupedLayout)
+        const SliverToBoxAdapter(
+          child: Padding(
+            padding: EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+            child: LinearProgressIndicator(minHeight: 3, color: AppColors.primaryOrange),
+          ),
+        ),
+      if (_groupingError != null && !_useGroupedLayout)
+        SliverToBoxAdapter(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Row(
+              children: [
+                Expanded(child: Text(_groupingError!, style: GoogleFonts.tajawal(color: AppColors.textSecondary))),
+                TextButton(
+                  onPressed: () => _tryAttachSubcategoryGrouping(forceRefresh: true),
+                  child: Text('إعادة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                ),
+              ],
+            ),
+          ),
+        ),
+      if (_useGroupedLayout) SliverToBoxAdapter(child: _buildSubcategoryChipsStrip()),
       SliverToBoxAdapter(
         child: StoreExpandedCard(
           store: ammarJoCatalogStoreModel(),
@@ -184,54 +419,154 @@ class _StoresListPageState extends State<StoresListPage> {
           },
         ),
       ),
-      if (_loading && _stores.isEmpty)
-        SliverList(
-          delegate: SliverChildBuilderDelegate(
-            (_, _) => _buildShimmerCard(),
-            childCount: 4,
-          ),
-        )
-      else if (filtered.isEmpty)
-        SliverFillRemaining(
-          hasScrollBody: false,
-          child: EmptyStateWidget(
-            type: EmptyStateType.stores,
-            onAction: _loadInitial,
-          ),
-        )
-      else
-        SliverList(
-          delegate: SliverChildBuilderDelegate((context, i) {
-            if (i >= filtered.length) {
-              if (!_loadingMore) return const SizedBox.shrink();
-              return Padding(
-                padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
-                child: _buildShimmerCard(),
-              );
-            }
-            final s = filtered[i];
-            return StoreExpandedCard(
-              store: s,
-              onVisitStore: () {
-                _showStoreInfoSheet(s);
-              },
-            );
-          }, childCount: filtered.length + (_loadingMore ? 1 : 0)),
-        ),
     ];
+
+    if (_useGroupedLayout) {
+      final visible = _visibleGrouped();
+      final anyStores = visible.any((g) => g.stores.isNotEmpty);
+      if (!anyStores) {
+        slivers.add(
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: EmptyStateWidget(
+              type: EmptyStateType.search,
+              customTitle: q.isEmpty ? 'لا متاجر في التصنيفات الفرعية' : 'لا نتائج للبحث',
+              actionLabel: 'تحديث',
+              onAction: () async {
+                _searchController.clear();
+                await _tryAttachSubcategoryGrouping(forceRefresh: true);
+              },
+            ),
+          ),
+        );
+      } else {
+        for (final g in visible) {
+          slivers.add(
+            SliverToBoxAdapter(
+              key: _groupHeaderKeys[g.sub.id],
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 18, 16, 8),
+                child: Row(
+                  children: [
+                    Container(
+                      width: 4,
+                      height: 20,
+                      decoration: BoxDecoration(
+                        color: AppColors.accent,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        g.sub.name,
+                        textAlign: TextAlign.right,
+                        style: GoogleFonts.tajawal(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 17,
+                          color: AppColors.textPrimary,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+          if (g.stores.isEmpty) {
+            slivers.add(
+              SliverToBoxAdapter(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                  child: Text(
+                    'لا متاجر في هذا التصنيف الفرعي.',
+                    textAlign: TextAlign.right,
+                    style: GoogleFonts.tajawal(color: AppColors.textSecondary, fontSize: 13),
+                  ),
+                ),
+              ),
+            );
+          } else {
+            slivers.add(
+              SliverList(
+                delegate: SliverChildBuilderDelegate(
+                  (context, i) {
+                    final s = g.stores[i];
+                    return StoreExpandedCard(
+                      store: s,
+                      onVisitStore: () => _showStoreInfoSheet(s),
+                    );
+                  },
+                  childCount: g.stores.length,
+                ),
+              ),
+            );
+          }
+        }
+      }
+    } else {
+      if (_loading && _stores.isEmpty) {
+        slivers.add(
+          SliverList(
+            delegate: SliverChildBuilderDelegate(
+              (_, _) => _buildShimmerCard(),
+              childCount: 4,
+            ),
+          ),
+        );
+      } else if (flatForSearch.isEmpty) {
+        slivers.add(
+          SliverFillRemaining(
+            hasScrollBody: false,
+            child: EmptyStateWidget(
+              type: EmptyStateType.stores,
+              customTitle: q.isEmpty ? null : 'لا نتائج للبحث',
+              onAction: _loadInitial,
+            ),
+          ),
+        );
+      } else {
+        slivers.add(
+          SliverList(
+            delegate: SliverChildBuilderDelegate((context, i) {
+              if (i >= flatForSearch.length) {
+                if (!_loadingMore) return const SizedBox.shrink();
+                return Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 12),
+                  child: _buildShimmerCard(),
+                );
+              }
+              final s = flatForSearch[i];
+              return StoreExpandedCard(
+                store: s,
+                onVisitStore: () {
+                  _showStoreInfoSheet(s);
+                },
+              );
+            }, childCount: flatForSearch.length + (_loadingMore ? 1 : 0)),
+          ),
+        );
+      }
+    }
 
     return RefreshIndicator(
       color: AppColors.primaryOrange,
-      onRefresh: _loadInitial,
+      onRefresh: () async {
+        await _loadInitial();
+        if (!mounted) return;
+        await _tryAttachSubcategoryGrouping(forceRefresh: true);
+      },
       child: NotificationListener<ScrollNotification>(
         onNotification: (n) {
-          if (n.metrics.axis == Axis.vertical &&
+          if (!_useGroupedLayout &&
+              n.metrics.axis == Axis.vertical &&
               n.metrics.pixels >= n.metrics.maxScrollExtent - 320) {
             _loadMore();
           }
           return false;
         },
         child: CustomScrollView(
+          controller: _scrollController,
           physics: const AlwaysScrollableScrollPhysics(),
           slivers: slivers,
         ),
