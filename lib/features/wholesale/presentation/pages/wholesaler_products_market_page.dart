@@ -20,7 +20,7 @@ class WholesalerProductsMarketPage extends StatefulWidget {
 
 class _WholesalerProductsMarketPageState extends State<WholesalerProductsMarketPage> {
   static const int _pageSize = 20;
-  List<WholesaleProduct> _products = List<WholesaleProduct>.empty();
+  final List<WholesaleProduct> _products = List<WholesaleProduct>.empty();
   String? _nextCursor;
   bool _loading = false;
   bool _loadingMore = false;
