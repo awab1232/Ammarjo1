@@ -1,6 +1,4 @@
-\echo [docker-init] Ensuring store domain base tables exist...
-\set ON_ERROR_STOP on
-
+-- Store domain + sessions (Node/postgres migration runner — no psql meta-commands)
 CREATE TABLE IF NOT EXISTS stores (
   id UUID PRIMARY KEY,
   owner_id TEXT NOT NULL,
@@ -204,5 +202,3 @@ CREATE INDEX IF NOT EXISTS idx_user_sessions_uid_last
   ON user_sessions (firebase_uid, last_login_at DESC);
 CREATE INDEX IF NOT EXISTS idx_user_sessions_last_login
   ON user_sessions (last_login_at DESC);
-
-\echo [docker-init] Store domain compatibility tables are ready.
