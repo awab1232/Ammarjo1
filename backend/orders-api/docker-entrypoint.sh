@@ -38,7 +38,13 @@ run_sql_migrations() {
 }
 
 echo "[entrypoint] Starting server (after migrations)…"
-run_sql_migrations
+# If Railway/docker CMD already runs apply-all-sql.cjs (see railway.json), skip duplicate.
+_cmdline="$*"
+if [ -n "$_cmdline" ] && echo "$_cmdline" | grep -Fq 'apply-all-sql.cjs'; then
+  echo "[entrypoint] start command includes apply-all-sql.cjs — skipping entrypoint migrations."
+else
+  run_sql_migrations
+fi
 
 if [ "$#" -gt 0 ]; then
   exec "$@"

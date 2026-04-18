@@ -23,6 +23,9 @@ COPY sql/migrations ./sql/migrations
 RUN chmod +x docker-entrypoint.sh \
   && npm ci --omit=dev
 
+# Default for containers; Railway dashboard vars override this if set.
+ENV NODE_ENV=production
+
 EXPOSE 3000
 
 ENTRYPOINT ["./docker-entrypoint.sh"]
