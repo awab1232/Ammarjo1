@@ -48,7 +48,14 @@ class CartController extends ChangeNotifier {
   }
 
   Future<void> loadPersistedCart() async {
-    final localSpecial = (await _local.getCart()).where((e) => e.isTender || e.isWholesale).toList();
+    List<CartItem> localRaw;
+    try {
+      localRaw = await _local.getCart();
+    } on StateError {
+      // مفتاح السلة غير موجود أو فارغ — لا نرمي أثناء bootstrap
+      localRaw = <CartItem>[];
+    }
+    final localSpecial = localRaw.where((e) => e.isTender || e.isWholesale).toList();
     if (_useServerCartLines) {
       final rows = await BackendOrdersClient.instance.fetchCart();
       final server = rows == null
@@ -59,7 +66,7 @@ class CartController extends ChangeNotifier {
       notifyListeners();
       return;
     }
-    cart = await _local.getCart();
+    cart = List<CartItem>.from(localRaw);
     notifyListeners();
   }
 
@@ -273,9 +280,11 @@ class CartController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> applyCoupon(String code, String userId) async {
+  /// [lines] إن وُجدت يُحسب الكوبون على هذه الأسطر فقط (مثلاً متجر واحد من السلة).
+  Future<bool> applyCoupon(String code, String userId, {List<CartItem>? lines}) async {
+    final scope = lines ?? cart;
     try {
-      final state = await CouponRepository.instance.validateCoupon(code, userId, cart);
+      final state = await CouponRepository.instance.validateCoupon(code, userId, scope);
       if (state is! FeatureSuccess<CouponValidationResult>) {
         errorMessage = state is FeatureFailure<CouponValidationResult>
             ? state.message
@@ -302,9 +311,11 @@ class CartController extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<bool> applyPromotions(String userId) async {
+  /// [lines] إن وُجدت تُحسب العروض على هذه الأسطر فقط.
+  Future<bool> applyPromotions(String userId, {List<CartItem>? lines}) async {
+    final scope = lines ?? cart;
     try {
-      final state = await PromotionRepository.instance.calculateDiscount(cart, userId);
+      final state = await PromotionRepository.instance.calculateDiscount(scope, userId);
       if (state is! FeatureSuccess<PromotionsCalculationResult>) {
         errorMessage = state is FeatureFailure<PromotionsCalculationResult>
             ? state.message
@@ -336,6 +347,65 @@ class CartController extends ChangeNotifier {
     promotionsDiscountAmount = 0;
     freeShippingByPromotion = false;
     notifyListeners();
+  }
+
+  /// خصومات الكوبون/العروض المرتبطة بـ [lines] فقط (لطلب متجر واحد أو أي مجموعة أسطر).
+  Future<
+      ({
+        double couponDiscount,
+        double promotionsDiscount,
+        bool freeShipping,
+        List<String> promotionIds,
+      })> checkoutDiscountBreakdownForLines(List<CartItem> lines, String userId) async {
+    if (lines.isEmpty) {
+      return (
+        couponDiscount: 0.0,
+        promotionsDiscount: 0.0,
+        freeShipping: false,
+        promotionIds: <String>[],
+      );
+    }
+    double couponDiscount = 0;
+    final c = appliedCoupon;
+    if (c != null) {
+      final orderAmount = lines.fold<double>(0, (s, e) => s + e.totalPrice);
+      final productIds = lines.map((e) => e.product.id).toList();
+      final storeIds = lines.map((e) => e.storeId).toSet().toList();
+      if (c.isValid(
+        userId: userId,
+        orderAmount: orderAmount,
+        productIds: productIds,
+        storeIds: storeIds,
+        userUsedCount: 0,
+      )) {
+        couponDiscount = c.calculateDiscount(orderAmount: orderAmount);
+      }
+    }
+
+    final promoState = await PromotionRepository.instance.calculateDiscount(lines, userId);
+    if (promoState is! FeatureSuccess<PromotionsCalculationResult>) {
+      return (
+        couponDiscount: couponDiscount,
+        promotionsDiscount: 0.0,
+        freeShipping: false,
+        promotionIds: <String>[],
+      );
+    }
+    final res = promoState.data;
+    if (c != null && couponDiscount > 0 && res.appliedPromotions.any((e) => !e.isStackable)) {
+      return (
+        couponDiscount: couponDiscount,
+        promotionsDiscount: 0.0,
+        freeShipping: false,
+        promotionIds: <String>[],
+      );
+    }
+    return (
+      couponDiscount: couponDiscount,
+      promotionsDiscount: res.discountAmount,
+      freeShipping: res.freeShipping,
+      promotionIds: res.appliedPromotions.map((e) => e.id).toList(),
+    );
   }
 
   Future<void> refreshCartFromCatalog() async {

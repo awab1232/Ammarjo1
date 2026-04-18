@@ -857,10 +857,34 @@ class StoreController extends ChangeNotifier {
       cartState.removeFromCart(productId, storeId: storeId);
 
   Future<void> removeCartLine(CartItem item) => cartState.removeCartLine(item);
-  Future<bool> applyCoupon(String code, String userId) => cartState.applyCoupon(code, userId);
+  Future<bool> applyCoupon(String code, String userId, {List<CartItem>? lines}) =>
+      cartState.applyCoupon(code, userId, lines: lines);
   void removeCoupon() => cartState.removeCoupon();
-  Future<bool> applyPromotions(String userId) => cartState.applyPromotions(userId);
+  Future<bool> applyPromotions(String userId, {List<CartItem>? lines}) =>
+      cartState.applyPromotions(userId, lines: lines);
   void clearPromotions() => cartState.clearPromotions();
+
+  /// شحن + خصومات على [lines] فقط (لملخص الدفع عند `checkoutLines`).
+  Future<
+      ({
+        StoreShippingComputation shipping,
+        double couponDiscount,
+        double promotionsDiscount,
+        bool freeShipping,
+      })> previewCheckoutTotals({
+    required List<CartItem> lines,
+    required String userId,
+    String? userCity,
+  }) async {
+    final shipping = await computeShippingForCartLines(lines, userCity: userCity);
+    final d = await cartState.checkoutDiscountBreakdownForLines(lines, userId);
+    return (
+      shipping: shipping,
+      couponDiscount: d.couponDiscount,
+      promotionsDiscount: d.promotionsDiscount,
+      freeShipping: d.freeShipping,
+    );
+  }
 
   /// تحديث بيانات المنتجات في السلة من Firestore (`products`).
   Future<void> refreshCartFromCatalog() => cartState.refreshCartFromCatalog();
@@ -964,9 +988,22 @@ class StoreController extends ChangeNotifier {
         errorMessage = 'بعض المتاجر لا تغطي منطقتك: ${shipping.uncoveredStoreNames.join('، ')}';
         return false;
       }
-      final ship = shipping.totalShipping;
-      final couponCode = cartState.appliedCoupon?.code;
-      final discount = cartState.discountAmount + cartState.promotionsDiscountAmount;
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) {
+        errorMessage = 'انتهت الجلسة. سجّل الدخول مرة أخرى.';
+        return false;
+      }
+      final CheckoutScopedDiscounts scoped = cartLines != null
+          ? await _checkoutScopedDiscounts(lines: lines, userId: uid)
+          : CheckoutScopedDiscounts(
+              couponDiscount: cartState.discountAmount,
+              promotionsDiscount: cartState.promotionsDiscountAmount,
+              freeShipping: cartState.freeShippingByPromotion,
+              promotionIds: cartState.appliedPromotions.map((e) => e.id).toList(),
+            );
+      final ship = scoped.freeShipping ? 0.0 : shipping.totalShipping;
+      final couponCode = scoped.couponDiscount > 0 ? cartState.appliedCoupon?.code : null;
+      final discount = scoped.couponDiscount + scoped.promotionsDiscount;
       final beforeDiscountTotal = subtotal + ship;
       final grandTotal = (beforeDiscountTotal - discount) < 0 ? 0.0 : (beforeDiscountTotal - discount);
       var orderEmail = email.trim();
@@ -986,11 +1023,6 @@ class StoreController extends ChangeNotifier {
         notifyListeners();
         return false;
       }
-      final uid = FirebaseAuth.instance.currentUser?.uid;
-      if (uid == null) {
-        errorMessage = 'انتهت الجلسة. سجّل الدخول مرة أخرى.';
-        return false;
-      }
       final orderState = await BackendOrderRepository.instance.createOrderFromCart(
         cart: lines,
         cartSubtotal: subtotal,
@@ -1001,7 +1033,7 @@ class StoreController extends ChangeNotifier {
         orderTotal: grandTotal,
         couponCode: couponCode,
         discountAmount: discount > 0 ? discount : 0.0,
-        promotionIds: cartState.appliedPromotions.map((e) => e.id).toList(),
+        promotionIds: scoped.promotionIds,
         customerUid: uid,
         customerEmail: orderEmail,
         firstName: firstName,
@@ -1071,7 +1103,35 @@ class StoreController extends ChangeNotifier {
     }
   }
 
+  Future<CheckoutScopedDiscounts> _checkoutScopedDiscounts({
+    required List<CartItem> lines,
+    required String userId,
+  }) async {
+    final d = await cartState.checkoutDiscountBreakdownForLines(lines, userId);
+    return CheckoutScopedDiscounts(
+      couponDiscount: d.couponDiscount,
+      promotionsDiscount: d.promotionsDiscount,
+      freeShipping: d.freeShipping,
+      promotionIds: d.promotionIds,
+    );
+  }
+
   /// Deprecated: points are now awarded only on `delivered`.
+}
+
+/// خصومات مُعاد حسابها لأسطر طلب جزئية (متجر واحد من السلة).
+class CheckoutScopedDiscounts {
+  const CheckoutScopedDiscounts({
+    required this.couponDiscount,
+    required this.promotionsDiscount,
+    required this.freeShipping,
+    required this.promotionIds,
+  });
+
+  final double couponDiscount;
+  final double promotionsDiscount;
+  final bool freeShipping;
+  final List<String> promotionIds;
 }
 
 class StoreShippingLineCost {

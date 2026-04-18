@@ -120,8 +120,9 @@ export class CartService {
       const existing = await client.query(
         `SELECT id, quantity FROM cart_items
          WHERE user_id = $1 AND product_id = $2 AND COALESCE(variant_id, '') = COALESCE($3::text, '')
+           AND store_id = $4
          LIMIT 1`,
-        [uid, pid, variantKey],
+        [uid, pid, variantKey, storeId],
       );
       if (existing.rows.length > 0) {
         const curId = String(existing.rows[0]['id']);

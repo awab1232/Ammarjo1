@@ -130,9 +130,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
     final store = context.watch<StoreController>();
     final lines = widget.checkoutLines ?? store.cart;
     final subtotal = lines.fold<double>(0, (s, e) => s + e.totalPrice);
-    final couponDiscount = store.discountAmount;
-    final promotionsDiscount = store.promotionsDiscountAmount;
-    final discount = couponDiscount + promotionsDiscount;
     final isDesktopWeb = kIsWeb && MediaQuery.of(context).size.width > 900;
     final textTheme = GoogleFonts.tajawalTextTheme(Theme.of(context).textTheme);
 
@@ -169,9 +166,6 @@ class _CheckoutPageState extends State<CheckoutPage> {
               store: store,
               lines: lines,
               subtotal: subtotal,
-              couponDiscount: couponDiscount,
-              promotionsDiscount: promotionsDiscount,
-              discount: discount,
             );
             final formList = ListView(
           padding: const EdgeInsets.all(16),
@@ -206,7 +200,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
                             onPressed: () async {
                               final uid = FirebaseAuth.instance.currentUser?.uid;
                               if (uid == null) return;
-                              final ok = await context.read<StoreController>().applyCoupon(_couponCtrl.text, uid);
+                              final ok = await context
+                                  .read<StoreController>()
+                                  .applyCoupon(_couponCtrl.text, uid, lines: lines);
                               if (!context.mounted) return;
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
@@ -224,7 +220,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       if (store.appliedCoupon != null) ...[
                         const SizedBox(height: 8),
                         Text(
-                          'الكود المطبق: ${store.appliedCoupon!.code} • خصم ${store.formatMoney(discount)}',
+                          'الكود المطبق: ${store.appliedCoupon!.code} • خصم ${store.formatMoney(store.discountAmount)}',
                           style: GoogleFonts.tajawal(fontWeight: FontWeight.w700, color: Colors.green.shade700),
                         ),
                         Align(
@@ -240,7 +236,9 @@ class _CheckoutPageState extends State<CheckoutPage> {
                         onPressed: () async {
                           final uid = FirebaseAuth.instance.currentUser?.uid;
                           if (uid == null) return;
-                          final ok = await context.read<StoreController>().applyPromotions(uid);
+                              final ok = await context
+                                  .read<StoreController>()
+                                  .applyPromotions(uid, lines: lines);
                           if (!context.mounted) return;
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
@@ -507,25 +505,54 @@ class _CheckoutPageState extends State<CheckoutPage> {
     required StoreController store,
     required List<CartItem> lines,
     required double subtotal,
-    required double couponDiscount,
-    required double promotionsDiscount,
-    required double discount,
   }) {
+    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final city = (_selectedCity ?? '').trim();
+    final summaryKey = Object.hashAll(<Object?>[
+      city,
+      subtotal,
+      store.discountAmount,
+      store.promotionsDiscountAmount,
+      store.freeShippingByPromotion,
+      ...lines.map((e) => '${e.product.id}:${e.storeId}:${e.quantity}'),
+    ]);
     return Card(
       elevation: 0,
       color: Colors.white,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: FutureBuilder<StoreShippingComputation>(
-          future: store.computeShippingForCartLines(lines, userCity: (_selectedCity ?? '').trim()),
+        child: FutureBuilder<
+            ({
+              StoreShippingComputation shipping,
+              double couponDiscount,
+              double promotionsDiscount,
+              bool freeShipping,
+            })>(
+          key: ValueKey<int>(summaryKey),
+          future: uid.isEmpty
+              ? () async {
+                  final shipping = await store.computeShippingForCartLines(lines, userCity: city);
+                  return (
+                    shipping: shipping,
+                    couponDiscount: store.discountAmount,
+                    promotionsDiscount: store.promotionsDiscountAmount,
+                    freeShipping: store.freeShippingByPromotion,
+                  );
+                }()
+              : store.previewCheckoutTotals(lines: lines, userId: uid, userCity: city),
           builder: (context, snap) {
-            final computedShipping = snap.data?.totalShipping ?? 0.0;
-            final shipping = store.freeShippingByPromotion ? 0.0 : computedShipping;
+            final shippingData = snap.data?.shipping;
+            final couponDiscount = snap.data?.couponDiscount ?? 0.0;
+            final promotionsDiscount = snap.data?.promotionsDiscount ?? 0.0;
+            final freeShip = snap.data?.freeShipping ?? false;
+            final discount = couponDiscount + promotionsDiscount;
+            final computedShipping = shippingData?.totalShipping ?? 0.0;
+            final shipping = freeShip ? 0.0 : computedShipping;
             final beforeDiscount = subtotal + shipping;
             final grandTotal = (beforeDiscount - discount) < 0 ? 0.0 : (beforeDiscount - discount);
-            final shippingLines = snap.data?.lines ?? const <StoreShippingLineCost>[];
-            final uncovered = snap.data?.uncoveredStoreNames ?? const <String>[];
+            final shippingLines = shippingData?.lines ?? const <StoreShippingLineCost>[];
+            final uncovered = shippingData?.uncoveredStoreNames ?? const <String>[];
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
