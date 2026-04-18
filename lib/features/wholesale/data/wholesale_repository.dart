@@ -24,9 +24,9 @@ class WholesaleRepository {
 
   Future<Map<String, String>> _authHeaders() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) throw StateError('ÙŠØ±Ø¬Ù‰ ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø¯Ø®ÙˆÙ„ Ø£ÙˆÙ„Ø§Ù‹');
+    if (user == null) throw StateError('يرجى تسجيل الدخول أولاً');
     final token = await user.getIdToken();
-    if (token == null || token.isEmpty) throw StateError('ØªØ¹Ø°Ø± Ø§Ù„ØªØ­Ù‚Ù‚ Ù…Ù† Ù‡ÙˆÙŠØ© Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…');
+    if (token == null || token.isEmpty) throw StateError('تعذر التحقق من هوية المستخدم');
     return {
       'Authorization': 'Bearer $token',
       'Content-Type': 'application/json',
@@ -35,19 +35,19 @@ class WholesaleRepository {
 
   Future<dynamic> _httpGetJson(String path, {Map<String, String>? query}) async {
     if (!useBackendWholesale) throw StateError('Backend wholesale disabled');
-    if (_baseUrl.isEmpty) throw StateError('Backend URL ØºÙŠØ± Ù…Ø¶Ø¨ÙˆØ·');
+    if (_baseUrl.isEmpty) throw StateError('Backend URL غير مضبوط');
     final headers = await _authHeaders();
     final uri = Uri.parse('$_baseUrl$path').replace(queryParameters: query);
     final res = await http.get(uri, headers: headers).timeout(const Duration(seconds: 20));
     if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw StateError('ÙØ´Ù„ ØªØ­Ù…ÙŠÙ„ Ø¨ÙŠØ§Ù†Ø§Øª Ø§Ù„Ø¬Ù…Ù„Ø© (${res.statusCode})');
+      throw StateError('فشل تحميل بيانات الجملة (${res.statusCode})');
     }
     return jsonDecode(res.body);
   }
 
   Future<Map<String, dynamic>> _httpPostJson(String path, Map<String, dynamic> body) async {
     if (!useBackendWholesale) throw StateError('Backend wholesale disabled');
-    if (_baseUrl.isEmpty) throw StateError('Backend URL ØºÙŠØ± Ù…Ø¶Ø¨ÙˆØ·');
+    if (_baseUrl.isEmpty) throw StateError('Backend URL غير مضبوط');
     final headers = await _authHeaders();
     final uri = Uri.parse('$_baseUrl$path');
     final res = await http
@@ -58,7 +58,7 @@ class WholesaleRepository {
         )
         .timeout(const Duration(seconds: 25));
     if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw StateError('ÙØ´Ù„ ØªÙ†ÙÙŠØ° Ø§Ù„Ø¹Ù…Ù„ÙŠØ© (${res.statusCode})');
+      throw StateError('فشل تنفيذ العملية (${res.statusCode})');
     }
     final decoded = jsonDecode(res.body);
     if (decoded is Map<String, dynamic>) return decoded;
@@ -68,7 +68,7 @@ class WholesaleRepository {
 
   Future<Map<String, dynamic>> _httpPatchJson(String path, Map<String, dynamic> body) async {
     if (!useBackendWholesale) throw StateError('Backend wholesale disabled');
-    if (_baseUrl.isEmpty) throw StateError('Backend URL ØºÙŠØ± Ù…Ø¶Ø¨ÙˆØ·');
+    if (_baseUrl.isEmpty) throw StateError('Backend URL غير مضبوط');
     final headers = await _authHeaders();
     final uri = Uri.parse('$_baseUrl$path');
     final res = await http
@@ -79,7 +79,7 @@ class WholesaleRepository {
         )
         .timeout(const Duration(seconds: 25));
     if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw StateError('ÙØ´Ù„ ØªÙ†ÙÙŠØ° Ø§Ù„Ø¹Ù…Ù„ÙŠØ© (${res.statusCode})');
+      throw StateError('فشل تنفيذ العملية (${res.statusCode})');
     }
     if (res.body.trim().isEmpty) return <String, dynamic>{};
     final decoded = jsonDecode(res.body);
@@ -90,12 +90,12 @@ class WholesaleRepository {
 
   Future<void> _httpDeleteJson(String path) async {
     if (!useBackendWholesale) throw StateError('Backend wholesale disabled');
-    if (_baseUrl.isEmpty) throw StateError('Backend URL ØºÙŠØ± Ù…Ø¶Ø¨ÙˆØ·');
+    if (_baseUrl.isEmpty) throw StateError('Backend URL غير مضبوط');
     final headers = await _authHeaders();
     final uri = Uri.parse('$_baseUrl$path');
     final res = await http.delete(uri, headers: headers).timeout(const Duration(seconds: 20));
     if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw StateError('ÙØ´Ù„ ØªÙ†ÙÙŠØ° Ø§Ù„Ø¹Ù…Ù„ÙŠØ© (${res.statusCode})');
+      throw StateError('فشل تنفيذ العملية (${res.statusCode})');
     }
   }
 

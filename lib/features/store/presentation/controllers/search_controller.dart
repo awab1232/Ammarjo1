@@ -7,11 +7,11 @@ import '../../../../core/network/network_errors.dart';
 import '../../domain/models.dart';
 import 'store_pagination.dart';
 
-/// Ø¨Ø­Ø« Ø®Ø§Ø¯Ù…ÙŠ ÙÙŠ Ø§Ù„ÙƒØªØ§Ù„ÙˆØ¬.
+/// بحث خادمي في الكتالوج.
 class SearchController extends ChangeNotifier {
   SearchController();
 
-  /// ÙŠÙØ±Ø¨ÙŽØ· Ù…Ù† [StoreController] Ù„Ù…Ø³Ø­ Ø§Ù„ØªØµÙÙŠØ© Ø¹Ù†Ø¯ Ø¨Ø¯Ø¡ Ø¨Ø­Ø« Ø¬Ø¯ÙŠØ¯ (Ø¨Ø¯ÙˆÙ† Ø§Ø³ØªÙŠØ±Ø§Ø¯ Ø¯Ø§Ø¦Ø±ÙŠ).
+  /// يُربَط من [StoreController] لمسح التصفية عند بدء بحث جديد (بدون استيراد دائري).
   void Function()? onBeforeSearchClearFilters;
 
   String searchQuery = '';
@@ -25,7 +25,7 @@ class SearchController extends ChangeNotifier {
 
   bool get isSearchMode => searchQuery.trim().isNotEmpty;
 
-  /// Ù†ØªØ§Ø¦Ø¬ Ø§Ù„Ø¹Ø±Ø¶ Ù„Ù„Ø¨Ø­Ø« ÙÙ‚Ø·.
+  /// نتائج العرض للبحث فقط.
   List<Product> get displayedProducts => searchResults;
 
   Future<void> performSearch(String query) async {
@@ -35,7 +35,7 @@ class SearchController extends ChangeNotifier {
       return;
     }
     if (!BackendOrdersConfig.useBackendProductsReads) {
-      errorMessage = 'ÙŠØªØ·Ù„Ø¨ ØªÙØ¹ÙŠÙ„ Ù‚Ø±Ø§Ø¡Ø© Ø§Ù„Ù…Ù†ØªØ¬Ø§Øª Ù…Ù† Ø§Ù„Ø®Ø§Ø¯Ù….';
+      errorMessage = 'يتطلب تفعيل قراءة المنتجات من الخادم.';
       notifyListeners();
       return;
     }
@@ -73,7 +73,7 @@ class SearchController extends ChangeNotifier {
       }
     } on Object {
       final net = networkUserMessage('unexpected error');
-      errorMessage = net.isNotEmpty ? net : 'ØªØ¹Ø°Ù‘Ø± ØªÙ†ÙÙŠØ° Ø§Ù„Ø¨Ø­Ø«.';
+      errorMessage = net.isNotEmpty ? net : 'تعذّر تنفيذ البحث.';
       searchResults = <Product>[];
     } finally {
       isSearching = false;
@@ -124,7 +124,7 @@ class SearchController extends ChangeNotifier {
         case FeatureAdminMissingEndpoint():
         case FeatureCriticalPublicDataFailure():
         case FeatureFailure():
-          errorMessage = errorMessage ?? 'ØªØ¹Ø°Ù‘Ø± ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ù…Ø²ÙŠØ¯ Ù…Ù† Ù†ØªØ§Ø¦Ø¬ Ø§Ù„Ø¨Ø­Ø«.';
+          errorMessage = errorMessage ?? 'تعذّر تحميل المزيد من نتائج البحث.';
       }
     } on Object {
       final net = networkUserMessage('unexpected error');

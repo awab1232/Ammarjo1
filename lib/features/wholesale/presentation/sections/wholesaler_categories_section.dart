@@ -39,13 +39,13 @@ class _WholesalerCategoriesSectionState extends State<WholesalerCategoriesSectio
       _nameCtrl.clear();
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('ØªÙ…Øª Ø¥Ø¶Ø§ÙØ© Ø§Ù„Ù‚Ø³Ù…', style: GoogleFonts.tajawal())),
+          SnackBar(content: Text('تمت إضافة القسم', style: GoogleFonts.tajawal())),
         );
       }
     } on Object {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('ÙØ´Ù„ Ø­ÙØ¸ Ø§Ù„Ù‚Ø³Ù….', style: GoogleFonts.tajawal())),
+          SnackBar(content: Text('فشل حفظ القسم.', style: GoogleFonts.tajawal())),
         );
       }
     } finally {
@@ -58,14 +58,14 @@ class _WholesalerCategoriesSectionState extends State<WholesalerCategoriesSectio
     await showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text('ØªØ¹Ø¯ÙŠÙ„ Ø§Ù„Ù‚Ø³Ù…', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+        title: Text('تعديل القسم', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
         content: TextField(
           controller: ctrl,
           textAlign: TextAlign.right,
-          decoration: InputDecoration(labelText: 'Ø§Ù„Ø§Ø³Ù…', labelStyle: GoogleFonts.tajawal()),
+          decoration: InputDecoration(labelText: 'الاسم', labelStyle: GoogleFonts.tajawal()),
         ),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('Ø¥Ù„ØºØ§Ø¡', style: GoogleFonts.tajawal())),
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text('إلغاء', style: GoogleFonts.tajawal())),
           FilledButton(
             onPressed: () async {
               final t = ctrl.text.trim();
@@ -81,11 +81,11 @@ class _WholesalerCategoriesSectionState extends State<WholesalerCategoriesSectio
               } on Object {
                 if (!mounted) return;
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('ØªØ¹Ø°Ø± ØªØ­Ø¯ÙŠØ« Ø§Ù„Ù‚Ø³Ù….', style: GoogleFonts.tajawal())),
+                  SnackBar(content: Text('تعذر تحديث القسم.', style: GoogleFonts.tajawal())),
                 );
               }
             },
-            child: Text('Ø­ÙØ¸', style: GoogleFonts.tajawal(color: Colors.white)),
+            child: Text('حفظ', style: GoogleFonts.tajawal(color: Colors.white)),
           ),
         ],
       ),
@@ -121,7 +121,7 @@ class _WholesalerCategoriesSectionState extends State<WholesalerCategoriesSectio
     } on Object {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('ÙØ´Ù„ Ø­Ø°Ù Ø§Ù„Ù‚Ø³Ù….', style: GoogleFonts.tajawal())),
+          SnackBar(content: Text('فشل حذف القسم.', style: GoogleFonts.tajawal())),
         );
       }
     }
@@ -135,7 +135,7 @@ class _WholesalerCategoriesSectionState extends State<WholesalerCategoriesSectio
         Padding(
           padding: const EdgeInsets.all(12),
           child: Text(
-            'Ø£Ù‚Ø³Ø§Ù… Ø§Ù„Ù…Ù†ØªØ¬Ø§Øª ØªØ³Ø§Ø¹Ø¯ Ø£ØµØ­Ø§Ø¨ Ø§Ù„Ù…ØªØ§Ø¬Ø± Ø¹Ù„Ù‰ Ø§Ù„ØªØµÙØ­. Ø§Ø±Ø¨Ø· ÙƒÙ„ Ù…Ù†ØªØ¬ Ø¨Ù‚Ø³Ù… Ù…Ù† ØªØ¨ÙˆÙŠØ¨ Â«Ø§Ù„Ù…Ù†ØªØ¬Ø§ØªÂ».',
+            'أقسام المنتجات تساعد أصحاب المتاجر على التصفح. اربط كل منتج بقسم من تبويب «المنتجات».',
             style: GoogleFonts.tajawal(fontSize: 12, color: AppColors.textSecondary),
             textAlign: TextAlign.right,
           ),
@@ -149,7 +149,7 @@ class _WholesalerCategoriesSectionState extends State<WholesalerCategoriesSectio
                   controller: _nameCtrl,
                   textAlign: TextAlign.right,
                   decoration: InputDecoration(
-                    labelText: 'Ø§Ø³Ù… Ù‚Ø³Ù… Ø¬Ø¯ÙŠØ¯',
+                    labelText: 'اسم قسم جديد',
                     labelStyle: GoogleFonts.tajawal(),
                     border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   ),
@@ -159,7 +159,7 @@ class _WholesalerCategoriesSectionState extends State<WholesalerCategoriesSectio
               FilledButton(
                 onPressed: _saving ? null : _add,
                 style: FilledButton.styleFrom(backgroundColor: AppColors.primaryOrange),
-                child: Text('Ø¥Ø¶Ø§ÙØ©', style: GoogleFonts.tajawal(color: Colors.white)),
+                child: Text('إضافة', style: GoogleFonts.tajawal(color: Colors.white)),
               ),
             ],
           ),
@@ -177,7 +177,7 @@ class _WholesalerCategoriesSectionState extends State<WholesalerCategoriesSectio
                 _ => <WholesalerCategory>[],
               };
               if (list.isEmpty) {
-                return Center(child: Text('Ù„Ø§ ØªÙˆØ¬Ø¯ Ø£Ù‚Ø³Ø§Ù… Ø¨Ø¹Ø¯', style: GoogleFonts.tajawal(color: AppColors.textSecondary)));
+                return Center(child: Text('لا توجد أقسام بعد', style: GoogleFonts.tajawal(color: AppColors.textSecondary)));
               }
               return ListView.builder(
                 padding: const EdgeInsets.all(12),

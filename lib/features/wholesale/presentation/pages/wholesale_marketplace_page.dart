@@ -65,7 +65,7 @@ class _WholesaleMarketplacePageState extends State<WholesaleMarketplacePage> {
       debugPrint('[WholesaleMarketplace] _reload failed.');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø³ÙˆÙ‚ Ø§Ù„Ø¬Ù…Ù„Ø©.', style: GoogleFonts.tajawal())),
+          SnackBar(content: Text('تعذر تحميل سوق الجملة.', style: GoogleFonts.tajawal())),
         );
       }
     } finally {
@@ -115,15 +115,15 @@ class _WholesaleMarketplacePageState extends State<WholesaleMarketplacePage> {
     final uid = FirebaseAuth.instance.currentUser?.uid;
     if (uid == null) {
       return Scaffold(
-        appBar: AppBar(title: Text('Ø³ÙˆÙ‚ Ø§Ù„Ø¬Ù…Ù„Ø©', style: GoogleFonts.tajawal())),
-        body: Center(child: Text('Ø³Ø¬Ù‘Ù„ Ø§Ù„Ø¯Ø®ÙˆÙ„ ÙƒØµØ§Ø­Ø¨ Ù…ØªØ¬Ø±', style: GoogleFonts.tajawal())),
+        appBar: AppBar(title: Text('سوق الجملة', style: GoogleFonts.tajawal())),
+        body: Center(child: Text('سجّل الدخول كصاحب متجر', style: GoogleFonts.tajawal())),
       );
     }
     final rows = _filtered();
     final categories = <String>{for (final d in _stores) d.category}.where((e) => e.isNotEmpty).toList()..sort();
     return Scaffold(
       appBar: AppBar(
-        title: Text('Ø³ÙˆÙ‚ Ø§Ù„Ø¬Ù…Ù„Ø©', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+        title: Text('سوق الجملة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
       ),
       body: RefreshIndicator(
         onRefresh: _reload,
@@ -142,7 +142,7 @@ class _WholesaleMarketplacePageState extends State<WholesaleMarketplacePage> {
                   if (i == 0) {
                     final sel = _cat == 'all';
                     return FilterChip(
-                      label: Text('Ø§Ù„ÙƒÙ„', style: GoogleFonts.tajawal(fontSize: kIsWeb ? 12 : 14, fontWeight: sel ? FontWeight.w800 : FontWeight.w500)),
+                      label: Text('الكل', style: GoogleFonts.tajawal(fontSize: kIsWeb ? 12 : 14, fontWeight: sel ? FontWeight.w800 : FontWeight.w500)),
                       selected: sel,
                       onSelected: (_) => setState(() => _cat = 'all'),
                       selectedColor: AppColors.primaryOrange.withValues(alpha: 0.25),
@@ -165,7 +165,7 @@ class _WholesaleMarketplacePageState extends State<WholesaleMarketplacePage> {
                 controller: _search,
                 onChanged: (_) => setState(() {}),
                 decoration: InputDecoration(
-                  hintText: 'Ø¨Ø­Ø« Ø¨Ø§Ù„Ø§Ø³Ù… Ø£Ùˆ Ø§Ù„ØªØµÙ†ÙŠÙ',
+                  hintText: 'بحث بالاسم أو التصنيف',
                   hintStyle: GoogleFonts.tajawal(),
                   prefixIcon: const Icon(Icons.search),
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
@@ -192,7 +192,7 @@ class _WholesaleMarketplacePageState extends State<WholesaleMarketplacePage> {
                             child: Center(
                               child: FilledButton(
                                 onPressed: _loadingMore ? null : _loadMore,
-                                child: Text(_loadingMore ? 'Ø¬Ø§Ø±Ù Ø§Ù„ØªØ­Ù…ÙŠÙ„...' : 'ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ù…Ø²ÙŠØ¯', style: GoogleFonts.tajawal()),
+                                child: Text(_loadingMore ? 'جاري التحميل...' : 'تحميل المزيد', style: GoogleFonts.tajawal()),
                               ),
                             ),
                           );
@@ -213,7 +213,7 @@ class _WholesaleMarketplacePageState extends State<WholesaleMarketplacePage> {
                               ),
                               title: Text(w.name, style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
                               subtitle: Text(
-                                'Ø§Ù„ØªØµÙ†ÙŠÙ: ${w.category}\nØ§Ù„Ù…Ø¯ÙŠÙ†Ø©: ${w.city}',
+                                'التصنيف: ${w.category}\nالمدينة: ${w.city}',
                                 style: GoogleFonts.tajawal(fontSize: 12),
                                 textAlign: TextAlign.right,
                               ),
@@ -224,7 +224,7 @@ class _WholesaleMarketplacePageState extends State<WholesaleMarketplacePage> {
                                     MaterialPageRoute<void>(builder: (_) => WholesalerProductsMarketPage(wholesaler: w)),
                                   );
                                 },
-                                child: Text('Ø¹Ø±Ø¶ Ø§Ù„Ù…Ù†ØªØ¬Ø§Øª', style: GoogleFonts.tajawal(color: Colors.white)),
+                                child: Text('عرض المنتجات', style: GoogleFonts.tajawal(color: Colors.white)),
                               ),
                             ),
                           ),

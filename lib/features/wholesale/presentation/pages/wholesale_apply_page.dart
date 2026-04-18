@@ -17,6 +17,8 @@ class WholesaleApplyPage extends StatefulWidget {
 }
 
 class _WholesaleApplyPageState extends State<WholesaleApplyPage> {
+  static const String _allJordanLabel = 'الأردن كاملة';
+
   final _formKey = GlobalKey<FormState>();
   final _storeNameCtrl = TextEditingController();
   final _phoneCtrl = TextEditingController();
@@ -36,19 +38,19 @@ class _WholesaleApplyPageState extends State<WholesaleApplyPage> {
   }
 
   static const List<String> _cities = <String>[
-    'Ø¹Ù…Ø§Ù†',
-    'Ø§Ù„Ø²Ø±Ù‚Ø§Ø¡',
-    'Ø¥Ø±Ø¨Ø¯',
-    'Ø§Ù„Ø¹Ù‚Ø¨Ø©',
-    'Ø§Ù„Ù…ÙØ±Ù‚',
-    'Ø¬Ø±Ø´',
-    'Ø¹Ø¬Ù„ÙˆÙ†',
-    'Ø§Ù„Ø³Ù„Ø·',
-    'Ù…Ø§Ø¯Ø¨Ø§',
-    'Ø§Ù„ÙƒØ±Ùƒ',
-    'Ø§Ù„Ø·ÙÙŠÙ„Ø©',
-    'Ù…Ø¹Ø§Ù†',
-    'Ø§Ù„Ø£Ø±Ø¯Ù† ÙƒØ§Ù…Ù„Ø©',
+    'عمان',
+    'الزرقاء',
+    'إربد',
+    'العقبة',
+    'المفرق',
+    'جرش',
+    'عجلون',
+    'السلط',
+    'مادبا',
+    'الكرك',
+    'الطفيلة',
+    'معان',
+    _allJordanLabel,
   ];
 
   @override
@@ -63,13 +65,13 @@ class _WholesaleApplyPageState extends State<WholesaleApplyPage> {
   String _citySummaryForFirestore() {
     if (_selectedCities.isEmpty) return '';
     if (_selectedCities.length == 1 && _selectedCities.first == 'all') {
-      return 'Ø§Ù„Ø£Ø±Ø¯Ù† ÙƒØ§Ù…Ù„Ø©';
+      return _allJordanLabel;
     }
-    return _selectedCities.where((e) => e != 'all').join('ØŒ ');
+    return _selectedCities.where((e) => e != 'all').join('، ');
   }
 
   List<String> _citiesPayload() {
-    if (_selectedCities.isEmpty) return <String>[];
+    if (_selectedCities.isEmpty) return List<String>.empty();
     if (_selectedCities.length == 1 && _selectedCities.first == 'all') {
       return <String>['all'];
     }
@@ -80,7 +82,7 @@ class _WholesaleApplyPageState extends State<WholesaleApplyPage> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text('Ø§Ù†Ø¶Ù… ÙƒØªØ§Ø¬Ø± Ø¬Ù…Ù„Ø©', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, color: Colors.white)),
+        title: Text('انضم كتاجر جملة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, color: Colors.white)),
         backgroundColor: const Color(0xFFFF6B00),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.white),
@@ -105,11 +107,11 @@ class _WholesaleApplyPageState extends State<WholesaleApplyPage> {
               child: const Icon(Icons.check_circle, color: Colors.green, size: 60),
             ),
             const SizedBox(height: 24),
-            Text('ØªÙ… Ø¥Ø±Ø³Ø§Ù„ Ø·Ù„Ø¨Ùƒ Ø¨Ù†Ø¬Ø§Ø­!', style: GoogleFonts.tajawal(fontSize: 22, fontWeight: FontWeight.w800)),
+            Text('تم إرسال طلبك بنجاح!', style: GoogleFonts.tajawal(fontSize: 22, fontWeight: FontWeight.w800)),
             const SizedBox(height: 12),
             Text(
-              'Ø³ÙŠØªÙ… Ù…Ø±Ø§Ø¬Ø¹Ø© Ø·Ù„Ø¨Ùƒ Ù…Ù† Ù‚Ø¨Ù„ ÙØ±ÙŠÙ‚ Ø¹Ù…Ø§Ø±Ø¬Ùˆ ÙˆØ§Ù„Ø±Ø¯ Ø¹Ù„ÙŠÙƒ Ø®Ù„Ø§Ù„ 24 Ø³Ø§Ø¹Ø©.\n\n'
-              'Ø¨Ø¹Ø¯ Ø§Ù„Ù…ÙˆØ§ÙÙ‚Ø© Ø³ØªØ¬Ø¯ Â«Ù„ÙˆØ­Ø© ØªØ­ÙƒÙ… Ø§Ù„Ø¬Ù…Ù„Ø©Â» ÙÙŠ Ù‚Ø§Ø¦Ù…ØªÙƒ Ø§Ù„Ø¬Ø§Ù†Ø¨ÙŠØ©.',
+              'ستتم مراجعة طلبك من قبل فريق عمّارجو، والرد عليك خلال 24 ساعة.\n\n'
+              'بعد الموافقة ستجد «لوحة تحكم الجملة» في قائمتك الجانبية.',
               textAlign: TextAlign.center,
               style: GoogleFonts.tajawal(color: Colors.grey[600], height: 1.6),
             ),
@@ -121,7 +123,7 @@ class _WholesaleApplyPageState extends State<WholesaleApplyPage> {
                 minimumSize: const Size(200, 48),
               ),
               onPressed: () => Navigator.pop(context),
-              child: Text('Ø§Ù„Ø¹ÙˆØ¯Ø©', style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.w700)),
+              child: Text('العودة', style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.w700)),
             ),
           ],
         ),
@@ -145,13 +147,13 @@ class _WholesaleApplyPageState extends State<WholesaleApplyPage> {
                 const Icon(Icons.store_mall_directory, color: Colors.white, size: 48),
                 const SizedBox(height: 12),
                 Text(
-                  'Ø§Ù†Ø¶Ù… ÙƒØªØ§Ø¬Ø± Ø¬Ù…Ù„Ø© ÙÙŠ Ø¹Ù…Ø§Ø±Ø¬Ùˆ',
+                  'انضم كتاجر جملة في عمّارجو',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.tajawal(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w800),
                 ),
                 const SizedBox(height: 8),
                 Text(
-                  'ÙˆØµÙ‘Ù„ Ù…Ù†ØªØ¬Ø§ØªÙƒ Ù„Ø£ØµØ­Ø§Ø¨ Ø§Ù„Ù…ØªØ§Ø¬Ø± ÙÙŠ ÙƒÙ„ Ø§Ù„Ø£Ø±Ø¯Ù†',
+                  'وصّل منتجاتك لأصحاب المتاجر في كل الأردن',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.tajawal(color: Colors.white70, fontSize: 13),
                 ),
@@ -161,10 +163,11 @@ class _WholesaleApplyPageState extends State<WholesaleApplyPage> {
           Padding(
             padding: const EdgeInsets.all(16),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(child: _benefit(Icons.people_outline, 'ÙˆØµÙˆÙ„ Ù„Ø¢Ù„Ø§Ù Ø§Ù„Ù…ØªØ§Ø¬Ø±')),
-                Expanded(child: _benefit(Icons.trending_up, 'Ø²ÙŠØ§Ø¯Ø© Ù…Ø¨ÙŠØ¹Ø§ØªÙƒ')),
-                Expanded(child: _benefit(Icons.security_outlined, 'Ù…Ø¯ÙÙˆØ¹Ø§Øª Ø¢Ù…Ù†Ø©')),
+                Expanded(child: _benefit(Icons.people_outline, 'وصول لآلاف المتاجر')),
+                Expanded(child: _benefit(Icons.trending_up, 'زيادة مبيعاتك')),
+                Expanded(child: _benefit(Icons.security_outlined, 'مدفوعات آمنة')),
               ],
             ),
           ),
@@ -177,27 +180,28 @@ class _WholesaleApplyPageState extends State<WholesaleApplyPage> {
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
                   Text(
-                    'Ù…Ø¹Ù„ÙˆÙ…Ø§Øª Ø§Ù„Ø·Ù„Ø¨',
+                    'معلومات الطلب',
                     style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 16, color: AppColors.primaryOrange),
                   ),
                   const SizedBox(height: 16),
-                  _buildField(_storeNameCtrl, 'Ø§Ø³Ù… Ø§Ù„Ù…ØªØ¬Ø± *', Icons.store_outlined),
-                  _buildField(_phoneCtrl, 'Ø±Ù‚Ù… Ø§Ù„Ù‡Ø§ØªÙ *', Icons.phone_outlined, type: TextInputType.phone),
-                  _buildField(_emailCtrl, 'Ø§Ù„Ø¨Ø±ÙŠØ¯ Ø§Ù„Ø¥Ù„ÙƒØªØ±ÙˆÙ†ÙŠ *', Icons.email_outlined, type: TextInputType.emailAddress),
-                  _buildField(_descCtrl, 'ÙˆØµÙ Ù†Ø´Ø§Ø·Ùƒ Ø§Ù„ØªØ¬Ø§Ø±ÙŠ *', Icons.description_outlined, maxLines: 3),
+                  _buildField(_storeNameCtrl, 'اسم المتجر *', Icons.store_outlined),
+                  _buildField(_phoneCtrl, 'رقم الهاتف *', Icons.phone_outlined, type: TextInputType.phone),
+                  _buildField(_emailCtrl, 'البريد الإلكتروني *', Icons.email_outlined, type: TextInputType.emailAddress),
+                  _buildField(_descCtrl, 'وصف نشاطك التجاري *', Icons.description_outlined, maxLines: 3),
                   const SizedBox(height: 16),
-                  Text('Ø§Ù„Ù…Ù†Ø§Ø·Ù‚ Ø§Ù„ØªÙŠ ØªØ¹Ù…Ù„ ÙÙŠÙ‡Ø§ *', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+                  Text('المناطق التي تعمل فيها *', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
                   const SizedBox(height: 8),
                   Wrap(
                     spacing: 8,
                     runSpacing: 8,
+                    alignment: WrapAlignment.end,
                     children: _cities.map((city) {
-                      final selected = city == 'Ø§Ù„Ø£Ø±Ø¯Ù† ÙƒØ§Ù…Ù„Ø©'
+                      final selected = city == _allJordanLabel
                           ? (_selectedCities.length == 1 && _selectedCities.first == 'all')
                           : _selectedCities.contains(city);
                       return GestureDetector(
                         onTap: () => setState(() {
-                          if (city == 'Ø§Ù„Ø£Ø±Ø¯Ù† ÙƒØ§Ù…Ù„Ø©') {
+                          if (city == _allJordanLabel) {
                             _selectedCities = <String>['all'];
                           } else {
                             if (selected) {
@@ -219,6 +223,7 @@ class _WholesaleApplyPageState extends State<WholesaleApplyPage> {
                           ),
                           child: Text(
                             city,
+                            textAlign: TextAlign.center,
                             style: GoogleFonts.tajawal(
                               color: selected ? Colors.white : Colors.black87,
                               fontSize: 13,
@@ -231,8 +236,11 @@ class _WholesaleApplyPageState extends State<WholesaleApplyPage> {
                   if (_selectedCities.isEmpty)
                     Padding(
                       padding: const EdgeInsets.only(top: 4),
-                      child: Text('ÙŠØ±Ø¬Ù‰ Ø§Ø®ØªÙŠØ§Ø± Ù…Ù†Ø·Ù‚Ø© ÙˆØ§Ø­Ø¯Ø© Ø¹Ù„Ù‰ Ø§Ù„Ø£Ù‚Ù„',
-                          style: GoogleFonts.tajawal(color: Colors.red, fontSize: 12)),
+                      child: Text(
+                        'يرجى اختيار منطقة واحدة على الأقل',
+                        textAlign: TextAlign.right,
+                        style: GoogleFonts.tajawal(color: Colors.red, fontSize: 12),
+                      ),
                     ),
                   const SizedBox(height: 32),
                   SizedBox(
@@ -246,14 +254,17 @@ class _WholesaleApplyPageState extends State<WholesaleApplyPage> {
                       onPressed: _isLoading ? null : _submitApplication,
                       child: _isLoading
                           ? const CircularProgressIndicator(color: Colors.white)
-                          : Text('Ø¥Ø±Ø³Ø§Ù„ Ø§Ù„Ø·Ù„Ø¨',
-                              style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18)),
+                          : Text(
+                              'إرسال الطلب',
+                              style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 18),
+                            ),
                     ),
                   ),
                   const SizedBox(height: 16),
                   Center(
                     child: Text(
-                      'Ø³ÙŠØªÙ… Ù…Ø±Ø§Ø¬Ø¹Ø© Ø·Ù„Ø¨Ùƒ Ø®Ù„Ø§Ù„ 24 Ø³Ø§Ø¹Ø©',
+                      'ستتم مراجعة طلبك خلال 24 ساعة',
+                      textAlign: TextAlign.center,
                       style: GoogleFonts.tajawal(color: Colors.grey, fontSize: 12),
                     ),
                   ),
@@ -274,7 +285,9 @@ class _WholesaleApplyPageState extends State<WholesaleApplyPage> {
         Text(
           text,
           textAlign: TextAlign.center,
-          style: GoogleFonts.tajawal(fontSize: 11, color: Colors.grey[700]),
+          maxLines: 2,
+          overflow: TextOverflow.ellipsis,
+          style: GoogleFonts.tajawal(fontSize: 11, color: Colors.grey[700], height: 1.25),
         ),
       ],
     );
@@ -305,7 +318,7 @@ class _WholesaleApplyPageState extends State<WholesaleApplyPage> {
             borderSide: const BorderSide(color: Color(0xFFFF6B00)),
           ),
         ),
-        validator: (v) => (v == null || v.trim().isEmpty) ? 'Ù‡Ø°Ø§ Ø§Ù„Ø­Ù‚Ù„ Ù…Ø·Ù„ÙˆØ¨' : null,
+        validator: (v) => (v == null || v.trim().isEmpty) ? 'هذا الحقل مطلوب' : null,
       ),
     );
   }
@@ -321,7 +334,7 @@ class _WholesaleApplyPageState extends State<WholesaleApplyPage> {
 
     try {
       final user = FirebaseAuth.instance.currentUser;
-      if (user == null) throw StateError('ÙŠØ¬Ø¨ ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø¯Ø®ÙˆÙ„ Ø£ÙˆÙ„Ø§Ù‹');
+      if (user == null) throw StateError('يجب تسجيل الدخول أولاً');
 
       final profile = context.read<StoreController>().profile;
       final fn = profile?.fullName?.trim();
@@ -333,14 +346,14 @@ class _WholesaleApplyPageState extends State<WholesaleApplyPage> {
         applicantPhone: _phoneCtrl.text.trim(),
         wholesalerName: _storeNameCtrl.text.trim(),
         description: _descCtrl.text.trim(),
-        category: 'Ø¹Ø§Ù…',
+        category: 'عام',
         city: _citySummaryForFirestore(),
         cities: _citiesPayload(),
       );
 
       await UserNotificationsRepository.sendNotificationToAdmin(
-        title: 'Ø·Ù„Ø¨ Ø§Ù†Ø¶Ù…Ø§Ù… ØªØ§Ø¬Ø± Ø¬Ù…Ù„Ø© Ø¬Ø¯ÙŠØ¯',
-        body: '$nameHint ÙŠØ·Ù„Ø¨ Ø§Ù„Ø§Ù†Ø¶Ù…Ø§Ù… ÙƒØªØ§Ø¬Ø± Ø¬Ù…Ù„Ø©',
+        title: 'طلب انضمام تاجر جملة جديد',
+        body: '$nameHint يطلب الانضمام كتاجر جملة',
         type: 'wholesale_request',
       );
 
@@ -351,7 +364,7 @@ class _WholesaleApplyPageState extends State<WholesaleApplyPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            'ØªØ¹Ø°Ø± Ø¥Ø±Ø³Ø§Ù„ Ø§Ù„Ø·Ù„Ø¨ Ø­Ø§Ù„ÙŠØ§Ù‹. Ø­Ø§ÙˆÙ„ Ù…Ø±Ø© Ø£Ø®Ø±Ù‰.',
+            'تعذر إرسال الطلب حالياً. حاول مرة أخرى.',
             style: GoogleFonts.tajawal(),
           ),
           backgroundColor: Colors.red,
@@ -362,4 +375,3 @@ class _WholesaleApplyPageState extends State<WholesaleApplyPage> {
     }
   }
 }
-

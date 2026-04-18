@@ -1,6 +1,6 @@
 ﻿import 'package:flutter/material.dart';
 
-/// Ø£ÙŠÙ‚ÙˆÙ†Ø© Ø§Ù„ØªØ®ØµØµ Ù…Ù† Ù„ÙˆØ­Ø© Ø§Ù„Ø¥Ø¯Ø§Ø±Ø© (`icon` Ù†ØµÙŠ) Ø£Ùˆ Ø§ÙØªØ±Ø§Ø¶ÙŠ Ø­Ø³Ø¨ [docId]/Ø§Ù„Ø§Ø³Ù….
+/// أيقونة التخصص من لوحة الإدارة (`icon` نصي) أو افتراضي حسب [docId]/الاسم.
 IconData resolveTechSpecialtyIcon(String? iconKey, String docId, String nameAr) {
   for (final c in MaintenanceServiceCategory.grid) {
     if (c.id == docId) return c.icon;
@@ -25,16 +25,16 @@ IconData resolveTechSpecialtyIcon(String? iconKey, String docId, String nameAr) 
   };
   if (k.isNotEmpty && map.containsKey(k)) return map[k]!;
   final n = nameAr.toLowerCase();
-  if (n.contains('Ø³Ø¨Ø§ÙƒØ©') || n.contains('Ù…ÙˆØ³Ø±Ø¬ÙŠ')) return Icons.plumbing_outlined;
-  if (n.contains('ÙƒÙ‡Ø±Ø¨')) return Icons.electrical_services_outlined;
-  if (n.contains('Ø¯Ù‡Ø§Ù†') || n.contains('Ø¯Ù‡ÙŠÙ†')) return Icons.format_paint_outlined;
-  if (n.contains('Ù†Ø¬Ø§Ø±')) return Icons.carpenter_outlined;
-  if (n.contains('Ø­Ø¯Ø§Ø¯')) return Icons.handyman_outlined;
-  if (n.contains('Ù…ÙŠØ§ÙˆÙ…Ø©') || n.contains('Ø¹Ø§Ù…Ù„')) return Icons.construction_outlined;
+  if (n.contains('سباكة') || n.contains('موسرجي') || n.contains('سبّاك') || n.contains('سباك')) return Icons.plumbing_outlined;
+  if (n.contains('كهرب')) return Icons.electrical_services_outlined;
+  if (n.contains('دهان') || n.contains('دهانين')) return Icons.format_paint_outlined;
+  if (n.contains('نجار')) return Icons.carpenter_outlined;
+  if (n.contains('حداد')) return Icons.handyman_outlined;
+  if (n.contains('مياومة') || n.contains('عامل')) return Icons.construction_outlined;
   return Icons.home_repair_service_outlined;
 }
 
-/// ÙØ¦Ø§Øª Ø®Ø¯Ù…Ø§Øª AmmarJo Maintenance (ØªØªØ·Ø§Ø¨Ù‚ Ù…Ø¹ ÙˆØ§Ø¬Ù‡Ø© Ø§Ù„Ø´Ø¨ÙƒØ©).
+/// فئات خدمات AmmarJo Maintenance (تتطابق مع واجهة الشبكة).
 class MaintenanceServiceCategory {
   const MaintenanceServiceCategory({
     required this.id,
@@ -46,16 +46,16 @@ class MaintenanceServiceCategory {
   final String id;
   final String labelAr;
   final IconData icon;
-  /// Ø®Ù„ÙÙŠØ© Ø§Ù„Ø¨Ø·Ø§Ù‚Ø© Ù…Ù† `tech_specialties.imageUrl` (Ø§Ø®ØªÙŠØ§Ø±ÙŠ).
+  /// خلفية البطاقة من `tech_specialties.imageUrl` (اختياري).
   final String? backgroundImageUrl;
 
   static const List<MaintenanceServiceCategory> grid = [
-    MaintenanceServiceCategory(id: 'plumber', labelAr: 'Ù…ÙˆØ³Ø±Ø¬ÙŠ', icon: Icons.plumbing_outlined),
-    MaintenanceServiceCategory(id: 'electrician', labelAr: 'ÙƒÙ‡Ø±Ø¨Ø§Ø¦ÙŠ', icon: Icons.electrical_services_outlined),
-    MaintenanceServiceCategory(id: 'painter', labelAr: 'Ø¯Ù‡ÙŠÙ†', icon: Icons.format_paint_outlined),
-    MaintenanceServiceCategory(id: 'carpenter', labelAr: 'Ù†Ø¬Ø§Ø±', icon: Icons.carpenter_outlined),
-    MaintenanceServiceCategory(id: 'blacksmith', labelAr: 'Ø­Ø¯Ø§Ø¯', icon: Icons.handyman_outlined),
-    MaintenanceServiceCategory(id: 'daily_laborer', labelAr: 'Ø¹Ø§Ù…Ù„ Ù…ÙŠØ§ÙˆÙ…Ø©', icon: Icons.construction_outlined),
+    MaintenanceServiceCategory(id: 'plumber', labelAr: 'سبّاك', icon: Icons.plumbing_outlined),
+    MaintenanceServiceCategory(id: 'electrician', labelAr: 'كهربائي', icon: Icons.electrical_services_outlined),
+    MaintenanceServiceCategory(id: 'painter', labelAr: 'دهان', icon: Icons.format_paint_outlined),
+    MaintenanceServiceCategory(id: 'carpenter', labelAr: 'نجار', icon: Icons.carpenter_outlined),
+    MaintenanceServiceCategory(id: 'blacksmith', labelAr: 'حداد', icon: Icons.handyman_outlined),
+    MaintenanceServiceCategory(id: 'daily_laborer', labelAr: 'عامل مياومة', icon: Icons.construction_outlined),
   ];
 
   factory MaintenanceServiceCategory.fromMap(String id, Map<String, dynamic> d) {
@@ -84,7 +84,7 @@ class MaintenanceServiceCategory {
   }
 }
 
-  /// ÙÙ†ÙŠ Ù…Ù† backend.
+/// بيانات الفني القادمة من الخادم.
 class TechnicianProfile {
   TechnicianProfile({
     required this.id,
@@ -126,7 +126,7 @@ class TechnicianProfile {
       specialties: specs is List ? specs.map((e) => e.toString()).toList() : const <String>[],
       rating: (d['rating'] as num?)?.toDouble() ?? 4.5,
       distanceKm: (d['distanceKm'] as num?)?.toDouble() ?? 1.0,
-      locationLabel: d['locationLabel'] as String? ?? 'Ø¹Ù…Ø§Ù†',
+      locationLabel: d['locationLabel'] as String? ?? 'عمان',
       photoUrl: d['photoUrl'] as String?,
       email: d['email'] as String?,
       categoryId: d['category'] as String?,
@@ -153,8 +153,8 @@ class TechnicianProfile {
       };
 }
 
-/// ÙŠØµÙÙ‘ÙŠ Ø§Ù„ÙÙ†ÙŠÙŠÙ† Ø­Ø³Ø¨ [userCity] Ù…Ù† Ù…Ù„Ù Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…Ø› `all` Ø£Ùˆ ÙØ±Ø§Øº = ÙƒÙ„ Ø§Ù„Ù‚Ø§Ø¦Ù…Ø©.
-/// Ø§Ù„ÙÙ†ÙŠ Ø¨Ù€ `city` Ù…Ù† `all` / `all_jordan` ÙŠÙØ¹Ø±Ø¶ Ù„Ù„Ø¬Ù…ÙŠØ¹.
+/// يصفّي الفنيين حسب [userCity] من ملف المستخدم؛ `all` أو فراغ = كل القائمة.
+/// الفني بـ `city` من `all` / `all_jordan` يُعرض للجميع.
 List<TechnicianProfile> filterTechniciansByProfileCity(
   List<TechnicianProfile> techs,
   String? userCity,
@@ -169,7 +169,7 @@ List<TechnicianProfile> filterTechniciansByProfileCity(
   }).toList();
 }
 
-  /// Ø·Ù„Ø¨ Ø®Ø¯Ù…Ø© Ù…Ù† backend.
+/// طلب خدمة من الخادم.
 class ServiceRequest {
   ServiceRequest({
     required this.id,
@@ -233,7 +233,7 @@ class ServiceRequest {
       customerName: d['customerName'] as String?,
       customerPhone: d['customerPhone'] as String?,
       customerEmail: d['customerEmail'] as String?,
-      title: d['title'] as String? ?? 'Ø·Ù„Ø¨',
+      title: d['title'] as String? ?? 'طلب',
       description: d['description'] as String?,
       categoryId: d['categoryId'] as String? ?? '',
       categoryName: d['categoryNameAr'] as String? ?? d['categoryName'] as String?,

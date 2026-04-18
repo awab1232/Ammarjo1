@@ -17,7 +17,7 @@ import '../../domain/maintenance_models.dart';
 import '../../../reviews/data/reviews_repository.dart';
 import '../../../reviews/domain/review_model.dart';
 
-/// ØªÙØ§ØµÙŠÙ„ ÙÙ†ÙŠ + Ø´Ø±ÙŠØ· ØªÙˆØ§ØµÙ„ (Ø¯Ø±Ø¯Ø´Ø© + Ø§ØªØµØ§Ù„).
+/// تفاصيل فني + شريط تواصل (دردشة + اتصال).
 class TechnicianDetailPage extends StatelessWidget {
   const TechnicianDetailPage({
     super.key,
@@ -34,20 +34,20 @@ class TechnicianDetailPage extends StatelessWidget {
     final store = context.read<StoreController>();
     if (store.profile?.email.trim().isEmpty ?? true) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ø³Ø¬Ù‘Ù„ Ø§Ù„Ø¯Ø®ÙˆÙ„ Ù„Ø¨Ø¯Ø¡ Ø§Ù„Ù…Ø­Ø§Ø¯Ø«Ø©.', style: GoogleFonts.tajawal())),
+        SnackBar(content: Text('سجّل الدخول لبدء المحادثة.', style: GoogleFonts.tajawal())),
       );
       return;
     }
     if (Firebase.apps.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Firebase ØºÙŠØ± Ø¬Ø§Ù‡Ø².', style: GoogleFonts.tajawal())),
+        SnackBar(content: Text('Firebase غير جاهز.', style: GoogleFonts.tajawal())),
       );
       return;
     }
     final te = (tech.email ?? '').trim();
     if (te.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Ù‡Ø°Ø§ Ø§Ù„ÙÙ†ÙŠ ØºÙŠØ± Ù…ÙˆØµÙˆÙ„ Ø¨Ø¨Ø±ÙŠØ¯ Ù„Ù„Ù…Ø­Ø§Ø¯Ø«Ø©.', style: GoogleFonts.tajawal())),
+        SnackBar(content: Text('هذا الفني غير موصول ببريد للمحادثة.', style: GoogleFonts.tajawal())),
       );
       return;
     }
@@ -89,7 +89,7 @@ class TechnicianDetailPage extends StatelessWidget {
           if (context.mounted) Navigator.of(context).pop();
           if (context.mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Ø®Ø·Ø£ ÙÙŠ ÙØªØ­ Ø§Ù„Ù…Ø­Ø§Ø¯Ø«Ø©: $e', style: GoogleFonts.tajawal())),
+              SnackBar(content: Text('خطأ في فتح المحادثة: $e', style: GoogleFonts.tajawal())),
             );
           }
         });
@@ -193,7 +193,7 @@ class TechnicianDetailPage extends StatelessWidget {
                 const SizedBox(height: 12),
                 ListTile(
                   leading: const Icon(Icons.place_outlined, color: AppColors.accent),
-                  title: Text('${tech.city ?? tech.locationLabel} Â· ~${tech.distanceKm.toStringAsFixed(1)} ÙƒÙ…', style: GoogleFonts.tajawal()),
+                  title: Text('${tech.city ?? tech.locationLabel} · ~${tech.distanceKm.toStringAsFixed(1)} كم', style: GoogleFonts.tajawal()),
                 ),
                 if (phone.isNotEmpty)
                   ListTile(
@@ -212,7 +212,7 @@ class TechnicianDetailPage extends StatelessWidget {
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                     ),
                     icon: const Icon(Icons.event_available_outlined),
-                    label: Text('Ø§Ø­Ø¬Ø² Ø®Ø¯Ù…Ø© Ø§Ù„Ø¢Ù†', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+                    label: Text('احجز خدمة الآن', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
                   ),
                 ),
                   const SizedBox(height: 100),
@@ -248,7 +248,7 @@ class _TechnicianUserRatingRow extends StatelessWidget {
       );
       if (state is! FeatureSuccess) {
         if (context.mounted) {
-          final msg = state is FeatureFailure<FeatureUnit> ? state.message : 'ØªØ¹Ø°Ø± Ø­ÙØ¸ Ø§Ù„ØªÙ‚ÙŠÙŠÙ….';
+          final msg = state is FeatureFailure<FeatureUnit> ? state.message : 'تعذر حفظ التقييم.';
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(msg, style: GoogleFonts.tajawal())),
           );
@@ -258,7 +258,7 @@ class _TechnicianUserRatingRow extends StatelessWidget {
       if (!context.mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
-          content: Text('Ø´ÙƒØ±Ø§Ù‹ Ø¹Ù„Ù‰ ØªÙ‚ÙŠÙŠÙ…Ùƒ! â­', style: GoogleFonts.tajawal()),
+          content: Text('شكراً على تقييمك! ⭐', style: GoogleFonts.tajawal()),
           backgroundColor: AppColors.accent,
         ),
       );
@@ -266,7 +266,7 @@ class _TechnicianUserRatingRow extends StatelessWidget {
       debugPrint('_TechnicianUserRatingRow._submit failed.');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('ØªØ¹Ø°Ø± Ø­ÙØ¸ Ø§Ù„ØªÙ‚ÙŠÙŠÙ….', style: GoogleFonts.tajawal())),
+          SnackBar(content: Text('تعذر حفظ التقييم.', style: GoogleFonts.tajawal())),
         );
       }
     }
@@ -280,10 +280,10 @@ class _TechnicianUserRatingRow extends StatelessWidget {
       return TextButton(
         onPressed: () {
           ScaffoldMessenger.of(context).showSnackBar(
-            SnackBar(content: Text('Ø³Ø¬Ù‘Ù„ Ø§Ù„Ø¯Ø®ÙˆÙ„ Ù„ØªÙ‚ÙŠÙŠÙ… Ø§Ù„ÙÙ†ÙŠ.', style: GoogleFonts.tajawal())),
+            SnackBar(content: Text('سجّل الدخول لتقييم الفني.', style: GoogleFonts.tajawal())),
           );
         },
-        child: Text('Ø³Ø¬Ù‘Ù„ Ø§Ù„Ø¯Ø®ÙˆÙ„ Ù„ØªÙ‚ÙŠÙŠÙ… Ø§Ù„ÙÙ†ÙŠ', style: GoogleFonts.tajawal(color: AppColors.accent)),
+        child: Text('سجّل الدخول لتقييم الفني', style: GoogleFonts.tajawal(color: AppColors.accent)),
       );
     }
     final myEmail = store.profile?.email.trim().toLowerCase() ?? '';
@@ -293,11 +293,11 @@ class _TechnicianUserRatingRow extends StatelessWidget {
     }
     final userName = (store.profile?.fullName?.trim().isNotEmpty ?? false)
         ? store.profile!.fullName!.trim()
-        : 'Ù…Ø³ØªØ®Ø¯Ù…';
+        : 'مستخدم';
 
     return Column(
       children: [
-        Text('Ù‚ÙŠÙ‘Ù… Ù‡Ø°Ø§ Ø§Ù„ÙÙ†ÙŠ', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+        Text('قيّم هذا الفني', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
         const SizedBox(height: 4),
         Row(
           mainAxisAlignment: MainAxisAlignment.center,

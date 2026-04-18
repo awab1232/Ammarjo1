@@ -73,7 +73,7 @@ class TechniciansRepository {
     }
   }
 
-  /// Ø§Ù„ØªØµÙÙŠØ© Ø­Ø³Ø¨ Ø§Ù„ØªØ®ØµØµ/Ø§Ù„Ù…Ø¯ÙŠÙ†Ø© ÙˆØ§Ù„ØªØ±ØªÙŠØ¨ Ø­Ø³Ø¨ `rating` ØªØªÙ… Ù…Ø­Ù„ÙŠØ§Ù‹ Ø¨Ø¹Ø¯ Ø¬Ù„Ø¨ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª Ù…Ù† Ø§Ù„Ù€ API.
+  /// التصفية حسب التخصص/المدينة والترتيب حسب `rating` تتم محلياً بعد جلب البيانات من الـ API.
   Stream<FeatureState<List<TechnicianProfile>>> watchApprovedTechnicians({String? specialty, String? city}) {
     return Stream<FeatureState<List<TechnicianProfile>>>.fromFuture(
       fetchApprovedTechnicians(specialty: specialty, city: city),

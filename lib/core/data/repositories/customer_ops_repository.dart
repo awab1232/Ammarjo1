@@ -32,7 +32,7 @@ class TrackOrderItem {
   final String? totalLabel;
   final List<Map<String, dynamic>> items;
 
-  /// Ø±Ø§Ø¨Ø· ØµÙØ­Ø© Ø§Ù„ØªØªØ¨Ø¹ Ù„Ø´Ø±ÙƒØ© Ø§Ù„Ø´Ø­Ù† (ÙŠØ¬Ø¨ Ø£Ù† ÙŠÙƒÙˆÙ† http/https).
+  /// رابط صفحة التتبع لشركة الشحن (يجب أن يكون http/https).
   final String? trackingUrl;
   final String? trackingNumber;
   final String? shippingCompany;
@@ -146,7 +146,7 @@ class CustomerOpsRepository {
 
   static const String ordersSubcollection = 'orders';
 
-  /// Ø­Ø§Ù„Ø§Øª WooCommerce â†’ Ø­Ø§Ù„Ø© ÙˆØ§Ø¬Ù‡Ø© Ø§Ù„ØªØªØ¨Ø¹ ÙÙŠ Ø§Ù„ØªØ·Ø¨ÙŠÙ‚.
+  /// حالات WooCommerce → حالة واجهة التتبع في التطبيق.
   static String appStatusFromWoo(String wooStatus) {
     switch (wooStatus) {
       case 'completed':
@@ -173,8 +173,8 @@ class CustomerOpsRepository {
     String? orderTotal,
   }) async {}
 
-  /// Ø¨ÙŠØ§Ù†Ø§Øª Ù„Ø¯Ù…Ø¬Ù‡Ø§ ÙÙŠ `users/{customerUid}/orders/{orderId}` Ø¹Ù†Ø¯ ØªØ­Ø¯ÙŠØ« Ø§Ù„Ø­Ø§Ù„Ø© Ù…Ù† Ù„ÙˆØ­Ø© Ø§Ù„Ø¥Ø¯Ø§Ø±Ø©
-  /// (Ù†ÙØ³ [appStatusFromWoo] + [OrderStatus.toEnglish] Ù„ÙŠØªØ·Ø§Ø¨Ù‚ Ø¹Ø±Ø¶ Â«Ø·Ù„Ø¨Ø§ØªÙŠÂ» Ù…Ø¹ Ø§Ù„Ø¬Ø°Ø±).
+  /// بيانات لدمجها في `users/{customerUid}/orders/{orderId}` عند تحديث الحالة من لوحة الإدارة
+  /// (نفس [appStatusFromWoo] + [OrderStatus.toEnglish] ليتطابق عرض «طلباتي» مع الجدول).
   static Map<String, dynamic> buildUserOrderSyncDataFromAdminStatus({
     required String orderId,
     required String newStatusEnglish,

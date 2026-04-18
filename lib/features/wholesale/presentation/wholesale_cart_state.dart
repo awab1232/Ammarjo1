@@ -96,10 +96,10 @@ class WholesaleCartStorage {
     await prefs.remove(_key);
   }
 
-  /// Ø­ÙØ¸ Ù…Ø­Ù„ÙŠ (Ø§Ù„Ø§Ø³Ù… Ø§Ù„ØµØ±ÙŠØ­ Ù„Ù„ØªÙˆØ§ÙÙ‚ Ù…Ø¹ Ø§Ù„Ù…Ø·Ù„ÙˆØ¨).
+  /// حفظ محلي (الاسم الصريح للتوافق مع المطلوب).
   static Future<void> saveCartLocally(List<WholesaleCartItem> items) => save(items);
 
-  /// Ø±ÙØ¹ Ø§Ù„Ø³Ù„Ø© Ø¥Ù„Ù‰ Ø§Ù„Ø³Ø­Ø§Ø¨Ø© (Ø§Ø®ØªÙŠØ§Ø±ÙŠ).
+  /// رفع السلة إلى السحابة (اختياري).
   static Future<void> syncCartWithFirestore(String userId, List<WholesaleCartItem> items) async {
     if (Firebase.apps.isEmpty) return;
     final uid = userId.trim();
@@ -112,7 +112,7 @@ class WholesaleCartStorage {
     }
   }
 
-  /// Ø§Ø³ØªØ¹Ø§Ø¯Ø© Ø§Ù„Ø³Ù„Ø© Ù…Ù† Ø§Ù„Ø³Ø­Ø§Ø¨Ø© Ø¹Ù†Ø¯ ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø¯Ø®ÙˆÙ„.
+  /// استعادة السلة من السحابة عند تسجيل الدخول.
   static Future<FeatureState<List<WholesaleCartItem>>> loadCartFromFirestore(String userId) async {
     if (Firebase.apps.isEmpty) return FeatureState.failure('Firebase is not initialized.');
     final uid = userId.trim();
@@ -130,7 +130,7 @@ class WholesaleCartStorage {
     }
   }
 
-  /// Ù…Ø³Ø­ Ù†Ø³Ø®Ø© Ø§Ù„Ø³Ø­Ø§Ø¨Ø© (Ø¨Ø¹Ø¯ Ø¥ØªÙ…Ø§Ù… Ø§Ù„Ø·Ù„Ø¨ Ø£Ùˆ ÙŠØ¯ÙˆÙŠØ§Ù‹).
+  /// مسح نسخة السحابة (بعد إتمام الطلب أو يدوياً).
   static Future<void> clearFirestoreCart(String userId) async {
     if (Firebase.apps.isEmpty) return;
     await WholesaleRepository.instance.clearWholesaleCartCloud(userId);

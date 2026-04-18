@@ -448,7 +448,7 @@ class _WholesalerRatingBadge extends StatelessWidget {
               ),
               const SizedBox(width: 4),
               Text(
-                '($totalReviews ØªÙ‚ÙŠÙŠÙ…)',
+                '($totalReviews تقييم)',
                 style: GoogleFonts.tajawal(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
               ),
             ],

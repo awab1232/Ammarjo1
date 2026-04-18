@@ -31,9 +31,9 @@ class ServiceRequestsRepository {
 
   Future<Map<String, String>> _authHeaders() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) throw StateError('ÙŠØ±Ø¬Ù‰ ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø¯Ø®ÙˆÙ„ Ø£ÙˆÙ„Ø§Ù‹');
+    if (user == null) throw StateError('يرجى تسجيل الدخول أولاً');
     final token = await user.getIdToken();
-    if (token == null || token.isEmpty) throw StateError('ØªØ¹Ø°Ø± Ø§Ù„ØªØ­Ù‚Ù‚ Ù…Ù† Ù‡ÙˆÙŠØ© Ø§Ù„Ù…Ø³ØªØ®Ø¯Ù…');
+    if (token == null || token.isEmpty) throw StateError('تعذر التحقق من هوية المستخدم');
     return {
       'Authorization': 'Bearer $token',
       'Content-Type': 'application/json',
@@ -54,7 +54,7 @@ class ServiceRequestsRepository {
       customerName: m['customerName']?.toString(),
       customerPhone: m['customerPhone']?.toString(),
       customerEmail: m['customerEmail']?.toString(),
-      title: (m['title']?.toString().trim().isNotEmpty ?? false) ? m['title'].toString() : 'Ø·Ù„Ø¨ Ø®Ø¯Ù…Ø©',
+      title: (m['title']?.toString().trim().isNotEmpty ?? false) ? m['title'].toString() : 'طلب خدمة',
       description: m['description']?.toString(),
       categoryId: m['categoryId']?.toString() ?? '',
       categoryName: m['categoryName']?.toString(),
@@ -78,7 +78,7 @@ class ServiceRequestsRepository {
         flow: 'service_requests_http',
         reason: 'missing_backend_base_url',
       );
-      throw StateError('Backend URL ØºÙŠØ± Ù…Ø¶Ø¨ÙˆØ·');
+      throw StateError('Backend URL غير مضبوط');
     }
     final headers = await _authHeaders();
     final uri = Uri.parse('$_baseUrl$path').replace(queryParameters: query);
@@ -95,17 +95,17 @@ class ServiceRequestsRepository {
         extra: {'path': path},
       );
       if (res.statusCode == 401) {
-        throw StateError('Ø§Ù†ØªÙ‡Øª Ø§Ù„Ø¬Ù„Ø³Ø© Ø£Ùˆ Ø±Ù…Ø² Ø§Ù„Ø¯Ø®ÙˆÙ„ ØºÙŠØ± ØµØ§Ù„Ø­. Ø³Ø¬Ù‘Ù„ Ø§Ù„Ø¯Ø®ÙˆÙ„ Ù…Ø¬Ø¯Ø¯Ø§Ù‹.');
+        throw StateError('انتهت الجلسة أو رمز الدخول غير صالح. سجّل الدخول مجدداً.');
       }
       if (res.statusCode == 403) {
-        throw StateError('Ù„Ø§ ØµÙ„Ø§Ø­ÙŠØ© Ù„Ø¹Ø±Ø¶ Ø·Ù„Ø¨Ø§Øª Ø§Ù„Ø®Ø¯Ù…Ø©.');
+        throw StateError('لا صلاحية لعرض طلبات الخدمة.');
       }
-      throw StateError('ÙØ´Ù„ ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ø¨ÙŠØ§Ù†Ø§Øª (${res.statusCode})');
+      throw StateError('فشل تحميل البيانات (${res.statusCode})');
     }
     final decoded = jsonDecode(res.body);
     if (decoded is Map<String, dynamic>) return decoded;
     if (decoded is Map) return Map<String, dynamic>.from(decoded);
-    throw StateError('Ø§Ø³ØªØ¬Ø§Ø¨Ø© ØºÙŠØ± ØµØ§Ù„Ø­Ø© Ù…Ù† Ø§Ù„Ø®Ø§Ø¯Ù…');
+    throw StateError('استجابة غير صالحة من الخادم');
   }
 
   Future<Map<String, dynamic>> _httpPostJson(String path, Map<String, dynamic> body) async {
@@ -116,7 +116,7 @@ class ServiceRequestsRepository {
         flow: 'service_requests_http',
         reason: 'missing_backend_base_url',
       );
-      throw StateError('Backend URL ØºÙŠØ± Ù…Ø¶Ø¨ÙˆØ·');
+      throw StateError('Backend URL غير مضبوط');
     }
     final headers = await _authHeaders();
     final uri = Uri.parse('$_baseUrl$path');
@@ -134,12 +134,12 @@ class ServiceRequestsRepository {
         extra: {'path': path},
       );
       if (res.statusCode == 401) {
-        throw StateError('Ø§Ù†ØªÙ‡Øª Ø§Ù„Ø¬Ù„Ø³Ø© Ø£Ùˆ Ø±Ù…Ø² Ø§Ù„Ø¯Ø®ÙˆÙ„ ØºÙŠØ± ØµØ§Ù„Ø­. Ø³Ø¬Ù‘Ù„ Ø§Ù„Ø¯Ø®ÙˆÙ„ Ù…Ø¬Ø¯Ø¯Ø§Ù‹.');
+        throw StateError('انتهت الجلسة أو رمز الدخول غير صالح. سجّل الدخول مجدداً.');
       }
       if (res.statusCode == 403) {
-        throw StateError('Ù„Ø§ ØµÙ„Ø§Ø­ÙŠØ© Ù„ØªÙ†ÙÙŠØ° Ù‡Ø°Ù‡ Ø§Ù„Ø¹Ù…Ù„ÙŠØ©.');
+        throw StateError('لا صلاحية لتنفيذ هذه العملية.');
       }
-      throw StateError('ÙØ´Ù„ ØªÙ†ÙÙŠØ° Ø§Ù„Ø¹Ù…Ù„ÙŠØ© (${res.statusCode})');
+      throw StateError('فشل تنفيذ العملية (${res.statusCode})');
     }
     if (res.body.trim().isEmpty) return <String, dynamic>{};
     final decoded = jsonDecode(res.body);
@@ -191,7 +191,7 @@ class ServiceRequestsRepository {
     String? notes,
   }) async {
     final current = FirebaseAuth.instance.currentUser;
-    if (current == null) throw StateError('ÙŠØ¬Ø¨ ØªØ³Ø¬ÙŠÙ„ Ø§Ù„Ø¯Ø®ÙˆÙ„ Ø£ÙˆÙ„Ø§Ù‹');
+    if (current == null) throw StateError('يجب تسجيل الدخول أولاً');
 
     Reference? uploadedRef;
     String? imageUrl;
@@ -214,7 +214,7 @@ class ServiceRequestsRepository {
         'notes': notes ?? '',
       });
       final id = (created['id']?.toString() ?? '').trim();
-      if (id.isEmpty) throw StateError('ØªØ¹Ø°Ø± Ø¥Ù†Ø´Ø§Ø¡ Ø·Ù„Ø¨ Ø§Ù„Ø®Ø¯Ù…Ø©');
+      if (id.isEmpty) throw StateError('تعذر إنشاء طلب الخدمة');
       return id;
     } on Object {
       if (uploadedRef != null) {

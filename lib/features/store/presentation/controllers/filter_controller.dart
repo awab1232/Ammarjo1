@@ -8,11 +8,11 @@ import '../../domain/catalog_active_filters.dart';
 import '../../domain/models.dart';
 import 'store_pagination.dart';
 
-/// ØªØµÙÙŠØ© Ø®Ø§Ø¯Ù…ÙŠØ© Ù„Ù„Ù…Ù†ØªØ¬Ø§Øª.
+/// تصفية خادمية للمنتجات.
 class FilterController extends ChangeNotifier {
   FilterController();
 
-  /// ÙŠÙØ±Ø¨ÙŽØ· Ù…Ù† [StoreController] Ù„Ù…Ø³Ø­ Ø§Ù„Ø¨Ø­Ø« Ø¹Ù†Ø¯ ØªØ·Ø¨ÙŠÙ‚ ØªØµÙÙŠØ©.
+  /// يُربَط من [StoreController] لمسح البحث عند تطبيق تصفية.
   void Function()? onBeforeApplyClearSearch;
 
   CatalogActiveFilters? activeFilters;
@@ -71,7 +71,7 @@ class FilterController extends ChangeNotifier {
       }
     } on Object {
       final net = networkUserMessage('unexpected error');
-      errorMessage = net.isNotEmpty ? net : 'ØªØ¹Ø°Ù‘Ø± ØªØ·Ø¨ÙŠÙ‚ Ø§Ù„ØªØµÙÙŠØ©.';
+      errorMessage = net.isNotEmpty ? net : 'تعذّر تطبيق التصفية.';
     } finally {
       isApplyingFilters = false;
       notifyListeners();
@@ -113,7 +113,7 @@ class FilterController extends ChangeNotifier {
         case FeatureAdminMissingEndpoint():
         case FeatureCriticalPublicDataFailure():
         case FeatureFailure():
-          errorMessage = errorMessage ?? 'ØªØ¹Ø°Ù‘Ø± ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ù…Ø²ÙŠØ¯.';
+          errorMessage = errorMessage ?? 'تعذّر تحميل المزيد.';
       }
     } on Object {
       final net = networkUserMessage('unexpected error');

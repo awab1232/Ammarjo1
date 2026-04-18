@@ -105,9 +105,9 @@ class _WholesaleOrdersSectionState extends State<WholesaleOrdersSection> {
           children: [
             const Icon(Icons.wifi_off, size: 48, color: Colors.grey),
             const SizedBox(height: 16),
-            const Text('Ø­Ø¯Ø« Ø®Ø·Ø£ ÙÙŠ ØªØ­Ù…ÙŠÙ„ Ø·Ù„Ø¨Ø§Øª Ø§Ù„Ø¬Ù…Ù„Ø©'),
+            const Text('حدث خطأ في تحميل طلبات الجملة'),
             const SizedBox(height: 8),
-            ElevatedButton(onPressed: _loadInitial, child: const Text('Ø¥Ø¹Ø§Ø¯Ø© Ø§Ù„Ù…Ø­Ø§ÙˆÙ„Ø©')),
+            ElevatedButton(onPressed: _loadInitial, child: const Text('إعادة المحاولة')),
           ],
         ),
       );
@@ -116,7 +116,7 @@ class _WholesaleOrdersSectionState extends State<WholesaleOrdersSection> {
       return const Center(child: CircularProgressIndicator(color: AppColors.primaryOrange));
     }
     if (_orders.isEmpty) {
-      return Center(child: Text('Ù„Ø§ ØªÙˆØ¬Ø¯ Ø·Ù„Ø¨Ø§Øª ÙˆØ§Ø±Ø¯Ø©', style: GoogleFonts.tajawal()));
+      return Center(child: Text('لا توجد طلبات واردة', style: GoogleFonts.tajawal()));
     }
     return RefreshIndicator(
       onRefresh: _loadInitial,
@@ -150,12 +150,12 @@ class _WholesaleOrdersSectionState extends State<WholesaleOrdersSection> {
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
                     Text(o.storeName, textAlign: TextAlign.right, style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
-                    Text('${o.subtotal.toStringAsFixed(2)} Ø¯.Ø£', textAlign: TextAlign.right, style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                    Text('${o.subtotal.toStringAsFixed(2)} د.أ', textAlign: TextAlign.right, style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
                     const SizedBox(height: 8),
                     DropdownButtonFormField<String>(
                       // ignore: deprecated_member_use
                       value: statusVal,
-                      decoration: InputDecoration(labelText: 'ØªØ­Ø¯ÙŠØ« Ø§Ù„Ø­Ø§Ù„Ø©', labelStyle: GoogleFonts.tajawal()),
+                      decoration: InputDecoration(labelText: 'تحديث الحالة', labelStyle: GoogleFonts.tajawal()),
                       items: _allowedForwardStatuses(statusVal)
                           .map((s) => DropdownMenuItem<String>(value: s, child: Text(s, style: GoogleFonts.tajawal())))
                           .toList(),
@@ -168,12 +168,12 @@ class _WholesaleOrdersSectionState extends State<WholesaleOrdersSection> {
                         try {
                           await WholesaleRepository.instance.updateWholesaleOrderStatus(orderId: o.orderId, status: nv);
                           if (context.mounted) {
-                            messenger.showSnackBar(SnackBar(content: Text('ØªÙ… ØªØ­Ø¯ÙŠØ« Ø­Ø§Ù„Ø© Ø§Ù„Ø·Ù„Ø¨', style: GoogleFonts.tajawal())));
+                            messenger.showSnackBar(SnackBar(content: Text('تم تحديث حالة الطلب', style: GoogleFonts.tajawal())));
                           }
                         } on Object {
                           debugPrint('[WholesaleOrdersSection] updateWholesaleOrderStatus failed.');
                           if (context.mounted) {
-                            messenger.showSnackBar(SnackBar(content: Text('ØªØ¹Ø°Ù‘Ø± ØªØ­Ø¯ÙŠØ« Ø­Ø§Ù„Ø© Ø§Ù„Ø·Ù„Ø¨.', style: GoogleFonts.tajawal())));
+                            messenger.showSnackBar(SnackBar(content: Text('تعذّر تحديث حالة الطلب.', style: GoogleFonts.tajawal())));
                           }
                         }
                       },

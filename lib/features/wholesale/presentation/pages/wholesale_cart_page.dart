@@ -65,7 +65,7 @@ class _WholesaleCartPageState extends State<WholesaleCartPage> {
     if (uid == null) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ø³Ø¬Ù‘Ù„ Ø§Ù„Ø¯Ø®ÙˆÙ„ Ù„Ø­ÙØ¸ Ø§Ù„Ø³Ù„Ø© ÙÙŠ Ø§Ù„Ø³Ø­Ø§Ø¨Ø©.', style: GoogleFonts.tajawal())),
+          SnackBar(content: Text('سجّل الدخول لحفظ السلة في السحابة.', style: GoogleFonts.tajawal())),
         );
       }
       return;
@@ -75,13 +75,13 @@ class _WholesaleCartPageState extends State<WholesaleCartPage> {
       await WholesaleCartStorage.syncCartWithFirestore(uid, _items);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('ØªÙ… Ø­ÙØ¸ Ø§Ù„Ø³Ù„Ø© ÙÙŠ Ø§Ù„Ø³Ø­Ø§Ø¨Ø©.', style: GoogleFonts.tajawal())),
+          SnackBar(content: Text('تم حفظ السلة في السحابة.', style: GoogleFonts.tajawal())),
         );
       }
     } on Object {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('ØªØ¹Ø°Ø± Ø§Ù„Ù…Ø²Ø§Ù…Ù†Ø© Ø­Ø§Ù„ÙŠØ§Ù‹.', style: GoogleFonts.tajawal())),
+          SnackBar(content: Text('تعذر المزامنة حالياً.', style: GoogleFonts.tajawal())),
         );
       }
     } finally {
@@ -100,11 +100,11 @@ class _WholesaleCartPageState extends State<WholesaleCartPage> {
     }
     return Scaffold(
       appBar: AppBar(
-        title: Text('Ø³Ù„Ø© Ø§Ù„Ø¬Ù…Ù„Ø©', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+        title: Text('سلة الجملة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
         actions: [
           if (Firebase.apps.isNotEmpty && FirebaseAuth.instance.currentUser != null)
             IconButton(
-              tooltip: 'Ø­ÙØ¸ Ø§Ù„Ø³Ù„Ø© ÙÙŠ Ø§Ù„Ø³Ø­Ø§Ø¨Ø©',
+              tooltip: 'حفظ السلة في السحابة',
               onPressed: _syncing ? null : _syncToCloud,
               icon: _syncing
                   ? const SizedBox(
@@ -117,7 +117,7 @@ class _WholesaleCartPageState extends State<WholesaleCartPage> {
         ],
       ),
       body: _items.isEmpty
-          ? Center(child: Text('Ø³Ù„Ø© Ø§Ù„Ø¬Ù…Ù„Ø© ÙØ§Ø±ØºØ©', style: GoogleFonts.tajawal()))
+          ? Center(child: Text('سلة الجملة فارغة', style: GoogleFonts.tajawal()))
           : ListView(
               padding: const EdgeInsets.all(12),
               children: [
@@ -175,7 +175,7 @@ class _WholesaleCartPageState extends State<WholesaleCartPage> {
                           }),
                           const Divider(),
                           Text(
-                            'Ø§Ù„Ù…Ø¬Ù…ÙˆØ¹ Ø§Ù„ÙØ±Ø¹ÙŠ: ${e.value.fold<double>(0, (s, i) => s + i.total).toStringAsFixed(2)} Ø¯.Ø£',
+                            'المجموع الفرعي: ${e.value.fold<double>(0, (s, i) => s + i.total).toStringAsFixed(2)} د.أ',
                             textAlign: TextAlign.right,
                             style: GoogleFonts.tajawal(fontWeight: FontWeight.w700),
                           ),
@@ -199,7 +199,7 @@ class _WholesaleCartPageState extends State<WholesaleCartPage> {
                     );
                     _load();
                   },
-                  child: Text('Ù…ØªØ§Ø¨Ø¹Ø© Ø¥Ù„Ù‰ Ø§Ù„Ø¯ÙØ¹', style: GoogleFonts.tajawal(color: Colors.white)),
+                  child: Text('متابعة إلى الدفع', style: GoogleFonts.tajawal(color: Colors.white)),
                 ),
               ),
             ),

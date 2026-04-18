@@ -94,7 +94,7 @@ class _MyServiceRequestsPageState extends State<MyServiceRequestsPage> {
       if (!mounted) return;
       setState(() {
         _hasError = true;
-        _errorMessage = 'Ø­Ø¯Ø« Ø®Ø·Ø£ ÙÙŠ ØªØ­Ù…ÙŠÙ„ Ø·Ù„Ø¨Ø§Øª Ø§Ù„Ø®Ø¯Ù…Ø©';
+        _errorMessage = 'حدث خطأ في تحميل طلبات الخدمة';
       });
     } finally {
       if (mounted) setState(() => _isLoading = false);
@@ -145,7 +145,7 @@ class _MyServiceRequestsPageState extends State<MyServiceRequestsPage> {
       debugPrint('MyServiceRequestsPage: load more failed.');
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('ØªØ¹Ø°Ø± ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ù…Ø²ÙŠØ¯ Ø­Ø§Ù„ÙŠØ§Ù‹.', style: GoogleFonts.tajawal())),
+          SnackBar(content: Text('تعذر تحميل المزيد حالياً.', style: GoogleFonts.tajawal())),
         );
       }
     } finally {
@@ -164,19 +164,19 @@ class _MyServiceRequestsPageState extends State<MyServiceRequestsPage> {
     await showDialog<void>(
       context: context,
       builder: (_) => AlertDialog(
-        title: Text('ØªÙØ§ØµÙŠÙ„ Ø§Ù„Ø·Ù„Ø¨ #${req.id}', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+        title: Text('تفاصيل الطلب #${req.id}', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
         content: SizedBox(
           width: 560,
           child: SingleChildScrollView(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                Text('Ø§Ù„ÙˆØµÙ', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700), textAlign: TextAlign.right),
+                Text('الوصف', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700), textAlign: TextAlign.right),
                 const SizedBox(height: 4),
                 Text((req.description ?? req.notes ?? '-'), textAlign: TextAlign.right, style: GoogleFonts.tajawal()),
                 const SizedBox(height: 10),
                 if (req.imageUrl != null && req.imageUrl!.trim().isNotEmpty) ...[
-                  Text('Ø§Ù„ØµÙˆØ±Ø© Ø§Ù„Ù…Ø±ÙÙ‚Ø©', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700), textAlign: TextAlign.right),
+                  Text('الصورة المرفقة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700), textAlign: TextAlign.right),
                   const SizedBox(height: 6),
                   InkWell(
                     onTap: () => _openImageViewer(context, req.imageUrl!.trim()),
@@ -191,26 +191,26 @@ class _MyServiceRequestsPageState extends State<MyServiceRequestsPage> {
                   ),
                   const SizedBox(height: 10),
                 ],
-                Text('Ø§Ù„ØªØµÙ†ÙŠÙ: ${req.categoryName ?? req.categoryId}', textAlign: TextAlign.right, style: GoogleFonts.tajawal()),
-                Text('Ø§Ù„Ø­Ø§Ù„Ø©: ${getServiceRequestStatusArabic(req.status)}', textAlign: TextAlign.right, style: GoogleFonts.tajawal()),
+                Text('التصنيف: ${req.categoryName ?? req.categoryId}', textAlign: TextAlign.right, style: GoogleFonts.tajawal()),
+                Text('الحالة: ${getServiceRequestStatusArabic(req.status)}', textAlign: TextAlign.right, style: GoogleFonts.tajawal()),
                 Text(
-                  'Ø§Ù„ÙÙ†ÙŠ: ${tName != null && tName.isNotEmpty ? tName : 'Ù„Ù… ÙŠØªÙ… ØªØ¹ÙŠÙŠÙ† ÙÙ†ÙŠ Ø¨Ø¹Ø¯'}',
+                  'الفني: ${tName != null && tName.isNotEmpty ? tName : 'لم يتم تعيين فني بعد'}',
                   textAlign: TextAlign.right,
                   style: GoogleFonts.tajawal(),
                 ),
                 if (tEmail != null && tEmail.isNotEmpty)
-                  Text('Ø¨Ø±ÙŠØ¯ Ø§Ù„ÙÙ†ÙŠ: $tEmail', textAlign: TextAlign.right, style: GoogleFonts.tajawal(fontSize: 13)),
+                  Text('بريد الفني: $tEmail', textAlign: TextAlign.right, style: GoogleFonts.tajawal(fontSize: 13)),
                 const SizedBox(height: 10),
-                Text('ØªØ§Ø±ÙŠØ® Ø§Ù„Ø¥Ù†Ø´Ø§Ø¡: ${_date(req.createdAt)}', textAlign: TextAlign.right, style: GoogleFonts.tajawal(fontSize: 13)),
+                Text('تاريخ الإنشاء: ${_date(req.createdAt)}', textAlign: TextAlign.right, style: GoogleFonts.tajawal(fontSize: 13)),
                 Text(
-                  'Ø¢Ø®Ø± ØªØ­Ø¯ÙŠØ«: ${req.updatedAt != null ? _date(req.updatedAt!) : '-'}',
+                  'آخر تحديث: ${req.updatedAt != null ? _date(req.updatedAt!) : '-'}',
                   textAlign: TextAlign.right,
                   style: GoogleFonts.tajawal(fontSize: 13),
                 ),
                 const SizedBox(height: 10),
-                Text('Ù…Ù„Ø§Ø­Ø¸Ø§Øª Ø§Ù„Ø£Ø¯Ù…Ù†', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700), textAlign: TextAlign.right),
+                Text('ملاحظات الإدارة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700), textAlign: TextAlign.right),
                 const SizedBox(height: 4),
-                Text((req.adminNote?.trim().isNotEmpty ?? false) ? req.adminNote! : 'Ù„Ø§ ØªÙˆØ¬Ø¯ Ù…Ù„Ø§Ø­Ø¸Ø§Øª', textAlign: TextAlign.right, style: GoogleFonts.tajawal()),
+                Text((req.adminNote?.trim().isNotEmpty ?? false) ? req.adminNote! : 'لا توجد ملاحظات', textAlign: TextAlign.right, style: GoogleFonts.tajawal()),
               ],
             ),
           ),
@@ -218,7 +218,7 @@ class _MyServiceRequestsPageState extends State<MyServiceRequestsPage> {
         actions: [
           FilledButton(
             onPressed: () => Navigator.pop(context),
-            child: Text('Ø¥ØºÙ„Ø§Ù‚', style: GoogleFonts.tajawal()),
+            child: Text('إغلاق', style: GoogleFonts.tajawal()),
           ),
         ],
       ),
@@ -233,10 +233,10 @@ class _MyServiceRequestsPageState extends State<MyServiceRequestsPage> {
       appBar: AppBar(
         backgroundColor: AppColors.background,
         leading: const AppBarBackButton(),
-        title: Text('Ø·Ù„Ø¨Ø§Øª Ø§Ù„Ø®Ø¯Ù…Ø©', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+        title: Text('طلبات الخدمة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
       ),
       body: uid == null
-          ? Center(child: Text('Ø³Ø¬Ù‘Ù„ Ø§Ù„Ø¯Ø®ÙˆÙ„ Ù„Ø¹Ø±Ø¶ Ø·Ù„Ø¨Ø§ØªÙƒ.', style: GoogleFonts.tajawal(color: AppColors.textSecondary)))
+          ? Center(child: Text('سجّل الدخول لعرض طلباتك.', style: GoogleFonts.tajawal(color: AppColors.textSecondary)))
           : Builder(
               builder: (context) {
                 if (_hasError) {
@@ -246,9 +246,9 @@ class _MyServiceRequestsPageState extends State<MyServiceRequestsPage> {
                       children: [
                         const Icon(Icons.wifi_off, size: 48, color: Colors.grey),
                         const SizedBox(height: 16),
-                        Text(_errorMessage ?? 'Ø­Ø¯Ø« Ø®Ø·Ø£ ÙÙŠ ØªØ­Ù…ÙŠÙ„ Ø·Ù„Ø¨Ø§Øª Ø§Ù„Ø®Ø¯Ù…Ø©', style: GoogleFonts.tajawal()),
+                        Text(_errorMessage ?? 'حدث خطأ في تحميل طلبات الخدمة', style: GoogleFonts.tajawal()),
                         const SizedBox(height: 8),
-                        ElevatedButton(onPressed: _loadInitial, child: const Text('Ø¥Ø¹Ø§Ø¯Ø© Ø§Ù„Ù…Ø­Ø§ÙˆÙ„Ø©')),
+                        ElevatedButton(onPressed: _loadInitial, child: const Text('إعادة المحاولة')),
                       ],
                     ),
                   );
@@ -286,7 +286,7 @@ class _MyServiceRequestsPageState extends State<MyServiceRequestsPage> {
                               icon: _loadingMore
                                   ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2))
                                   : const Icon(Icons.expand_more_rounded),
-                              label: Text(_loadingMore ? 'Ø¬Ø§Ø±ÙŠ Ø§Ù„ØªØ­Ù…ÙŠÙ„...' : 'ØªØ­Ù…ÙŠÙ„ Ø§Ù„Ù…Ø²ÙŠØ¯', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                              label: Text(_loadingMore ? 'جاري التحميل...' : 'تحميل المزيد', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
                             ),
                           );
                         }
@@ -300,7 +300,7 @@ class _MyServiceRequestsPageState extends State<MyServiceRequestsPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.stretch,
                               children: [
-                                Text('Ø±Ù‚Ù… Ø§Ù„Ø·Ù„Ø¨: ${req.id.substring(0, req.id.length > 8 ? 8 : req.id.length)}', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+                                Text('رقم الطلب: ${req.id.substring(0, req.id.length > 8 ? 8 : req.id.length)}', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
                                 const SizedBox(height: 6),
                                 Row(
                                   children: [
@@ -313,7 +313,7 @@ class _MyServiceRequestsPageState extends State<MyServiceRequestsPage> {
                                   ],
                                 ),
                                 Text(
-                                  'Ø§Ù„ÙÙ†ÙŠ: ${tName != null && tName.isNotEmpty ? tName : 'Ù„Ù… ÙŠØªÙ… ØªØ¹ÙŠÙŠÙ† ÙÙ†ÙŠ Ø¨Ø¹Ø¯'}',
+                                  'الفني: ${tName != null && tName.isNotEmpty ? tName : 'لم يتم تعيين فني بعد'}',
                                   textAlign: TextAlign.right,
                                   style: GoogleFonts.tajawal(fontSize: 13),
                                 ),
@@ -330,7 +330,7 @@ class _MyServiceRequestsPageState extends State<MyServiceRequestsPage> {
                                   alignment: Alignment.centerLeft,
                                   child: OutlinedButton(
                                     onPressed: () => _showDetails(context, req, _techById),
-                                    child: Text('Ø¹Ø±Ø¶ Ø§Ù„ØªÙØ§ØµÙŠÙ„', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                                    child: Text('عرض التفاصيل', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
                                   ),
                                 ),
                               ],

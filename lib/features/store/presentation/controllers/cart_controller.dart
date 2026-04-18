@@ -14,7 +14,7 @@ import '../../../promotions/domain/promotion_model.dart';
 import '../../data/local_storage_service.dart';
 import '../../domain/models.dart';
 
-/// Ø³Ù„Ø© Ø§Ù„ØªØ³ÙˆÙ‚ ÙˆØ§Ù„Ù…Ø®Ø²ÙˆÙ† Ø§Ù„Ù…Ø­Ù„ÙŠ.
+/// سلة التسوق والمخزون المحلي.
 class CartController extends ChangeNotifier {
   CartController(this._local);
 
@@ -76,16 +76,16 @@ class CartController extends ChangeNotifier {
   Future<void> addToCart(
     Product product, {
     String storeId = 'ammarjo',
-    String storeName = 'Ù…ØªØ¬Ø± Ø¹Ù…Ø§Ø± Ø¬Ùˆ',
+    String storeName = 'متجر عمّار جو',
     ProductVariant? selectedVariant,
   }) async {
     if (product.hasVariants && selectedVariant == null) {
-      errorMessage = 'ÙŠØ±Ø¬Ù‰ Ø§Ø®ØªÙŠØ§Ø± Ù…ØªØºÙŠØ± Ø§Ù„Ù…Ù†ØªØ¬ Ø£ÙˆÙ„Ø§Ù‹.';
+      errorMessage = 'يرجى اختيار متغير المنتج أولاً.';
       notifyListeners();
       return;
     }
     if (!product.isAvailableForPurchase) {
-      errorMessage = 'Ù‡Ø°Ø§ Ø§Ù„Ù…Ù†ØªØ¬ ØºÙŠØ± Ù…ØªÙˆÙØ± Ø­Ø§Ù„ÙŠØ§Ù‹.';
+      errorMessage = 'هذا المنتج غير متوفر حالياً.';
       notifyListeners();
       return;
     }
@@ -104,7 +104,7 @@ class CartController extends ChangeNotifier {
         storeName: storeName,
       );
       if (!ok) {
-        errorMessage = 'ØªØ¹Ø°Ø± ØªØ­Ø¯ÙŠØ« Ø§Ù„Ø³Ù„Ø©.';
+        errorMessage = 'تعذّر تحديث السلة.';
       } else {
         errorMessage = null;
         _clearDiscounts();
@@ -153,7 +153,7 @@ class CartController extends ChangeNotifier {
         storeName: item.storeName,
       );
       if (!ok) {
-        errorMessage = 'ØªØ¹Ø°Ø± ØªØ­Ø¯ÙŠØ« Ø§Ù„Ø³Ù„Ø©.';
+        errorMessage = 'تعذّر تحديث السلة.';
       } else {
         errorMessage = null;
         _clearDiscounts();
@@ -190,7 +190,7 @@ class CartController extends ChangeNotifier {
         quantity: quantity,
       );
       if (!ok) {
-        errorMessage = 'ØªØ¹Ø°Ø± ØªØ­Ø¯ÙŠØ« Ø§Ù„Ø³Ù„Ø©.';
+        errorMessage = 'تعذّر تحديث السلة.';
         notifyListeners();
         return;
       }
@@ -227,7 +227,7 @@ class CartController extends ChangeNotifier {
         line.product.id > 0) {
       final ok = await BackendOrdersClient.instance.deleteCartItem(line.backendLineId!);
       if (!ok) {
-        errorMessage = 'ØªØ¹Ø°Ø± ØªØ­Ø¯ÙŠØ« Ø§Ù„Ø³Ù„Ø©.';
+        errorMessage = 'تعذّر تحديث السلة.';
         notifyListeners();
         return;
       }
@@ -279,7 +279,7 @@ class CartController extends ChangeNotifier {
       if (state is! FeatureSuccess<CouponValidationResult>) {
         errorMessage = state is FeatureFailure<CouponValidationResult>
             ? state.message
-            : 'ØªØ¹Ø°Ø± ØªØ·Ø¨ÙŠÙ‚ Ø§Ù„ÙƒÙˆØ¨ÙˆÙ†.';
+            : 'تعذّر تطبيق الكوبون.';
         notifyListeners();
         return false;
       }
@@ -308,13 +308,13 @@ class CartController extends ChangeNotifier {
       if (state is! FeatureSuccess<PromotionsCalculationResult>) {
         errorMessage = state is FeatureFailure<PromotionsCalculationResult>
             ? state.message
-            : 'ØªØ¹Ø°Ø± Ø­Ø³Ø§Ø¨ Ø§Ù„Ø¹Ø±ÙˆØ¶.';
+            : 'تعذّر حساب العروض.';
         notifyListeners();
         return false;
       }
       final res = state.data;
       if (appliedCoupon != null && res.appliedPromotions.any((e) => !e.isStackable)) {
-        errorMessage = 'Ù„Ø§ ÙŠÙ…ÙƒÙ† Ø¯Ù…Ø¬ Ø¹Ø±Ø¶ ØºÙŠØ± Ù‚Ø§Ø¨Ù„ Ù„Ù„Ø¯Ù…Ø¬ Ù…Ø¹ ÙƒÙˆØ¨ÙˆÙ†.';
+        errorMessage = 'لا يمكن دمج عرض غير قابل للدمج مع كوبون.';
         notifyListeners();
         return false;
       }
@@ -376,7 +376,7 @@ class CartController extends ChangeNotifier {
           case FeatureAdminMissingEndpoint():
           case FeatureCriticalPublicDataFailure():
           case FeatureFailure():
-            errorMessage = errorMessage ?? 'ØªØ¹Ø°Ù‘Ø± ØªØ­Ø¯ÙŠØ« Ø§Ù„Ø³Ù„Ø© Ù…Ù† Ø§Ù„Ø®Ø§Ø¯Ù….';
+            errorMessage = errorMessage ?? 'تعذّر تحديث السلة من الخادم.';
             next.add(item);
         }
       }
