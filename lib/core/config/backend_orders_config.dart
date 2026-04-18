@@ -1,13 +1,16 @@
 import 'package:flutter/foundation.dart' show debugPrint, kDebugMode, kReleaseMode;
 
 import '../logging/backend_fallback_logger.dart';
-import 'beta_launch_config.dart';
 
 /// NestJS orders API — backend-only; no Firestore/catalog fallback.
 ///
-/// **Testing:** enable without editing source, e.g.
-/// `flutter run --dart-define=USE_BACKEND_ORDERS=true --dart-define=USE_BACKEND_ORDERS_READ=true --dart-define=USE_BACKEND_ORDERS_WRITE=true --dart-define=BACKEND_ORDERS_BASE_URL=http://127.0.0.1:8080`
+/// **Testing:** set `BACKEND_ORDERS_BASE_URL` via `--dart-define` to your local API (debug only).
 abstract final class BackendOrdersConfig {
+  /// Production API (HTTPS, no trailing slash). Release builds use this unless a non-dev URL is passed via `BACKEND_ORDERS_BASE_URL`.
+  static const String defaultBaseUrl = 'https://api.ammarjo.org';
+
+  /// Debug-only fallback when `BACKEND_ORDERS_BASE_URL` is unset (Android emulator → host machine).
+  static const String _debugEmulatorBackendUrl = 'http://10.0.2.2:3000';
   static const bool stagingMode = true;
   static const bool _useBackendOrdersDev = true;
   static const bool _useBackendOrdersReadDev = true;
@@ -65,21 +68,26 @@ abstract final class BackendOrdersConfig {
   /// Max wait for backend POST during checkout (async; does not block the UI isolate).
   static const Duration backendOrdersWriteTimeout = Duration(seconds: 20);
 
-  /// Base URL without trailing slash (إنتاج: [BetaLaunchConfig.productionOrdersApiDefault]).
+  /// Base URL without trailing slash. Release → [defaultBaseUrl] (or non-local `BACKEND_ORDERS_BASE_URL`). Debug → define, else [_debugEmulatorBackendUrl].
   static String get baseUrl {
     const fromEnv = String.fromEnvironment('BACKEND_ORDERS_BASE_URL', defaultValue: '');
     final trimmed = fromEnv.trim();
-    if (trimmed.isNotEmpty) {
-      if (_isLocalhostUrl(trimmed) && kReleaseMode) {
-        debugPrint(
-          '[BackendConfig] BACKEND_ORDERS_BASE_URL points to localhost in release — using ${BetaLaunchConfig.productionOrdersApiDefault}',
-        );
-        return BetaLaunchConfig.productionOrdersApiDefault;
+
+    if (kReleaseMode) {
+      if (trimmed.isNotEmpty) {
+        if (_isLocalhostUrl(trimmed)) {
+          debugPrint(
+            '[BackendConfig] BACKEND_ORDERS_BASE_URL is a dev host in release — using $defaultBaseUrl',
+          );
+          return defaultBaseUrl;
+        }
+        return trimmed;
       }
-      return trimmed;
+      return defaultBaseUrl;
     }
-    // إنتاج افتراضي: نطاق مخصّص (لا Railway ولا localhost في الـ APK).
-    return BetaLaunchConfig.productionOrdersApiDefault;
+
+    if (trimmed.isNotEmpty) return trimmed;
+    return _debugEmulatorBackendUrl;
   }
 
   static bool _isLocalhostUrl(String url) {

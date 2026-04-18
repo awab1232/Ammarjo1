@@ -5,11 +5,11 @@
  *   * Absolute URLs (`http://…`, `https://…`, `data:…`) are returned unchanged.
  *   * Empty / nullish values return an empty string.
  *   * Relative paths are prefixed with `PUBLIC_BASE_URL` (env var) so that
- *     clients running on Railway / production never see `localhost:3000`
- *     URLs in API responses.
+ *     production clients never see internal dev origins in relative-path
+ *     resolution.
  *
  * `PUBLIC_BASE_URL` is expected to be the HTTPS origin of this backend
- * (no trailing slash), e.g. `https://orders-api.up.railway.app`.
+ * (no trailing slash), e.g. `https://api.ammarjo.org`.
  */
 export function resolvePublicUrl(raw: string | null | undefined): string {
   if (raw == null) return '';

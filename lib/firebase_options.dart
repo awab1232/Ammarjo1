@@ -14,8 +14,7 @@
 // أو يدوياً: Firebase Console → Project settings → Your apps → تطبيق Web →
 // انسخ `apiKey` و `appId` و `authDomain` (و `measurementId` إن وُجد) إلى [web] أدناه.
 //
-// **نطاقات الويب:** Authentication → Settings → Authorized domains — أضف `localhost`
-// لبيئة التطوير.
+// **نطاقات الويب:** Authentication → Settings → Authorized domains — أضف نطاقات التطوير التي يعتمدها Firebase (مثل نطاق الـ dev المحلي) عند الحاجة.
 
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart' show defaultTargetPlatform, kIsWeb, TargetPlatform;

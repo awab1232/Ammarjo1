@@ -24,7 +24,7 @@
   ويحدّد `/health` كنقطة فحص الصحة.
 - `backend/orders-api/src/common/public-url.ts`: مُحوِّل تلقائي يجعل أيّ
   مسار صورة نسبي في قاعدة البيانات يعود كـ URL مُطلَق (HTTPS) بناءً على
-  المتغيّر `PUBLIC_BASE_URL` → **لن يظهر `localhost` في أي رد JSON**.
+  المتغيّر `PUBLIC_BASE_URL` → **لن تُعاد روابط نسبية كعناوين تطوير داخلية في ردود JSON**.
 - `backend/orders-api/.env.example`: قالب للمتغيّرات البيئية تنسخه إلى
   Railway مباشرة.
 
@@ -101,7 +101,7 @@ backend/orders-api
 | `LANG` | `C.UTF-8` | لضمان العربية |
 | `LC_ALL` | `C.UTF-8` | لضمان العربية |
 | `PGCLIENTENCODING` | `UTF8` | لا لـ mojibake |
-| `PUBLIC_BASE_URL` | `https://<اسم-خدمتك>.up.railway.app` | ليستخدمها مُحوِّل صور `public-url.ts` |
+| `PUBLIC_BASE_URL` | `https://api.ammarjo.org` | عنوان الـ API العام (مُخصّص DNS)؛ يستخدمه `public-url.ts` |
 | `ALGOLIA_ENABLED` | `false` أو `true` | حسب حاجتك |
 | `SENTRY_DSN` | (القيمة من لوحة Sentry) | للمراقبة |
 | `FIREBASE_SERVICE_ACCOUNT_BASE64` | (انظر أدناه) | للتحقق من الـ ID token |
@@ -123,10 +123,10 @@ backend/orders-api
 ### الخطوة ⑤ — ضبط الدومين العام
 
 1. من صفحة السيرفر: **Settings → Networking → Generate Domain**.
-2. سينتج لك رابط مثل:
-   `https://ammarjo-backend-production.up.railway.app`
-3. ارجع إلى تبويب **Variables** وحدّث `PUBLIC_BASE_URL` ليطابق هذا
-   الدومين تماماً (بدون `/` في النهاية).
+2. بعد ربط **نطاق مخصّص** (مثل `api.ammarjo.org`) بخدمة Railway، عيّن
+   **`PUBLIC_BASE_URL`** إلى نفس الأصل العام، مثلاً:
+   `https://api.ammarjo.org`
+3. تأكّد أن القيمة **بدون** شرطة مائلة في النهاية.
 4. أعِد تشغيل الخدمة **Deployments → Redeploy**.
 
 ---
@@ -136,7 +136,7 @@ backend/orders-api
 بعد انتهاء الـ deploy الأول، افتح في المتصفح:
 
 ```
-https://<your-service>.up.railway.app/health
+https://api.ammarjo.org/health
 ```
 
 يجب أن يعود:
@@ -148,7 +148,7 @@ https://<your-service>.up.railway.app/health
 وللتأكد من العربية:
 
 ```
-https://<your-service>.up.railway.app/stores/store-types
+https://api.ammarjo.org/stores/store-types
 ```
 
 يجب أن ترى: `"name": "مواد بناء"` ومثيلاتها بوضوح (لا `Ø§Ù„Ù…` ولا `\u…`).
@@ -157,13 +157,13 @@ https://<your-service>.up.railway.app/stores/store-types
 
 ### الخطوة ⑦ — ربط تطبيق Flutter بالسيرفر الجديد
 
-عند بناء Flutter للإنتاج، **يجب** تمرير رابط Railway عبر `--dart-define`
-لأن `BackendOrdersConfig` يرفض الإقلاع بدون قيمة واضحة:
+التطبيق يستخدم افتراضياً **`https://api.ammarjo.org`** في إصدارات **release**.
+يمكنك تمرير `--dart-define=BACKEND_ORDERS_BASE_URL=...` فقط إن أردت بيئة أخرى (مثل staging).
 
 #### Web
 ```powershell
 flutter build web `
-  --dart-define=BACKEND_ORDERS_BASE_URL=https://<your-service>.up.railway.app `
+  --dart-define=BACKEND_ORDERS_BASE_URL=https://api.ammarjo.org `
   --dart-define=USE_BACKEND_ORDERS=true `
   --dart-define=USE_BACKEND_ORDERS_READ=true `
   --dart-define=USE_BACKEND_ORDERS_WRITE=true
@@ -172,13 +172,13 @@ flutter build web `
 #### Android
 ```powershell
 flutter build apk --release `
-  --dart-define=BACKEND_ORDERS_BASE_URL=https://<your-service>.up.railway.app
+  --dart-define=BACKEND_ORDERS_BASE_URL=https://api.ammarjo.org
 ```
 
 #### iOS
 ```powershell
 flutter build ipa `
-  --dart-define=BACKEND_ORDERS_BASE_URL=https://<your-service>.up.railway.app
+  --dart-define=BACKEND_ORDERS_BASE_URL=https://api.ammarjo.org
 ```
 
 ---
