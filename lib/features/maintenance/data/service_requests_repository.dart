@@ -274,6 +274,11 @@ class ServiceRequestsRepository {
     }
   }
 
+  /// رفض الطلب من الفني — يستدعي `POST /service-requests/:id/cancel`.
+  Future<void> cancelServiceRequest(String requestId) async {
+    await updateServiceRequest(requestId: requestId, status: 'cancel');
+  }
+
   Future<void> attachChatIdToRequest(String requestId, String chatId) async {
     if (requestId.isEmpty || chatId.isEmpty) return;
     await _httpPostJson('/service-requests/$requestId/attach-chat', {

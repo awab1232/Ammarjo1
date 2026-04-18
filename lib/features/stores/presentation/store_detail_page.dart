@@ -239,6 +239,36 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
         onRefresh: () async => setState(() {}),
         child: CustomScrollView(
           slivers: [
+          if (store.openingHours?.isOpenNow(DateTime.now()) == false)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: Material(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    child: Row(
+                      children: [
+                        Icon(Icons.schedule_rounded, color: Colors.red.shade800),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'مغلق الآن — يمكنك تصفح المنتجات، وقد تختلف أوقات الاستجابة.',
+                            textAlign: TextAlign.right,
+                            style: GoogleFonts.tajawal(
+                              fontWeight: FontWeight.w700,
+                              color: Colors.red.shade900,
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ),
           SliverToBoxAdapter(
             child: SizedBox(
               height: 200,

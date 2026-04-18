@@ -6,6 +6,7 @@ import { RbacGuard } from '../identity/rbac.guard';
 import { RequirePermissions } from '../identity/require-permissions.decorator';
 import { TenantContextGuard } from '../identity/tenant-context.guard';
 import { StoresService } from './stores.service';
+import type { StoreRecord } from './stores.types';
 
 @Controller('stores')
 @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
@@ -35,9 +36,17 @@ export class StoresController {
   @RequirePermissions('stores.manage')
   patch(
     @Param('id') id: string,
-    @Body() body: { name?: string; description?: string; category?: string; status?: string; storeType?: string },
+    @Body()
+    body: {
+      name?: string;
+      description?: string;
+      category?: string;
+      status?: string;
+      storeType?: string;
+      openingHours?: unknown;
+    },
   ) {
-    return this.stores.patch(id, body);
+    return this.stores.patch(id, body as Partial<StoreRecord>);
   }
 
   @Delete(':id')

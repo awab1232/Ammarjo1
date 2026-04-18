@@ -7,6 +7,9 @@ import 'package:http/http.dart' as http;
 
 import '../../../core/config/backend_orders_config.dart';
 
+/// نتيجة [BackendAdminClient.patchAdminStoreCommissionPercent] — يُستدعى مسارًا تجريبيًا قد لا يكون مفعّلاً في الخادم.
+enum AdminStoreCommissionPercentPatchResult { saved, notSupported, failed }
+
 /// Authenticated REST client for NestJS `/admin/rest/*` (Bearer = Firebase ID token).
 final class BackendAdminClient {
   BackendAdminClient._();
@@ -795,5 +798,49 @@ final class BackendAdminClient {
       if (isBoosted != null) 'isBoosted': isBoosted,
       if (isTrending != null) 'isTrending': isTrending,
     });
+  }
+
+  static bool? _adminStoreCommissionPercentPatchWorks;
+
+  /// يحاول `PATCH /admin/rest/stores/:id` مع `{ "commission": percent }`.
+  /// عند **404/405** يُفترض أن المسار غير مطبّق في الخادم ولا يُعاد الاستدعاء.
+  Future<AdminStoreCommissionPercentPatchResult> patchAdminStoreCommissionPercent(
+    String storeId,
+    double percent,
+  ) async {
+    if (_adminStoreCommissionPercentPatchWorks == false) {
+      return AdminStoreCommissionPercentPatchResult.notSupported;
+    }
+    final id = storeId.trim();
+    if (id.isEmpty) return AdminStoreCommissionPercentPatchResult.failed;
+    try {
+      final token = await _idToken();
+      final base = _base();
+      if (base.isEmpty) return AdminStoreCommissionPercentPatchResult.failed;
+      final uri = Uri.parse('$base/admin/rest/stores/${Uri.encodeComponent(id)}');
+      final res = await http
+          .patch(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: jsonEncode({'commission': percent}),
+          )
+          .timeout(const Duration(seconds: 25));
+      if (res.statusCode == 404 || res.statusCode == 405) {
+        _adminStoreCommissionPercentPatchWorks = false;
+        return AdminStoreCommissionPercentPatchResult.notSupported;
+      }
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        debugPrint('[BackendAdminClient] patchAdminStoreCommissionPercent → ${res.statusCode} ${res.body}');
+        return AdminStoreCommissionPercentPatchResult.failed;
+      }
+      _adminStoreCommissionPercentPatchWorks = true;
+      return AdminStoreCommissionPercentPatchResult.saved;
+    } on Object catch (e) {
+      debugPrint('[BackendAdminClient] patchAdminStoreCommissionPercent error: $e');
+      return AdminStoreCommissionPercentPatchResult.failed;
+    }
   }
 }

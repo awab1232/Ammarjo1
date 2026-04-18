@@ -148,6 +148,7 @@ class StoresRepository {
           storeType: s.storeType,
           deliveryTime: s.deliveryTime,
           shippingPolicy: s.shippingPolicy,
+          openingHours: s.openingHours,
         );
       }
       return s;

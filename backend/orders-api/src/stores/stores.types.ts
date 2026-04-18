@@ -18,6 +18,8 @@ export type StoreRecord = {
   imageUrl: string;
   logoUrl: string;
   createdAt: string;
+  /** جدول أوقات العمل (JSON)؛ `enabled: false` يعني عدم تقييد العرض. */
+  openingHours: Record<string, unknown> | null;
 };
 
 export type StoreCategoryRecord = {

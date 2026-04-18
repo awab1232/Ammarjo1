@@ -145,6 +145,9 @@ class _StoreCommissionTile extends StatefulWidget {
 
 class _StoreCommissionTileState extends State<_StoreCommissionTile> {
   Future<Map<String, dynamic>?>? _future;
+  final TextEditingController _commissionPctCtrl = TextEditingController();
+  bool _commissionPatchUnsupported = false;
+  bool _commissionPctSaving = false;
 
   @override
   void initState() {
@@ -152,10 +155,58 @@ class _StoreCommissionTileState extends State<_StoreCommissionTile> {
     _reload();
   }
 
+  @override
+  void dispose() {
+    _commissionPctCtrl.dispose();
+    super.dispose();
+  }
+
   void _reload() {
     setState(() {
       _future = BackendAdminClient.instance.fetchStoreCommissionsSnapshot(widget.storeId);
     });
+  }
+
+  Future<void> _saveCommissionPercent(BuildContext context) async {
+    final raw = _commissionPctCtrl.text.trim();
+    if (raw.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('أدخل نسبة بين 0 و 100', style: GoogleFonts.tajawal())),
+      );
+      return;
+    }
+    final v = double.tryParse(raw.replaceAll(',', '.'));
+    if (v == null || v < 0 || v > 100) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('القيمة يجب أن تكون رقماً بين 0 و 100', style: GoogleFonts.tajawal())),
+      );
+      return;
+    }
+    setState(() => _commissionPctSaving = true);
+    try {
+      final r = await BackendAdminClient.instance.patchAdminStoreCommissionPercent(widget.storeId, v);
+      if (!context.mounted) return;
+      switch (r) {
+        case AdminStoreCommissionPercentPatchResult.saved:
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('تم حفظ نسبة العمولة', style: GoogleFonts.tajawal()), backgroundColor: Colors.green),
+          );
+          break;
+        case AdminStoreCommissionPercentPatchResult.notSupported:
+          setState(() => _commissionPatchUnsupported = true);
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('الميزة غير مدعومة حالياً في الخادم', style: GoogleFonts.tajawal())),
+          );
+          break;
+        case AdminStoreCommissionPercentPatchResult.failed:
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('تعذر الحفظ. تحقق من الصلاحيات أو حاول لاحقاً.', style: GoogleFonts.tajawal())),
+          );
+          break;
+      }
+    } finally {
+      if (mounted) setState(() => _commissionPctSaving = false);
+    }
   }
 
   Future<void> _recordPayment(BuildContext context, double balance) async {
@@ -288,6 +339,52 @@ class _StoreCommissionTileState extends State<_StoreCommissionTile> {
                           ),
                         ),
                       ],
+                    ),
+                    const SizedBox(height: 12),
+                    const Divider(height: 24),
+                    Align(
+                      alignment: Alignment.centerRight,
+                      child: Text('العمولة (نسبة مئوية)', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+                    ),
+                    const SizedBox(height: 6),
+                    TextField(
+                      controller: _commissionPctCtrl,
+                      enabled: !_commissionPatchUnsupported && !_commissionPctSaving,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      textAlign: TextAlign.right,
+                      decoration: InputDecoration(
+                        labelText: 'نسبة العمولة %',
+                        hintText: 'مثال: 5 أو 10.5',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        filled: true,
+                        fillColor: Colors.grey.shade50,
+                      ),
+                    ),
+                    if (_commissionPatchUnsupported)
+                      Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: Text(
+                          'الميزة غير مدعومة حالياً — لا يوجد مسار PATCH للمتجر في الخادم. استخدم «إعدادات العمولة العامة» من الإعدادات.',
+                          textAlign: TextAlign.right,
+                          style: GoogleFonts.tajawal(fontSize: 12, color: AppColors.textSecondary, height: 1.35),
+                        ),
+                      ),
+                    const SizedBox(height: 10),
+                    FilledButton(
+                      onPressed: (_commissionPatchUnsupported || _commissionPctSaving)
+                          ? null
+                          : () => _saveCommissionPercent(context),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: AppColors.navy,
+                        minimumSize: const Size(double.infinity, 44),
+                      ),
+                      child: _commissionPctSaving
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+                            )
+                          : Text('حفظ نسبة العمولة', style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.w800)),
                     ),
                     const SizedBox(height: 12),
                     ElevatedButton.icon(

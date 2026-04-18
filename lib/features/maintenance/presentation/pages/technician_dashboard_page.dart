@@ -332,10 +332,14 @@ class _TechnicianDashboardPageState extends State<TechnicianDashboardPage> {
                                           request: r,
                                           onAction: (status) async {
                                             try {
-                                              await ServiceRequestsRepository.instance.updateServiceRequest(
-                                                requestId: r.id,
-                                                status: status,
-                                              );
+                                              if (status == 'cancel') {
+                                                await ServiceRequestsRepository.instance.cancelServiceRequest(r.id);
+                                              } else {
+                                                await ServiceRequestsRepository.instance.updateServiceRequest(
+                                                  requestId: r.id,
+                                                  status: status,
+                                                );
+                                              }
                                               if (!mounted) return;
                                               await _loadRequests(user.uid);
                                             } on Object {
@@ -484,12 +488,23 @@ class _RequestTile extends StatelessWidget {
               backgroundColor: AppColors.orangeLight,
             ),
             const SizedBox(width: 6),
-            if (request.status == 'assigned' || request.status == 'pending')
+            if (request.status == 'assigned' || request.status == 'pending') ...[
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red.shade50,
+                  foregroundColor: Colors.red.shade900,
+                  elevation: 0,
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                ),
+                onPressed: () => onAction('cancel'),
+                child: Text('رفض', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+              ),
+              const SizedBox(width: 6),
               TextButton(
                 onPressed: () => onAction('start'),
                 child: Text('بدء', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
-              )
-            else if (request.status == 'in_progress')
+              ),
+            ] else if (request.status == 'in_progress')
               TextButton(
                 onPressed: () => onAction('complete'),
                 child: Text('إنهاء', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),

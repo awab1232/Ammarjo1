@@ -22,6 +22,7 @@ import '../../../core/widgets/full_screen_image_viewer.dart';
 import '../data/owner_entity_doc.dart' show OwnerEntityDoc, OwnerStoreSnapshot, StoreCommissionView;
 import '../data/store_owner_repository.dart';
 import '../../stores/domain/shipping_policy.dart';
+import '../../stores/domain/store_opening_hours.dart';
 import '../../tenders/presentation/sections/store_tenders_tab.dart';
 import 'sections/store_owner_tender_commissions_tab.dart';
 
@@ -2599,6 +2600,21 @@ String _normalizeDeliveryOption(String? raw) {
   return kStoreDeliveryTimeOptions[1];
 }
 
+class _OwnerOpeningHoursRow {
+  _OwnerOpeningHoursRow()
+      : openCtrl = TextEditingController(text: '09:00'),
+        closeCtrl = TextEditingController(text: '21:00');
+
+  bool closed = false;
+  final TextEditingController openCtrl;
+  final TextEditingController closeCtrl;
+
+  void dispose() {
+    openCtrl.dispose();
+    closeCtrl.dispose();
+  }
+}
+
 class _StoreSettingsTab extends StatefulWidget {
   const _StoreSettingsTab({required this.storeId});
 
@@ -2625,10 +2641,13 @@ class _StoreSettingsTabState extends State<_StoreSettingsTab> {
   Uint8List? _coverPicked;
   Uint8List? _logoPicked;
   bool _saving = false;
+  late List<_OwnerOpeningHoursRow> _ohRows;
+  bool _ohEnabled = false;
 
   @override
   void initState() {
     super.initState();
+    _ohRows = List.generate(7, (_) => _OwnerOpeningHoursRow());
     _name = TextEditingController();
     _description = TextEditingController();
     _phone = TextEditingController();
@@ -2649,6 +2668,11 @@ class _StoreSettingsTabState extends State<_StoreSettingsTab> {
       _shippingAmount.text = '2.0';
       _freeShippingThreshold.clear();
       _estimatedDays.clear();
+      for (final r in _ohRows) {
+        r.dispose();
+      }
+      _ohRows = List.generate(7, (_) => _OwnerOpeningHoursRow());
+      _ohEnabled = false;
     }
   }
 
@@ -2660,6 +2684,9 @@ class _StoreSettingsTabState extends State<_StoreSettingsTab> {
     _shippingAmount.dispose();
     _freeShippingThreshold.dispose();
     _estimatedDays.dispose();
+    for (final r in _ohRows) {
+      r.dispose();
+    }
     super.dispose();
   }
 
@@ -2714,6 +2741,7 @@ class _StoreSettingsTabState extends State<_StoreSettingsTab> {
         description: _description.text.trim(),
         phone: _phone.text.trim(),
         deliveryTime: delivery,
+        openingHours: _openingHoursPayload(),
         shippingPolicy: {
           'type': _shippingType,
           if (_shippingAmount.text.trim().isNotEmpty)
@@ -2737,6 +2765,23 @@ class _StoreSettingsTabState extends State<_StoreSettingsTab> {
     } finally {
       if (mounted) setState(() => _saving = false);
     }
+  }
+
+  Map<String, dynamic> _openingHoursPayload() {
+    final by = <String, dynamic>{};
+    for (var i = 0; i < 7; i++) {
+      final wd = i + 1;
+      final r = _ohRows[i];
+      by['$wd'] = <String, dynamic>{
+        'closed': r.closed,
+        'open': r.openCtrl.text.trim(),
+        'close': r.closeCtrl.text.trim(),
+      };
+    }
+    return <String, dynamic>{
+      'enabled': _ohEnabled,
+      'byWeekday': by,
+    };
   }
 
   Future<void> _loadHybridBuilder() async {
@@ -2808,14 +2853,21 @@ class _StoreSettingsTabState extends State<_StoreSettingsTab> {
                   policy.freeShippingThreshold?.toString() ?? (throw StateError('NULL_RESPONSE'));
               _estimatedDays.text =
                   policy.estimatedDays?.toString() ?? (throw StateError('NULL_RESPONSE'));
+              final oh = StoreWeeklyHours.tryParse(d['openingHours']);
+              _ohEnabled = oh?.enabled ?? false;
+              for (var i = 0; i < 7; i++) {
+                final wd = i + 1;
+                final slot = oh?.byWeekday[wd];
+                _ohRows[i].closed = slot?.closed ?? false;
+                _ohRows[i].openCtrl.text = slot?.openHm ?? '09:00';
+                _ohRows[i].closeCtrl.text = slot?.closeHm ?? '21:00';
+              }
               _fieldsSeeded = true;
             });
           });
         }
-        final coverRemote =
-            webSafeImageUrl(d?['coverImage']?.toString() ?? (throw StateError('NULL_RESPONSE')));
-        final logoRemote =
-            webSafeImageUrl(d?['logo']?.toString() ?? (throw StateError('NULL_RESPONSE')));
+        final coverRemote = webSafeImageUrl(d?['coverImage']?.toString() ?? '');
+        final logoRemote = webSafeImageUrl(d?['logo']?.toString() ?? '');
         final deliveryVal = _deliveryChoice ?? _normalizeDeliveryOption(d?['deliveryTime']?.toString());
 
         return ListView(
@@ -2984,6 +3036,91 @@ class _StoreSettingsTabState extends State<_StoreSettingsTab> {
                 fillColor: Colors.white,
               ),
             ),
+            const SizedBox(height: 20),
+            Text('أوقات العمل', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 16)),
+            const SizedBox(height: 8),
+            SwitchListTile(
+              contentPadding: EdgeInsets.zero,
+              title: Text('تفعيل أوقات العمل (يظهر للعميل «مغلق الآن» خارج هذه الأوقات)', style: GoogleFonts.tajawal()),
+              value: _ohEnabled,
+              activeThumbColor: AppColors.primaryOrange,
+              onChanged: _saving ? null : (v) => setState(() => _ohEnabled = v),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              'صيغة الوقت: ساعة:دقيقة (مثل 09:00 و 21:30). الأيام وفق التوقيت المحلي للجهاز.',
+              style: GoogleFonts.tajawal(fontSize: 12, color: AppColors.textSecondary),
+              textAlign: TextAlign.right,
+            ),
+            const SizedBox(height: 10),
+            for (var i = 0; i < 7; i++)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 10),
+                child: Material(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(12),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                StoreWeeklyHours.weekdayLabelAr(i + 1),
+                                style: GoogleFonts.tajawal(fontWeight: FontWeight.w800),
+                                textAlign: TextAlign.right,
+                              ),
+                            ),
+                            Text('مغلق', style: GoogleFonts.tajawal(fontSize: 13)),
+                            Checkbox(
+                              value: _ohRows[i].closed,
+                              onChanged: _saving
+                                  ? null
+                                  : (v) => setState(() {
+                                        _ohRows[i].closed = v ?? false;
+                                      }),
+                            ),
+                          ],
+                        ),
+                        if (!_ohRows[i].closed) ...[
+                          const SizedBox(height: 6),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _ohRows[i].openCtrl,
+                                  textAlign: TextAlign.right,
+                                  enabled: !_saving,
+                                  decoration: InputDecoration(
+                                    labelText: 'فتح',
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    isDense: true,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: TextFormField(
+                                  controller: _ohRows[i].closeCtrl,
+                                  textAlign: TextAlign.right,
+                                  enabled: !_saving,
+                                  decoration: InputDecoration(
+                                    labelText: 'إغلاق',
+                                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(10)),
+                                    isDense: true,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ),
+              ),
             const SizedBox(height: 16),
             Text('وقت التوصيل التقريبي', style: GoogleFonts.tajawal(fontWeight: FontWeight.w600)),
             const SizedBox(height: 8),

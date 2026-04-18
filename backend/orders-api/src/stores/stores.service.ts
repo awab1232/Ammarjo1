@@ -87,13 +87,26 @@ export class StoresService {
       imageUrl: resolvePublicUrl(row.image_url as string | null | undefined),
       logoUrl: resolvePublicUrl(row.logo_url as string | null | undefined),
       createdAt: new Date(String(row.created_at)).toISOString(),
+      openingHours: StoresService.parseOpeningHours(row.opening_hours),
     };
+  }
+
+  private static parseOpeningHours(raw: unknown): Record<string, unknown> | null {
+    if (raw == null || raw === '') return null;
+    if (typeof raw === 'object' && raw !== null && !Array.isArray(raw)) {
+      return raw as Record<string, unknown>;
+    }
+    try {
+      return JSON.parse(String(raw)) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
   }
 
   private readonly storeColumns =
     `id, owner_id, tenant_id, name, description, category, status,
      is_featured, is_boosted, boost_expires_at, store_type, store_type_id, store_type_key,
-     image_url, logo_url, created_at,
+     image_url, logo_url, created_at, opening_hours,
      EXISTS (
        SELECT 1
        FROM store_offers so
@@ -160,6 +173,7 @@ export class StoresService {
       ON CONFLICT (key) DO NOTHING;
       CREATE INDEX IF NOT EXISTS idx_sub_categories_section_active_sort
         ON sub_categories (home_section_id, is_active, sort_order, created_at);
+      ALTER TABLE stores ADD COLUMN IF NOT EXISTS opening_hours jsonb;
     `);
     this.schemaReady = true;
   }
@@ -235,6 +249,7 @@ export class StoresService {
       hasDiscountedProducts: false,
       freeDelivery: false,
       createdAt: now,
+      openingHours: null,
     } as const;
     return [
       {
@@ -375,9 +390,16 @@ export class StoresService {
     if (!isPrivileged && current.ownerId !== userId) {
       this.deny(id, 'update', 'owner_mismatch');
     }
+    const openingPatch =
+      input.openingHours === undefined ? null : JSON.stringify(input.openingHours ?? null);
     const updated = await this.pool.query(
       `UPDATE stores
-       SET name = $2, description = $3, category = $4, status = $5, store_type = $8
+       SET name = $2,
+           description = $3,
+           category = $4,
+           status = $5,
+           store_type = $8,
+           opening_hours = CASE WHEN $9::text IS NULL THEN opening_hours ELSE $9::jsonb END
        WHERE id = $1::uuid AND ($6::boolean = true OR owner_id = $7)
        RETURNING ${this.storeColumns}`,
       [
@@ -389,6 +411,7 @@ export class StoresService {
         isPrivileged,
         userId ?? '',
         input.storeType?.trim() ?? current.storeType,
+        openingPatch,
       ],
     );
     if (updated.rows.length === 0) {

@@ -256,13 +256,14 @@ abstract final class StoreOwnerRepository {
     final data = <String, dynamic>{
       'name': m['name'] ?? (throw StateError('NULL_RESPONSE')),
       'description': m['description'] ?? (throw StateError('NULL_RESPONSE')),
-      'phone': '',
+      'phone': m['phone']?.toString() ?? '',
       'deliveryTime': '',
-      'coverImage': null,
-      'logo': null,
-      'shippingPolicy': null,
+      'coverImage': (m['imageUrl'] ?? m['coverImage'] ?? '').toString(),
+      'logo': (m['logoUrl'] ?? m['logo'] ?? '').toString(),
+      'shippingPolicy': m['shippingPolicy'],
       'status': m['status'] ?? 'approved',
       'category': m['category'],
+      'openingHours': m['openingHours'] ?? m['opening_hours'],
     };
     return OwnerStoreSnapshot(exists: true, data: data);
   }
@@ -672,10 +673,12 @@ abstract final class StoreOwnerRepository {
     Map<String, dynamic>? shippingPolicy,
     String? coverImageUrl,
     String? logoUrl,
+    Map<String, dynamic>? openingHours,
   }) async {
     await _httpPatchJson('/stores/${storeId.trim()}', <String, dynamic>{
       'name': name.trim(),
       'description': description.trim(),
+      if (openingHours != null) 'openingHours': openingHours,
     });
   }
 

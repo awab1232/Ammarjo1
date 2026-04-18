@@ -57,12 +57,31 @@ class StoreExpandedCard extends StatelessWidget {
               textAlign: TextAlign.right,
               style: GoogleFonts.tajawal(fontWeight: FontWeight.bold, fontSize: 16),
             ),
-            subtitle: Text(
-              store.description.isEmpty ? '—' : store.description,
-              maxLines: 2,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.right,
-              style: GoogleFonts.tajawal(fontSize: 13, color: AppColors.textSecondary),
+            subtitle: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  store.description.isEmpty ? '—' : store.description,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.right,
+                  style: GoogleFonts.tajawal(fontSize: 13, color: AppColors.textSecondary),
+                ),
+                if (store.openingHours?.isOpenNow(DateTime.now()) == false)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 6),
+                    child: Text(
+                      'مغلق الآن',
+                      textAlign: TextAlign.right,
+                      style: GoogleFonts.tajawal(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.red.shade700,
+                      ),
+                    ),
+                  ),
+              ],
             ),
             trailing: Column(
               mainAxisAlignment: MainAxisAlignment.center,

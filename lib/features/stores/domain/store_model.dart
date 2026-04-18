@@ -1,4 +1,5 @@
 import 'shipping_policy.dart';
+import 'store_opening_hours.dart';
 
 /// متجر من واجهة REST (PostgreSQL عبر orders API).
 class StoreModel {
@@ -37,6 +38,8 @@ class StoreModel {
   /// وقت توصيل تقريبي للعرض (نص حر من لوحة المتجر).
   final String deliveryTime;
   final ShippingPolicy shippingPolicy;
+  /// أوقات العمل؛ إن وُجدت ومفعّلة يُستخدم [StoreWeeklyHours.isOpenNow] لعرض «مغلق الآن».
+  final StoreWeeklyHours? openingHours;
 
   StoreModel({
     required this.id,
@@ -66,6 +69,7 @@ class StoreModel {
     this.storeType = 'retail',
     this.deliveryTime = '',
     this.shippingPolicy = ShippingPolicy.defaults,
+    this.openingHours,
   });
 
   factory StoreModel.fromBackendMap(Map<String, dynamic> raw) {
@@ -108,6 +112,7 @@ class StoreModel {
       shippingPolicy: ShippingPolicy.fromMap(
         raw['shippingPolicy'] is Map ? Map<String, dynamic>.from(raw['shippingPolicy'] as Map) : null,
       ),
+      openingHours: StoreWeeklyHours.tryParse(raw['openingHours'] ?? raw['opening_hours']),
     );
   }
 
@@ -138,6 +143,7 @@ class StoreModel {
         'storeType': storeType,
         if (deliveryTime.isNotEmpty) 'deliveryTime': deliveryTime,
         'shippingPolicy': shippingPolicy.toMap(),
+        if (openingHours != null) 'openingHours': openingHours!.toJson(),
       };
 }
 
@@ -170,5 +176,6 @@ StoreModel ammarJoCatalogStoreModel() {
     hasDiscountedProducts: false,
     freeDelivery: false,
     deliveryTime: '',
+    openingHours: null,
   );
 }

@@ -240,11 +240,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           labelAr: 'أكواد الخصم',
         ),
         _AdminNavItem(
-          index: 25,
-          icon: Icons.local_offer_outlined,
-          labelAr: 'العروض',
-        ),
-        _AdminNavItem(
           index: 20,
           icon: Icons.approval_outlined,
           labelAr: 'طلبات تسجيل جملة',
@@ -370,11 +365,6 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           icon: Icons.analytics_outlined,
           labelAr: 'التقارير والتحليلات',
         ),
-        _AdminNavItem(
-          index: 24,
-          icon: Icons.email_outlined,
-          labelAr: 'إعدادات البريد',
-        ),
       ],
     ),
   ];
@@ -433,13 +423,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       case 5:
         return const AdminBannerManagerSection();
       case 6:
-        return const AdminProductsScreen();
+        return const AdminProductsScreen(initialTab: AdminProductsTabIndex.products);
       case 7:
         return const AdminOrdersSection();
       case 8:
         return const AdminTechniciansSection();
       case 9:
-        return const AdminStoresScreen();
+        return const AdminStoresScreen(initialTab: AdminStoresTabIndex.storeRequests);
       case 10:
         return const AdminHomeToolsStoresSection();
       case 11:
@@ -459,6 +449,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       case 18:
         return const AdminServiceRequestsSection();
       case 19:
+      case 25:
         return const AdminPromotionsScreen();
       case 20:
         return const AdminWholesaleManagementSection(initialTab: 0);
@@ -468,28 +459,25 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         return const AdminReviewsSection();
       case 23:
         return const AdminAnalyticsSection();
-      case 24:
-        return const AdminSettingsScreen();
-      case 25:
-        return const AdminPromotionsScreen();
       case 26:
         return const AdminTendersSection();
       case 27:
         return const AdminTenderCommissionsSection();
       case 28:
         return const AdminBlogBannersSection();
+      // تطابق عناوين القائمة مع تبويبات AdminStoresScreen (انظر AdminStoresTabIndex).
       case 29:
-        return const AdminStoresScreen();
+        return const AdminStoresScreen(initialTab: AdminStoresTabIndex.subCategories);
       case 30:
-        return const AdminStoresScreen();
+        return const AdminStoresScreen(initialTab: AdminStoresTabIndex.homeSections);
       case 31:
-        return const AdminStoresScreen();
+        return const AdminStoresScreen(initialTab: AdminStoresTabIndex.featuredStores);
       case 32:
-        return const AdminProductsScreen();
+        return const AdminProductsScreen(initialTab: AdminProductsTabIndex.productBoost);
       case 33:
         return const AdminSettingsScreen();
       case 34:
-        return const AdminStoresScreen();
+        return const AdminStoresScreen(initialTab: AdminStoresTabIndex.storeTypes);
       case 35:
         return const AdminSessionsSection();
       default:

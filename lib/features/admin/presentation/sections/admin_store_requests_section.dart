@@ -288,11 +288,14 @@ class _ApprovedTabState extends State<_ApprovedTab> {
               final m = list[i];
               final name = m['name']?.toString() ?? '—';
               final owner = m['owner_id']?.toString() ?? '';
-              return Card(
+                return Card(
                 margin: const EdgeInsets.only(bottom: 10),
                 child: ListTile(
                   title: Text(name, style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
-                  subtitle: Text('المالك: $owner', style: GoogleFonts.tajawal(fontSize: 13, color: AppColors.textSecondary)),
+                  subtitle: Text(
+                    'المالك: $owner\nلضبط نسبة العمولة: لوحة الإدارة ← العمولات.',
+                    style: GoogleFonts.tajawal(fontSize: 13, color: AppColors.textSecondary, height: 1.35),
+                  ),
                   trailing: IconButton(
                     icon: const Icon(Icons.info_outline),
                     onPressed: () {
