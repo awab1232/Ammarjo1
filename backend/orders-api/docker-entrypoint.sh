@@ -2,13 +2,11 @@
 # docker-entrypoint.sh — orders-api
 #
 # Boot rules (Railway / Docker):
-#   1. On each container start, run SQL migrations via Node (`apply-all-sql.cjs`)
-#      so Railway deploys stay in sync with sql/migrations. Requires DATABASE_URL /
-#      ORDERS_DATABASE_URL. Applied files are tracked in schema_migrations; the
-#      runner stops on first SQL error (no partial forward progress within one boot).
-#   2. If migrations fail, exit non-zero so the platform restarts / surfaces failure.
-#      To skip migrations entirely: RUN_DB_BOOTSTRAP_ON_START=0.
-#   3. Exactly one `exec` hands PID 1 to the main process.
+#   1. Run SQL migrations via Node (apply-all-sql.cjs) unless disabled.
+#   2. Then exec the container command (Dockerfile CMD: npm run start:prod).
+#   3. Do not put "node … && npm …" in Railway startCommand — a single argv breaks exec;
+#      keep migrations here only, and set startCommand to "npm run start:prod" (or omit it).
+#   4. If migrations fail: exit 1. To skip: RUN_DB_BOOTSTRAP_ON_START=0.
 set -u
 
 RUN_DB_BOOTSTRAP_ON_START="${RUN_DB_BOOTSTRAP_ON_START:-1}"
@@ -35,19 +33,23 @@ run_sql_migrations() {
     echo "[entrypoint] FATAL: apply-all-sql.cjs failed — exiting so the DB is not started with a bad schema."
     exit 1
   fi
+  echo "[entrypoint] SQL migrations finished OK."
 }
 
-echo "[entrypoint] Starting server (after migrations)…"
-# If Railway/docker CMD already runs apply-all-sql.cjs (see railway.json), skip duplicate.
-_cmdline="$*"
-if [ -n "$_cmdline" ] && echo "$_cmdline" | grep -Fq 'apply-all-sql.cjs'; then
-  echo "[entrypoint] start command includes apply-all-sql.cjs — skipping entrypoint migrations."
-else
-  run_sql_migrations
+echo "[entrypoint] orders-api starting (pid $$)…"
+run_sql_migrations
+
+# Railway sometimes passes startCommand as ONE argv (e.g. "npm run start:prod"); exec needs a shell.
+if [ "$#" -eq 1 ] && echo "$1" | grep -q ' '; then
+  echo "[entrypoint] exec via /bin/sh -c (single argv with spaces)"
+  exec /bin/sh -c "set -e
+$1"
 fi
 
 if [ "$#" -gt 0 ]; then
+  echo "[entrypoint] exec:" "$@"
   exec "$@"
 else
+  echo "[entrypoint] no CMD args — exec npm run start:prod"
   exec npm run start:prod
 fi
