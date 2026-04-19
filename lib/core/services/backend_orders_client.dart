@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
@@ -1694,4 +1695,66 @@ final class BackendOrdersClient {
         body: <String, dynamic>{'orderId': orderId.trim()},
         flow: 'driver_complete',
       );
+
+  /// POST `/drivers/request` — driver onboarding application (after Firebase sign-in).
+  Future<Map<String, dynamic>?> postDriverOnboardingRequest({
+    required String fullName,
+    required String phone,
+    required String identityImageUrl,
+  }) =>
+      _authedPostJson(
+        '/drivers/request',
+        body: <String, dynamic>{
+          'fullName': fullName.trim(),
+          'phone': phone.trim(),
+          'identityImageUrl': identityImageUrl.trim(),
+        },
+        flow: 'driver_onboarding_request',
+      );
+
+  /// POST `/upload` — multipart image; returns `{ url }` (same [BackendOrdersConfig] base URL).
+  Future<Map<String, dynamic>?> postUploadIdentityImage({
+    required Uint8List bytes,
+    required String fileName,
+  }) async {
+    final base = BackendOrdersConfig.baseUrl.trim();
+    if (base.isEmpty) {
+      BackendOrdersConfig.warnIfBackendBaseUrlMissing('driver_upload');
+      throw StateError('NULL_RESPONSE');
+    }
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) throw StateError('NULL_RESPONSE');
+    final token = await _idToken(user);
+    if (token == null || token.isEmpty) throw StateError('NULL_RESPONSE');
+    final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}/upload');
+    try {
+      final req = http.MultipartRequest('POST', uri);
+      req.headers['Authorization'] = 'Bearer $token';
+      req.files.add(
+        http.MultipartFile.fromBytes(
+          'file',
+          bytes,
+          filename: fileName.replaceAll(RegExp(r'[^\w.\-]'), '_'),
+        ),
+      );
+      final streamed = await req.send().timeout(const Duration(seconds: 60));
+      final res = await http.Response.fromStream(streamed);
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        await _captureApiFailure(
+          error: StateError('HTTP_${res.statusCode}'),
+          endpoint: 'POST /upload',
+          statusCode: res.statusCode,
+          responseBody: res.body,
+        );
+        throw StateError('NULL_RESPONSE');
+      }
+      final decoded = jsonDecode(res.body);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      throw StateError('NULL_RESPONSE');
+    } on Object {
+      await _captureApiFailure(error: StateError('POST /upload failed'), endpoint: 'POST /upload');
+      throw StateError('NULL_RESPONSE');
+    }
+  }
 }

@@ -9,6 +9,9 @@ import {
   ORDER_DELIVERY_AUTO_RETRY_MAX,
   ORDER_DELIVERY_MANUAL_RETRY_MAX,
 } from '../orders/delivery-order-merge';
+import { getStorage } from 'firebase-admin/storage';
+
+import { getFirebaseApp } from '../auth/firebase-admin';
 import { OrdersPgService } from '../orders/orders-pg.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { calculateDistanceKm } from './haversine';
@@ -58,30 +61,273 @@ type OrderDeliveryRow = {
 @Injectable()
 export class DriversService {
   private readonly logger = new Logger(DriversService.name);
+  private driverRequestsTableReady = false;
 
   constructor(
     private readonly pg: OrdersPgService,
     private readonly notifications: NotificationsService,
   ) {}
 
+  private async ensureDriverRequestsTable(): Promise<void> {
+    if (this.driverRequestsTableReady) {
+      return;
+    }
+    if (!this.pg.isEnabled()) {
+      return;
+    }
+    await this.pg.withWriteClient(async (c) => {
+      await c.query(`
+        CREATE TABLE IF NOT EXISTS driver_requests (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          auth_uid TEXT NOT NULL,
+          full_name TEXT NOT NULL,
+          phone TEXT NOT NULL,
+          identity_image_url TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
+          reviewed_at TIMESTAMPTZ,
+          reviewed_by TEXT,
+          created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+        );
+        CREATE INDEX IF NOT EXISTS idx_driver_requests_auth_created ON driver_requests (auth_uid, created_at DESC);
+        CREATE UNIQUE INDEX IF NOT EXISTS uq_driver_requests_one_pending_per_auth
+          ON driver_requests (auth_uid) WHERE status = 'pending';
+      `);
+    });
+    this.driverRequestsTableReady = true;
+  }
+
+  /**
+   * Public driver onboarding: submit request (requires prior Firebase sign-in; auth_uid stored server-side).
+   */
+  async createDriverRequest(
+    authUid: string,
+    input: { fullName: string; phone: string; identityImageUrl: string },
+  ): Promise<{ requestId: string }> {
+    if (!this.pg.isEnabled()) {
+      throw new BadRequestException('Orders database not configured');
+    }
+    const fullName = input.fullName.trim();
+    const phone = input.phone.trim();
+    const identityImageUrl = input.identityImageUrl.trim();
+    if (!fullName || !phone || !identityImageUrl) {
+      throw new BadRequestException('fullName, phone, identityImageUrl are required');
+    }
+    await this.ensureDriverRequestsTable();
+    const existingDriver = await this.getDriverByAuthUid(authUid);
+    if (existingDriver) {
+      throw new BadRequestException('already_a_driver');
+    }
+    try {
+      const id = await this.pg.withWriteClient(async (c) => {
+        const r = await c.query<{ id: string }>(
+          `INSERT INTO driver_requests (auth_uid, full_name, phone, identity_image_url, status)
+           VALUES ($1, $2, $3, $4, 'pending')
+           RETURNING id::text`,
+          [authUid.trim(), fullName, phone, identityImageUrl],
+        );
+        return r.rows[0]?.id ?? null;
+      });
+      if (!id) {
+        throw new BadRequestException('Could not create request');
+      }
+      return { requestId: id };
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (msg.includes('uq_driver_requests_one_pending_per_auth') || msg.includes('duplicate key')) {
+        throw new BadRequestException('pending_request_exists');
+      }
+      throw e;
+    }
+  }
+
+  async getDriverOnboardingSnapshot(authUid: string): Promise<Record<string, unknown>> {
+    const driver = await this.getDriverByAuthUid(authUid);
+    if (driver) {
+      return { status: 'approved' };
+    }
+    if (!this.pg.isEnabled()) {
+      return { status: 'none' };
+    }
+    await this.ensureDriverRequestsTable();
+    const row = await this.pg.withWriteClient(async (c) => {
+      const r = await c.query<{
+        id: string;
+        status: string;
+        full_name: string;
+        phone: string;
+        identity_image_url: string;
+        created_at: Date;
+        reviewed_at: Date | null;
+      }>(
+        `SELECT id::text, status, full_name, phone, identity_image_url, created_at, reviewed_at
+         FROM driver_requests WHERE auth_uid = $1 ORDER BY created_at DESC LIMIT 1`,
+        [authUid.trim()],
+      );
+      return r.rows[0] ?? null;
+    });
+    if (!row) {
+      return { status: 'none' };
+    }
+    return {
+      status: row.status,
+      requestId: row.id,
+      fullName: row.full_name,
+      phone: row.phone,
+      identityImageUrl: row.identity_image_url,
+      createdAt: row.created_at.toISOString(),
+      reviewedAt: row.reviewed_at ? row.reviewed_at.toISOString() : null,
+    };
+  }
+
+  async listDriverRequestsForAdmin(): Promise<{ items: Record<string, unknown>[] }> {
+    if (!this.pg.isEnabled()) {
+      return { items: [] };
+    }
+    await this.ensureDriverRequestsTable();
+    const rows =
+      (await this.pg.withWriteClient(async (c) => {
+        const r = await c.query(
+          `SELECT id::text, auth_uid, full_name, phone, identity_image_url, status,
+                  reviewed_at, reviewed_by, created_at
+           FROM driver_requests
+           ORDER BY created_at DESC
+           LIMIT 500`,
+        );
+        return r.rows as Record<string, unknown>[];
+      })) ?? [];
+    return { items: rows };
+  }
+
+  async approveDriverRequest(requestId: string, adminUid: string): Promise<{ ok: boolean }> {
+    if (!this.pg.isEnabled()) {
+      throw new BadRequestException('Orders database not configured');
+    }
+    await this.ensureDriverRequestsTable();
+    const rid = requestId.trim();
+    if (!rid) {
+      throw new BadRequestException('request id required');
+    }
+    await this.pg.withWriteClient(async (c) => {
+      await c.query('BEGIN');
+      try {
+        const q = await c.query<{
+          id: string;
+          auth_uid: string;
+          full_name: string;
+          phone: string;
+          status: string;
+        }>(`SELECT id::text, auth_uid, full_name, phone, status FROM driver_requests WHERE id = $1::uuid FOR UPDATE`, [
+          rid,
+        ]);
+        const req = q.rows[0];
+        if (!req) {
+          throw new NotFoundException('driver_request_not_found');
+        }
+        if (req.status !== 'pending') {
+          throw new BadRequestException('not_pending');
+        }
+        const dup = await c.query(`SELECT id::text FROM drivers WHERE auth_uid = $1 LIMIT 1`, [req.auth_uid.trim()]);
+        if (dup.rows.length === 0) {
+          await c.query(
+            `INSERT INTO drivers (name, phone, auth_uid, is_available, status)
+             VALUES ($1, $2, $3, true, 'offline')`,
+            [req.full_name.trim(), req.phone.trim(), req.auth_uid.trim()],
+          );
+        }
+        await c.query(
+          `UPDATE driver_requests
+           SET status = 'approved', reviewed_at = NOW(), reviewed_by = $2
+           WHERE id = $1::uuid`,
+          [rid, adminUid.trim()],
+        );
+        await c.query('COMMIT');
+      } catch (e) {
+        await c.query('ROLLBACK');
+        throw e;
+      }
+    });
+    return { ok: true };
+  }
+
+  async rejectDriverRequest(requestId: string, adminUid: string): Promise<{ ok: boolean }> {
+    if (!this.pg.isEnabled()) {
+      throw new BadRequestException('Orders database not configured');
+    }
+    await this.ensureDriverRequestsTable();
+    const rid = requestId.trim();
+    if (!rid) {
+      throw new BadRequestException('request id required');
+    }
+    const n = await this.pg.withWriteClient(async (c) => {
+      const r = await c.query(
+        `UPDATE driver_requests
+         SET status = 'rejected', reviewed_at = NOW(), reviewed_by = $2
+         WHERE id = $1::uuid AND status = 'pending'`,
+        [rid, adminUid.trim()],
+      );
+      return r.rowCount ?? 0;
+    });
+    if (n === 0) {
+      throw new NotFoundException('driver_request_not_found_or_not_pending');
+    }
+    return { ok: true };
+  }
+
+  /**
+   * POST /upload — stores image in default Firebase Storage bucket; returns a long-lived signed URL.
+   */
+  async uploadIdentityImage(authUid: string, buffer: Buffer, mime: string): Promise<{ url: string }> {
+    const safeMime = (mime || 'image/jpeg').split(';')[0].trim().toLowerCase();
+    if (!safeMime.startsWith('image/')) {
+      throw new BadRequestException('file must be an image');
+    }
+    try {
+      const bucket = getStorage(getFirebaseApp()).bucket();
+      const ext =
+        safeMime === 'image/png' ? 'png' : safeMime === 'image/webp' ? 'webp' : safeMime === 'image/gif' ? 'gif' : 'jpg';
+      const path = `driver_identity/${authUid.trim()}/${Date.now()}.${ext}`;
+      const file = bucket.file(path);
+      await file.save(buffer, { contentType: safeMime, resumable: false, validation: false });
+      const [url] = await file.getSignedUrl({
+        action: 'read',
+        expires: new Date(Date.now() + 1000 * 60 * 60 * 24 * 365 * 5),
+      });
+      return { url };
+    } catch (e) {
+      this.logger.warn(
+        JSON.stringify({
+          kind: 'driver_upload_failed',
+          error: e instanceof Error ? e.message : String(e),
+        }),
+      );
+      throw new BadRequestException('upload_failed');
+    }
+  }
+
   async registerDriver(authUid: string, name?: string, phone?: string): Promise<{ driverId: string }> {
     if (!this.pg.isEnabled()) {
       throw new BadRequestException('Orders database not configured');
     }
+    const existing = await this.getDriverByAuthUid(authUid);
+    if (!existing) {
+      throw new ForbiddenException({
+        code: 'DRIVER_NOT_APPROVED',
+        message: 'Driver profile requires admin approval before use',
+      });
+    }
     const out = await this.pg.withWriteClient(async (c) => {
       const r = await c.query<{ id: string }>(
-        `INSERT INTO drivers (name, phone, auth_uid)
-         VALUES ($1, $2, $3)
-         ON CONFLICT (auth_uid) DO UPDATE SET
-           name = COALESCE(EXCLUDED.name, drivers.name),
-           phone = COALESCE(EXCLUDED.phone, drivers.phone)
+        `UPDATE drivers SET
+           name = COALESCE($2, name),
+           phone = COALESCE($3, phone)
+         WHERE auth_uid = $1
          RETURNING id`,
-        [name?.trim() || null, phone?.trim() || null, authUid.trim()],
+        [authUid.trim(), name?.trim() || null, phone?.trim() || null],
       );
       return r.rows[0]?.id ?? null;
     });
     if (!out) {
-      throw new BadRequestException('Could not register driver');
+      throw new BadRequestException('Could not update driver profile');
     }
     return { driverId: out };
   }
@@ -819,9 +1065,11 @@ export class DriversService {
    * لوحة السائق: طلبات مُعيَّنة للقبول، طلب نشط (مقبول/في الطريق)، وسجل التسليم.
    */
   async getWorkbench(authUid: string): Promise<Record<string, unknown>> {
+    const onboarding = await this.getDriverOnboardingSnapshot(authUid);
     const driver = await this.getDriverByAuthUid(authUid);
     if (!driver) {
       return {
+        onboarding,
         driver: null,
         assignedOrders: [],
         activeOrder: null,
@@ -883,6 +1131,7 @@ export class DriversService {
     }
 
     return {
+      onboarding,
       driver: {
         id: driver.id,
         name: driver.name,

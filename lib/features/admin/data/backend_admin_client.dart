@@ -882,4 +882,18 @@ final class BackendAdminClient {
       return AdminStoreCommissionPercentPatchResult.failed;
     }
   }
+
+  // ——— Driver onboarding (admin) ———
+
+  Future<Map<String, dynamic>?> fetchDriverRequests() => _get('/admin/rest/driver-requests');
+
+  Future<Map<String, dynamic>?> approveDriverRequest(String id) => _post(
+        '/admin/rest/driver-requests/${Uri.encodeComponent(id.trim())}/approve',
+        body: const <String, dynamic>{},
+      );
+
+  Future<Map<String, dynamic>?> rejectDriverRequest(String id) => _post(
+        '/admin/rest/driver-requests/${Uri.encodeComponent(id.trim())}/reject',
+        body: const <String, dynamic>{},
+      );
 }

@@ -1,6 +1,21 @@
 import { Type } from 'class-transformer';
 import { IsIn, IsNotEmpty, IsNumber, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
 
+/** POST /drivers/request — onboarding application (camelCase body). */
+export class CreateDriverApplicationDto {
+  @IsString()
+  @IsNotEmpty()
+  fullName!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  phone!: string;
+
+  @IsString()
+  @IsNotEmpty()
+  identityImageUrl!: string;
+}
+
 export class RegisterDriverDto {
   @IsOptional()
   @IsString()

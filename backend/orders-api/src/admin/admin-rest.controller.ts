@@ -355,6 +355,24 @@ export class AdminRestController {
     return this.admin.patchTechnicianJoinRequest(req.firebaseUid!, id, body);
   }
 
+  @Get('driver-requests')
+  @RequirePermissions('stores.manage')
+  listDriverRequests(@Req() req: RequestWithFirebase) {
+    return this.admin.listDriverRequests(req.firebaseUid!);
+  }
+
+  @Post('driver-requests/:id/approve')
+  @RequirePermissions('stores.manage')
+  approveDriverRequest(@Req() req: RequestWithFirebase, @Param('id') id: string) {
+    return this.admin.approveDriverRequest(req.firebaseUid!, id);
+  }
+
+  @Post('driver-requests/:id/reject')
+  @RequirePermissions('stores.manage')
+  rejectDriverRequest(@Req() req: RequestWithFirebase, @Param('id') id: string) {
+    return this.admin.rejectDriverRequest(req.firebaseUid!, id);
+  }
+
   @Get('reports')
   @RequirePermissions('stores.manage')
   reports(@Req() req: RequestWithFirebase) {

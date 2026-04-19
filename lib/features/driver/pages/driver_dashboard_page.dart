@@ -11,6 +11,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../store/presentation/pages/login_page.dart';
 import '../../store/presentation/store_controller.dart';
 import '../data/driver_workbench_models.dart';
+import 'driver_register_page.dart';
 import '../widgets/driver_order_card.dart';
 
 /// لوحة السائق — ويب/موبايل، تتصل بـ [BackendOrdersClient] (نفس عنوان الـ API للتطبيق).
@@ -72,7 +73,11 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
   void _scheduleTimers() {
     _stopTimers();
     _poll = Timer.periodic(const Duration(seconds: 8), (_) => _load(silent: true));
-    _loc = Timer.periodic(const Duration(seconds: 10), (_) => unawaited(_pushLocation()));
+    _loc = Timer.periodic(const Duration(seconds: 10), (_) {
+      if (_data?.driver != null) {
+        unawaited(_pushLocation());
+      }
+    });
   }
 
   Future<void> _bootstrapDriver(User user) async {
@@ -300,54 +305,162 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
     }
 
     final d = _data;
+    final onboarding = d?.onboarding ?? const DriverOnboardingInfo(status: 'none');
     final profile = d?.driver;
     final assignedOrders = d?.assignedOrders;
     final historyOrders = d?.history;
     final assignedEmpty = assignedOrders == null || assignedOrders.isEmpty;
     final historyEmpty = historyOrders == null || historyOrders.isEmpty;
 
+    if (onboarding.status == 'pending') {
+      return RefreshIndicator(
+        onRefresh: () => _load(silent: false),
+        child: ListView(
+          padding: const EdgeInsets.all(24),
+          children: [
+            Icon(Icons.hourglass_top_rounded, size: 56, color: AppColors.orange.withValues(alpha: 0.9)),
+            const SizedBox(height: 16),
+            Text(
+              'حسابك قيد المراجعة',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.tajawal(fontSize: 20, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'بعد موافقة الإدارة ستُفعَّل لوحة السائق تلقائياً.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.tajawal(color: AppColors.textSecondary, height: 1.5),
+            ),
+            const SizedBox(height: 20),
+            FilledButton(
+              onPressed: _loading ? null : () => _load(silent: false),
+              child: Text('تحديث الحالة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (onboarding.status == 'rejected') {
+      return RefreshIndicator(
+        onRefresh: () => _load(silent: false),
+        child: ListView(
+          padding: const EdgeInsets.all(24),
+          children: [
+            Icon(Icons.cancel_outlined, size: 56, color: Colors.red.shade400),
+            const SizedBox(height: 16),
+            Text(
+              'لم تتم الموافقة على طلب الانضمام',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.tajawal(fontSize: 18, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'يمكنك تقديم طلب جديد مع بيانات محدّثة.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.tajawal(color: AppColors.textSecondary, height: 1.5),
+            ),
+            const SizedBox(height: 20),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(context).push<void>(
+                  MaterialPageRoute<void>(builder: (_) => const DriverRegisterPage()),
+                );
+              },
+              style: FilledButton.styleFrom(backgroundColor: AppColors.orange),
+              child: Text('إعادة التقديم', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (profile == null && onboarding.status == 'none') {
+      return RefreshIndicator(
+        onRefresh: () => _load(silent: false),
+        child: ListView(
+          padding: const EdgeInsets.all(24),
+          children: [
+            Icon(Icons.local_shipping_outlined, size: 56, color: AppColors.orange.withValues(alpha: 0.9)),
+            const SizedBox(height: 16),
+            Text(
+              'انضم كسائق',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.tajawal(fontSize: 20, fontWeight: FontWeight.w800),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'أرسل طلباً مع صورة الهوية. بعد الموافقة يمكنك استلام الطلبات.',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.tajawal(color: AppColors.textSecondary, height: 1.5),
+            ),
+            const SizedBox(height: 20),
+            FilledButton(
+              onPressed: () {
+                Navigator.of(context).push<void>(
+                  MaterialPageRoute<void>(builder: (_) => const DriverRegisterPage()),
+                );
+              },
+              style: FilledButton.styleFrom(backgroundColor: AppColors.orange, minimumSize: const Size.fromHeight(48)),
+              child: Text('تسجيل كسائق', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+            ),
+          ],
+        ),
+      );
+    }
+
+    if (profile == null) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                'جاري مزامنة حساب السائق…',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.tajawal(fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () => _load(silent: false),
+                child: Text('إعادة المحاولة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
+    final snap = d!;
     return RefreshIndicator(
       onRefresh: () => _load(silent: false),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
-          if (profile == null)
-            Card(
-              color: AppColors.lightOrange,
-              child: Padding(
-                padding: const EdgeInsets.all(14),
-                child: Text(
-                  'لم يُعثر على ملف سائق بعد — تأكد من تسجيل السائق في النظام.',
-                  textAlign: TextAlign.right,
-                  style: GoogleFonts.tajawal(fontWeight: FontWeight.w600),
-                ),
-              ),
-            )
-          else ...[
-            Text('الحالة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 16)),
-            const SizedBox(height: 8),
-            Text(
-              _statusLabel(profile.status),
-              style: GoogleFonts.tajawal(color: AppColors.textSecondary),
-            ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children: [
-                _statusChip('online', 'متصل', profile.status),
-                _statusChip('busy', 'مشغول', profile.status),
-                _statusChip('offline', 'غير متصل', profile.status),
-              ],
-            ),
-          ],
+          Text('الحالة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 16)),
+          const SizedBox(height: 8),
+          Text(
+            _statusLabel(profile.status),
+            style: GoogleFonts.tajawal(color: AppColors.textSecondary),
+          ),
+          const SizedBox(height: 10),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: [
+              _statusChip('online', 'متصل', profile.status),
+              _statusChip('busy', 'مشغول', profile.status),
+              _statusChip('offline', 'غير متصل', profile.status),
+            ],
+          ),
           const SizedBox(height: 20),
           Text('الطلب النشط', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 16)),
           const SizedBox(height: 8),
-          if (d?.activeOrder == null)
+          if (snap.activeOrder == null)
             Text('لا يوجد طلب نشط', style: GoogleFonts.tajawal(color: AppColors.textSecondary))
           else ...[
-            DriverOrderCard(order: d!.activeOrder!),
+            DriverOrderCard(order: snap.activeOrder!),
             const SizedBox(height: 10),
             Row(
               children: [
@@ -357,9 +470,9 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
                         ? null
                         : () => _runOrderAction(
                               () async {
-                                await BackendOrdersClient.instance.postDriverOnTheWay(d.activeOrder!.orderId);
+                                await BackendOrdersClient.instance.postDriverOnTheWay(snap.activeOrder!.orderId);
                               },
-                              '${d.activeOrder!.orderId}-way',
+                              '${snap.activeOrder!.orderId}-way',
                             ),
                     icon: const Icon(Icons.local_shipping_outlined, size: 20),
                     label: Text('في الطريق', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
@@ -376,9 +489,9 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
                         ? null
                         : () => _runOrderAction(
                               () async {
-                                await BackendOrdersClient.instance.postDriverCompleteOrder(d.activeOrder!.orderId);
+                                await BackendOrdersClient.instance.postDriverCompleteOrder(snap.activeOrder!.orderId);
                               },
-                              '${d.activeOrder!.orderId}-done',
+                              '${snap.activeOrder!.orderId}-done',
                             ),
                     icon: const Icon(Icons.check_circle_outline, size: 20),
                     label: Text('تم التسليم', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
@@ -401,7 +514,7 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
           if (assignedEmpty)
             Text('لا توجد طلبات معلّقة', style: GoogleFonts.tajawal(color: AppColors.textSecondary))
           else
-            ...assignedOrders!.map((o) {
+            ...snap.assignedOrders.map((o) {
               return Padding(
                 padding: const EdgeInsets.only(bottom: 10),
                 child: Column(
@@ -450,7 +563,7 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
           if (historyEmpty)
             Text('لا يوجد سجل بعد', style: GoogleFonts.tajawal(color: AppColors.textSecondary))
           else
-            ...historyOrders!.map(
+            ...snap.history.map(
               (o) => Padding(
                 padding: const EdgeInsets.only(bottom: 8),
                 child: DriverOrderCard(order: o, dense: true),

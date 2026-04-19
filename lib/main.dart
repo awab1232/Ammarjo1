@@ -355,6 +355,7 @@ class AmmarStoreApp extends StatelessWidget {
       routes: {
         '/main': (_) => const MainNavigationPage(),
         '/driver': (_) => const DriverDashboardPage(),
+        '/driver/register': (_) => const DriverRegisterPage(),
         '/privacy': (_) => const PrivacyPolicyPage(),
         '/about': (_) => const AboutUsPage(),
         '/terms': (_) => const TermsOfUsePage(),

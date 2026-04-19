@@ -2249,4 +2249,19 @@ export class AdminRestService {
       return { ok: true as const };
     });
   }
+
+  async listDriverRequests(adminUid: string): Promise<{ items: Record<string, unknown>[] }> {
+    logAdminAction({ adminUid, action: 'list_driver_requests' });
+    return this.drivers.listDriverRequestsForAdmin();
+  }
+
+  async approveDriverRequest(adminUid: string, id: string): Promise<{ ok: boolean }> {
+    logAdminAction({ adminUid, action: 'approve_driver_request', targetId: id, targetType: 'driver_request' });
+    return this.drivers.approveDriverRequest(id, adminUid);
+  }
+
+  async rejectDriverRequest(adminUid: string, id: string): Promise<{ ok: boolean }> {
+    logAdminAction({ adminUid, action: 'reject_driver_request', targetId: id, targetType: 'driver_request' });
+    return this.drivers.rejectDriverRequest(id, adminUid);
+  }
 }

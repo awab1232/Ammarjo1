@@ -1,4 +1,17 @@
-import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import {
+  BadRequestException,
+  Body,
+  Controller,
+  Get,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { ApiPolicy } from '../gateway/api-policy.decorator';
@@ -7,7 +20,13 @@ import { RbacGuard } from '../identity/rbac.guard';
 import { RequirePermissions } from '../identity/require-permissions.decorator';
 import { TenantContextGuard } from '../identity/tenant-context.guard';
 import { FirebaseAuthGuard, type RequestWithFirebase } from '../auth/firebase-auth.guard';
-import { DriverStatusDto, ManualAssignDriverDto, OrderIdBodyDto, RegisterDriverDto } from './dto/driver-requests.dto';
+import {
+  CreateDriverApplicationDto,
+  DriverStatusDto,
+  ManualAssignDriverDto,
+  OrderIdBodyDto,
+  RegisterDriverDto,
+} from './dto/driver-requests.dto';
 import { DriversService } from './drivers.service';
 
 @Controller()
@@ -29,6 +48,35 @@ export class DriversController {
   @RequirePermissions('orders.write')
   async workbench(@Req() req: RequestWithFirebase) {
     return this.drivers.getWorkbench(req.firebaseUid!);
+  }
+
+  @Post('upload')
+  @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
+  @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 30 } })
+  @RequirePermissions('orders.write')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 8 * 1024 * 1024 } }))
+  async uploadIdentity(@Req() req: RequestWithFirebase, @UploadedFile() file?: Express.Multer.File) {
+    if (!file?.buffer?.length) {
+      throw new BadRequestException('file is required');
+    }
+    return this.drivers.uploadIdentityImage(req.firebaseUid!, file.buffer, file.mimetype || 'image/jpeg');
+  }
+
+  @Post('drivers/request')
+  @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
+  @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 15 } })
+  @RequirePermissions('orders.write')
+  async driverRequest(@Req() req: RequestWithFirebase, @Body() raw: unknown) {
+    const dto = plainToInstance(CreateDriverApplicationDto, raw ?? {}, { enableImplicitConversion: true });
+    const errors = await validate(dto);
+    if (errors.length > 0) {
+      throw new BadRequestException(errors);
+    }
+    return this.drivers.createDriverRequest(req.firebaseUid!, {
+      fullName: dto.fullName,
+      phone: dto.phone,
+      identityImageUrl: dto.identityImageUrl,
+    });
   }
 
   @Post('drivers/register')

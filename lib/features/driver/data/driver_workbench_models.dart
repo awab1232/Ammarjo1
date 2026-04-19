@@ -1,5 +1,30 @@
 // View models for `GET /drivers/workbench` (camelCase JSON from Nest).
 
+class DriverOnboardingInfo {
+  const DriverOnboardingInfo({
+    required this.status,
+    this.requestId,
+    this.identityImageUrl,
+  });
+
+  /// `none` | `pending` | `approved` | `rejected`
+  final String status;
+  final String? requestId;
+  final String? identityImageUrl;
+
+  static DriverOnboardingInfo parse(Object? raw) {
+    if (raw is! Map) {
+      return const DriverOnboardingInfo(status: 'none');
+    }
+    final m = Map<String, dynamic>.from(raw);
+    return DriverOnboardingInfo(
+      status: (m['status'] ?? 'none').toString().toLowerCase(),
+      requestId: m['requestId']?.toString(),
+      identityImageUrl: m['identityImageUrl']?.toString(),
+    );
+  }
+}
+
 class DriverProfile {
   const DriverProfile({
     required this.id,
@@ -93,12 +118,14 @@ class DriverWorkbenchOrder {
 
 class DriverWorkbenchData {
   const DriverWorkbenchData({
+    required this.onboarding,
     required this.driver,
     required this.assignedOrders,
     required this.activeOrder,
     required this.history,
   });
 
+  final DriverOnboardingInfo onboarding;
   final DriverProfile? driver;
   final List<DriverWorkbenchOrder> assignedOrders;
   final DriverWorkbenchOrder? activeOrder;
@@ -106,6 +133,7 @@ class DriverWorkbenchData {
 
   factory DriverWorkbenchData.fromJson(Map<String, dynamic> json) {
     return DriverWorkbenchData(
+      onboarding: DriverOnboardingInfo.parse(json['onboarding']),
       driver: DriverProfile.tryParse(json['driver']),
       assignedOrders: DriverWorkbenchOrder.parseList(json['assignedOrders']),
       activeOrder: DriverWorkbenchOrder.tryParse(json['activeOrder']),
