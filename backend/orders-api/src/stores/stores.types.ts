@@ -20,6 +20,23 @@ export type StoreRecord = {
   createdAt: string;
   /** جدول أوقات العمل (JSON)؛ `enabled: false` يعني عدم تقييد العرض. */
   openingHours: Record<string, unknown> | null;
+  /** نسبة عمولة المنصة لهذا المتجر (0–100). `0` يعني استخدام الإعدادات العامة فقط. */
+  commissionPercent: number;
+  /** المتجر يستخدم سواقيه؛ `false` = لا يوجد توصيل من المتجر. */
+  hasOwnDrivers: boolean;
+  /** رسوم التوصيل (دينار). */
+  deliveryFee: number | null;
+  /** حد أدنى للطلب لشحن مجاني (اختياري). */
+  freeDeliveryMinOrder: number | null;
+  /** محافظات التوصيل؛ فارغ = كل الأردن. */
+  deliveryAreas: string[];
+  /** سياسة شحن مجمّعة للعميل (مشتقة من الحقول أعلاه). */
+  shippingPolicy: {
+    type: string;
+    amount?: number;
+    freeShippingThreshold?: number;
+    estimatedDays?: number;
+  };
 };
 
 export type StoreCategoryRecord = {

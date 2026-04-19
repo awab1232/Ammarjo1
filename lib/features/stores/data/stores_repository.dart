@@ -148,6 +148,10 @@ class StoresRepository {
           storeType: s.storeType,
           deliveryTime: s.deliveryTime,
           shippingPolicy: s.shippingPolicy,
+          hasOwnDrivers: s.hasOwnDrivers,
+          deliveryFee: s.deliveryFee,
+          freeDeliveryMinOrder: s.freeDeliveryMinOrder,
+          deliveryAreas: s.deliveryAreas,
           openingHours: s.openingHours,
         );
       }

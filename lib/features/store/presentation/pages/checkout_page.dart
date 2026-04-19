@@ -553,6 +553,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
             final grandTotal = (beforeDiscount - discount) < 0 ? 0.0 : (beforeDiscount - discount);
             final shippingLines = shippingData?.lines ?? const <StoreShippingLineCost>[];
             final uncovered = shippingData?.uncoveredStoreNames ?? const <String>[];
+            final noDelivery = shippingData?.noDeliveryStoreNames ?? const <String>[];
             return Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
@@ -591,11 +592,20 @@ class _CheckoutPageState extends State<CheckoutPage> {
                     ),
                   ],
                 ),
+                if (noDelivery.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 8),
+                    child: Text(
+                      'تنبيه: لا يوجد توصيل من (${noDelivery.join('، ')})',
+                      style: GoogleFonts.tajawal(color: Colors.red.shade700, fontSize: 12, fontWeight: FontWeight.w700),
+                      textAlign: TextAlign.right,
+                    ),
+                  ),
                 if (uncovered.isNotEmpty)
                   Padding(
                     padding: const EdgeInsets.only(top: 8),
                     child: Text(
-                      'تنبيه: بعض المتاجر لا تغطي منطقتك (${uncovered.join('، ')})',
+                      'تنبيه: لا يوجد توصيل لمنطقتك من (${uncovered.join('، ')})',
                       style: GoogleFonts.tajawal(color: Colors.red.shade700, fontSize: 12, fontWeight: FontWeight.w700),
                       textAlign: TextAlign.right,
                     ),

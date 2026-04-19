@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:shimmer/shimmer.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../../../core/constants/jordan_regions.dart';
 import '../../../core/contracts/feature_state.dart';
 import '../../../core/firebase/user_notifications_repository.dart';
 import '../../../core/domain/store_type.dart';
@@ -619,8 +620,8 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
   late final TextEditingController _stock;
   String? _category;
   bool _avail = true;
-  final List<Uint8List> _newImages = [];
-  List<String> _existingUrls = [];
+  final List<Uint8List> _newImages = <Uint8List>[];
+  List<String> _existingUrls = <String>[];
   bool _saving = false;
   bool _hasVariants = false;
   final List<_VariantInput> _variants = <_VariantInput>[];
@@ -2468,7 +2469,7 @@ class _OrdersTabState extends State<_OrdersTab> {
             final m = d.data();
             final status = m['status']?.toString() ?? kStoreOrderStatuses.first;
             final items = m['items'];
-            List<Map<String, dynamic>> itemList = [];
+            List<Map<String, dynamic>> itemList = <Map<String, dynamic>>[];
             if (items is List) {
               for (final e in items) {
                 if (e is Map<String, dynamic>) itemList.add(e);
@@ -2633,10 +2634,12 @@ class _StoreSettingsTabState extends State<_StoreSettingsTab> {
   bool _hybridBusy = false;
   bool _hybridLoaded = false;
   Map<String, dynamic>? _hybridSuggestions;
-  String _shippingType = 'fixed';
   final TextEditingController _shippingAmount = TextEditingController(text: '2.0');
   final TextEditingController _freeShippingThreshold = TextEditingController();
   final TextEditingController _estimatedDays = TextEditingController();
+  bool _hasOwnDrivers = true;
+  bool _allJordanDelivery = true;
+  final Set<String> _selectedAreas = <String>{};
   bool _fieldsSeeded = false;
   Uint8List? _coverPicked;
   Uint8List? _logoPicked;
@@ -2664,10 +2667,12 @@ class _StoreSettingsTabState extends State<_StoreSettingsTab> {
       _coverPicked = null;
       _logoPicked = null;
       _deliveryChoice = null;
-      _shippingType = 'fixed';
       _shippingAmount.text = '2.0';
       _freeShippingThreshold.clear();
       _estimatedDays.clear();
+      _hasOwnDrivers = true;
+      _allJordanDelivery = true;
+      _selectedAreas.clear();
       for (final r in _ohRows) {
         r.dispose();
       }
@@ -2735,6 +2740,14 @@ class _StoreSettingsTabState extends State<_StoreSettingsTab> {
       if (_logoPicked != null && _logoPicked!.isNotEmpty) {
         logoUrl = await StoreOwnerRepository.uploadStoreLogoImage(storeId: widget.storeId, bytes: _logoPicked!);
       }
+      List<String> deliveryAreas;
+      if (!_hasOwnDrivers) {
+        deliveryAreas = <String>[];
+      } else if (_allJordanDelivery) {
+        deliveryAreas = <String>['كل الأردن'];
+      } else {
+        deliveryAreas = _selectedAreas.toList();
+      }
       await StoreOwnerRepository.updateStoreSettings(
         storeId: widget.storeId,
         name: name,
@@ -2742,14 +2755,12 @@ class _StoreSettingsTabState extends State<_StoreSettingsTab> {
         phone: _phone.text.trim(),
         deliveryTime: delivery,
         openingHours: _openingHoursPayload(),
-        shippingPolicy: {
-          'type': _shippingType,
-          if (_shippingAmount.text.trim().isNotEmpty)
-            'amount': num.tryParse(_shippingAmount.text.trim().replaceAll(',', '.')),
-          if (_freeShippingThreshold.text.trim().isNotEmpty)
-            'freeShippingThreshold': num.tryParse(_freeShippingThreshold.text.trim().replaceAll(',', '.')),
-          if (_estimatedDays.text.trim().isNotEmpty) 'estimatedDays': int.tryParse(_estimatedDays.text.trim()),
-        },
+        hasOwnDrivers: _hasOwnDrivers,
+        deliveryFee: _hasOwnDrivers ? num.tryParse(_shippingAmount.text.trim().replaceAll(',', '.')) : 0,
+        freeDeliveryMinOrder: _hasOwnDrivers && _freeShippingThreshold.text.trim().isNotEmpty
+            ? num.tryParse(_freeShippingThreshold.text.trim().replaceAll(',', '.'))
+            : null,
+        deliveryAreas: deliveryAreas,
         coverImageUrl: coverUrl,
         logoUrl: logoUrl,
       );
@@ -2847,12 +2858,28 @@ class _StoreSettingsTabState extends State<_StoreSettingsTab> {
                     ? Map<String, dynamic>.from(d['shippingPolicy'] as Map)
                     : null,
               );
-              _shippingType = policy.type;
-              _shippingAmount.text = policy.amount?.toString() ?? (throw StateError('NULL_RESPONSE'));
+              _hasOwnDrivers = d['hasOwnDrivers'] != false && d['has_own_drivers'] != false;
+              _allJordanDelivery = false;
+              _selectedAreas.clear();
+              final da = d['deliveryAreas'];
+              if (da is List) {
+                for (final e in da) {
+                  final s = e?.toString().trim() ?? '';
+                  if (s == 'كل الأردن') {
+                    _allJordanDelivery = true;
+                  } else if (s.isNotEmpty) {
+                    _selectedAreas.add(s);
+                  }
+                }
+              } else {
+                _allJordanDelivery = true;
+              }
+              final feeRaw = d['deliveryFee'] ?? d['delivery_fee'];
+              _shippingAmount.text = feeRaw != null ? feeRaw.toString() : (policy.amount?.toString() ?? '2.0');
+              final minRaw = d['freeDeliveryMinOrder'] ?? d['free_delivery_min_order'];
               _freeShippingThreshold.text =
-                  policy.freeShippingThreshold?.toString() ?? (throw StateError('NULL_RESPONSE'));
-              _estimatedDays.text =
-                  policy.estimatedDays?.toString() ?? (throw StateError('NULL_RESPONSE'));
+                  minRaw != null ? minRaw.toString() : (policy.freeShippingThreshold?.toString() ?? '');
+              _estimatedDays.text = policy.estimatedDays?.toString() ?? '';
               final oh = StoreWeeklyHours.tryParse(d['openingHours']);
               _ohEnabled = oh?.enabled ?? false;
               for (var i = 0; i < 7; i++) {
@@ -3138,59 +3165,83 @@ class _StoreSettingsTabState extends State<_StoreSettingsTab> {
               onChanged: _saving ? null : (v) => setState(() => _deliveryChoice = v),
             ),
             const SizedBox(height: 16),
-            Text('سياسة التوصيل', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+            Text('التوصيل', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 16)),
             const SizedBox(height: 8),
-            DropdownButtonFormField<String>(
-              // ignore: deprecated_member_use
-              value: _shippingType,
-              decoration: InputDecoration(
-                labelText: 'نوع التوصيل',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                filled: true,
-                fillColor: Colors.white,
-              ),
-              items: [
-                DropdownMenuItem(value: 'fixed', child: Text('ثابت', style: GoogleFonts.tajawal())),
-                DropdownMenuItem(value: 'free', child: Text('مجاني', style: GoogleFonts.tajawal())),
-                DropdownMenuItem(value: 'percentage', child: Text('نسبة', style: GoogleFonts.tajawal())),
-                DropdownMenuItem(value: 'perItem', child: Text('لكل منتج', style: GoogleFonts.tajawal())),
-              ],
-              onChanged: _saving ? null : (v) => setState(() => _shippingType = v ?? 'fixed'),
+            RadioListTile<bool>(
+              contentPadding: EdgeInsets.zero,
+              title: Text('المتجر يستخدم السواقين الخاصين به', style: GoogleFonts.tajawal()),
+              value: true,
+              groupValue: _hasOwnDrivers,
+              activeColor: AppColors.primaryOrange,
+              onChanged: _saving ? null : (v) => setState(() => _hasOwnDrivers = v ?? true),
             ),
-            const SizedBox(height: 10),
-            if (_shippingType != 'free')
+            RadioListTile<bool>(
+              contentPadding: EdgeInsets.zero,
+              title: Text('لا يوجد توصيل', style: GoogleFonts.tajawal()),
+              value: false,
+              groupValue: _hasOwnDrivers,
+              activeColor: AppColors.primaryOrange,
+              onChanged: _saving ? null : (v) => setState(() => _hasOwnDrivers = v ?? false),
+            ),
+            if (_hasOwnDrivers) ...[
+              const SizedBox(height: 10),
               TextFormField(
                 controller: _shippingAmount,
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
                 decoration: InputDecoration(
-                  labelText: _shippingType == 'percentage' ? 'قيمة النسبة %' : 'قيمة التوصيل',
+                  labelText: 'رسوم التوصيل (دينار)',
                   border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                   filled: true,
                   fillColor: Colors.white,
                 ),
               ),
-            const SizedBox(height: 10),
-            TextFormField(
-              controller: _freeShippingThreshold,
-              keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              decoration: InputDecoration(
-                labelText: 'حد الشحن المجاني (اختياري)',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                filled: true,
-                fillColor: Colors.white,
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: _freeShippingThreshold,
+                keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                decoration: InputDecoration(
+                  labelText: 'الحد الأدنى للطلب للتوصيل المجاني (اختياري)',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  filled: true,
+                  fillColor: Colors.white,
+                ),
               ),
-            ),
-            const SizedBox(height: 10),
-            TextFormField(
-              controller: _estimatedDays,
-              keyboardType: TextInputType.number,
-              decoration: InputDecoration(
-                labelText: 'أيام التوصيل التقريبية (اختياري)',
-                border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-                filled: true,
-                fillColor: Colors.white,
+              const SizedBox(height: 12),
+              Text('المناطق التي يوصل لها', style: GoogleFonts.tajawal(fontWeight: FontWeight.w600)),
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  FilterChip(
+                    label: Text('كل الأردن', style: GoogleFonts.tajawal()),
+                    selected: _allJordanDelivery,
+                    onSelected: _saving
+                        ? null
+                        : (v) => setState(() {
+                              _allJordanDelivery = v;
+                              if (v) _selectedAreas.clear();
+                            }),
+                  ),
+                  ...kJordanRegions.map(
+                    (r) => FilterChip(
+                      label: Text(r, style: GoogleFonts.tajawal(fontSize: 12)),
+                      selected: !_allJordanDelivery && _selectedAreas.contains(r),
+                      onSelected: _saving
+                          ? null
+                          : (v) => setState(() {
+                                _allJordanDelivery = false;
+                                if (v) {
+                                  _selectedAreas.add(r);
+                                } else {
+                                  _selectedAreas.remove(r);
+                                }
+                              }),
+                    ),
+                  ),
+                ],
               ),
-            ),
+            ],
             const SizedBox(height: 24),
             FilledButton(
               onPressed: _saving ? null : () => _saveAll(d),

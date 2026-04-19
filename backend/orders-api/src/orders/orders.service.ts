@@ -186,6 +186,11 @@ export class OrdersService implements IOrderService {
 
     assertCreateOrderTenantScope(firebaseUid, storeId);
 
+    const totalHint = num(body['totalNumeric']) ?? num(body['total']) ?? 0;
+    if (this.storeCommissions && storeId && totalHint > 0) {
+      void this.storeCommissions.logCommissionPreviewAtOrderCreate(storeId, totalHint).catch(() => undefined);
+    }
+
     const wsRaw = body.writeSource;
     const writeSource: 'backend' | 'firebase' =
       wsRaw === 'backend' || wsRaw === 'firebase' ? wsRaw : 'firebase';

@@ -39,6 +39,13 @@ class PatchStoreFeaturesBody {
   boostExpiresAt?: string | null;
 }
 
+class PatchStoreCommissionBody {
+  /** 0–100 */
+  commissionPercent?: number;
+  /** توافق مع عملاء أرسلوا `commission` سابقاً */
+  commission?: number;
+}
+
 class PatchBoostRequestBody {
   status?: string;
 }
@@ -209,6 +216,26 @@ export class AdminRestController {
       isBoosted: body.isBoosted,
       boostExpiresAt: body.boostExpiresAt,
     });
+  }
+
+  @Patch('stores/:id/commission')
+  @RequirePermissions('stores.manage')
+  patchStoreCommission(
+    @Req() req: RequestWithFirebase,
+    @Param('id') id: string,
+    @Body() body: PatchStoreCommissionBody,
+  ) {
+    const raw = body.commissionPercent ?? body.commission;
+    if (raw === undefined || raw === null) {
+      throw new BadRequestException('commissionPercent is required');
+    }
+    return this.admin.patchStoreCommissionPercent(req.firebaseUid!, id, Number(raw));
+  }
+
+  @Get('stores/:id/commission')
+  @RequirePermissions('stores.manage')
+  getStoreCommission(@Req() req: RequestWithFirebase, @Param('id') id: string) {
+    return this.admin.getStoreCommissionReport(req.firebaseUid!, id);
   }
 
   @Get('boost-requests')

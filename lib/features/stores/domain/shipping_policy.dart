@@ -41,6 +41,8 @@ class ShippingPolicy {
     final safeSubtotal = subtotal < 0 ? 0.0 : subtotal;
     final safeCount = itemCount < 0 ? 0 : itemCount;
     switch (type) {
+      case 'none':
+        return 0;
       case 'free':
         return 0;
       case 'percentage':

@@ -44,6 +44,10 @@ export class StoresController {
       status?: string;
       storeType?: string;
       openingHours?: unknown;
+      hasOwnDrivers?: boolean;
+      deliveryFee?: number | null;
+      freeDeliveryMinOrder?: number | null;
+      deliveryAreas?: string[];
     },
   ) {
     return this.stores.patch(id, body as Partial<StoreRecord>);

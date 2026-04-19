@@ -203,10 +203,15 @@ class _CartPageState extends State<CartPage> {
                                   Padding(
                                     padding: const EdgeInsets.all(12),
                                     child: FutureBuilder<StoreShippingComputation>(
-                                      future: store.computeShippingForCartLines(items),
+                                      future: store.computeShippingForCartLines(
+                                        items,
+                                        userCity: store.profile?.city,
+                                      ),
                                       builder: (context, snap) {
                                         final fee = snap.data?.totalShipping ?? 0.0;
                                         final totalWithShipping = storeTotal + fee;
+                                        final noDel = snap.data?.noDeliveryStoreNames ?? const <String>[];
+                                        final unCov = snap.data?.uncoveredStoreNames ?? const <String>[];
                                         return Row(
                                           mainAxisAlignment: MainAxisAlignment.spaceBetween,
                                           children: [
@@ -231,6 +236,16 @@ class _CartPageState extends State<CartPage> {
                                                   'الإجمالي: ${store.formatMoney(totalWithShipping)}',
                                                   style: GoogleFonts.tajawal(fontSize: 12, fontWeight: FontWeight.w700),
                                                 ),
+                                                if (noDel.isNotEmpty)
+                                                  Text(
+                                                    'لا يوجد توصيل من: ${noDel.join('، ')}',
+                                                    style: GoogleFonts.tajawal(fontSize: 11, color: Colors.red.shade800),
+                                                  ),
+                                                if (unCov.isNotEmpty)
+                                                  Text(
+                                                    'لا يوجد توصيل لمنطقتك من: ${unCov.join('، ')}',
+                                                    style: GoogleFonts.tajawal(fontSize: 11, color: Colors.red.shade800),
+                                                  ),
                                               ],
                                             ),
                                             ElevatedButton(
@@ -389,7 +404,7 @@ class _CartGrandTotalBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<StoreShippingComputation>(
-      future: store.computeShippingForCartLines(store.cart),
+      future: store.computeShippingForCartLines(store.cart, userCity: store.profile?.city),
       builder: (context, snap) {
         final shipping = snap.data?.totalShipping ?? 0.0;
         final total = store.cartSubtotal + shipping;

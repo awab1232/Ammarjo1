@@ -261,6 +261,10 @@ abstract final class StoreOwnerRepository {
       'coverImage': (m['imageUrl'] ?? m['coverImage'] ?? '').toString(),
       'logo': (m['logoUrl'] ?? m['logo'] ?? '').toString(),
       'shippingPolicy': m['shippingPolicy'],
+      'hasOwnDrivers': m['hasOwnDrivers'] != false && m['has_own_drivers'] != false,
+      'deliveryFee': m['deliveryFee'] ?? m['delivery_fee'],
+      'freeDeliveryMinOrder': m['freeDeliveryMinOrder'] ?? m['free_delivery_min_order'],
+      'deliveryAreas': m['deliveryAreas'] ?? m['delivery_areas'],
       'status': m['status'] ?? 'approved',
       'category': m['category'],
       'openingHours': m['openingHours'] ?? m['opening_hours'],
@@ -277,7 +281,7 @@ abstract final class StoreOwnerRepository {
         'limit=$limit${cursor != null && cursor.isNotEmpty ? '&cursor=${Uri.encodeQueryComponent(cursor)}' : ''}';
     final raw = await _httpGetJson('/stores/${storeId.trim()}/orders?$qs');
     if (raw is! Map) {
-      return const StoreOwnerOrdersPageResult(items: [], hasMore: false);
+      return const StoreOwnerOrdersPageResult(items: <OwnerEntityDoc>[], hasMore: false);
     }
     final itemsRaw = raw['items'] as List? ?? const <dynamic>[];
     final items = <OwnerEntityDoc>[];
@@ -314,7 +318,12 @@ abstract final class StoreOwnerRepository {
   static Future<StoreCommissionView> _fetchCommissionViewFromBackend(String storeId) async {
     final raw = await _httpGetJson('/stores/${storeId.trim()}/commissions');
     if (raw is! Map) {
-      return const StoreCommissionView(totalCommission: 0, totalPaid: 0, balance: 0, orderDocs: []);
+      return const StoreCommissionView(
+        totalCommission: 0,
+        totalPaid: 0,
+        balance: 0,
+        orderDocs: <OwnerEntityDoc>[],
+      );
     }
     final m = Map<String, dynamic>.from(raw);
     final ordersRaw = m['orders'] as List? ?? const <dynamic>[];
@@ -674,11 +683,19 @@ abstract final class StoreOwnerRepository {
     String? coverImageUrl,
     String? logoUrl,
     Map<String, dynamic>? openingHours,
+    bool? hasOwnDrivers,
+    num? deliveryFee,
+    num? freeDeliveryMinOrder,
+    List<String>? deliveryAreas,
   }) async {
     await _httpPatchJson('/stores/${storeId.trim()}', <String, dynamic>{
       'name': name.trim(),
       'description': description.trim(),
       if (openingHours != null) 'openingHours': openingHours,
+      if (hasOwnDrivers != null) 'hasOwnDrivers': hasOwnDrivers,
+      if (deliveryFee != null) 'deliveryFee': deliveryFee,
+      if (freeDeliveryMinOrder != null) 'freeDeliveryMinOrder': freeDeliveryMinOrder,
+      if (deliveryAreas != null) 'deliveryAreas': deliveryAreas,
     });
   }
 

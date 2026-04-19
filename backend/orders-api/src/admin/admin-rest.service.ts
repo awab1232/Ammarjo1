@@ -380,15 +380,74 @@ export class AdminRestService {
     return this.withClient(async (client) => {
       const c = await client.query(`SELECT COUNT(*)::int AS n FROM stores`);
       const total = Number(c.rows[0]?.['n'] ?? 0);
+      await client.query(
+        `ALTER TABLE stores ADD COLUMN IF NOT EXISTS commission_percent numeric(12,4) NOT NULL DEFAULT 0`,
+      );
       const q = await client.query(
         `SELECT id::text, owner_id, name, category, status, store_type AS "storeType",
-                is_featured AS "isFeatured", is_boosted AS "isBoosted", boost_expires_at AS "boostExpiresAt", created_at
+                is_featured AS "isFeatured", is_boosted AS "isBoosted", boost_expires_at AS "boostExpiresAt",
+                COALESCE(commission_percent, 0)::float AS "commissionPercent",
+                created_at
          FROM stores
          ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
         [lim, off],
       );
       const nextOffset = off + lim < total ? off + lim : null;
       return { items: q.rows, total, nextOffset };
+    });
+  }
+
+  async patchStoreCommissionPercent(
+    adminUid: string,
+    storeId: string,
+    commissionPercent: number,
+  ): Promise<{ ok: true }> {
+    const pct = Number(commissionPercent);
+    if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+      throw new BadRequestException('commission_percent must be between 0 and 100');
+    }
+    logAdminAction({ adminUid, action: 'patch_store_commission', targetId: storeId, targetType: 'store', extra: { pct } });
+    return this.withClient(async (client) => {
+      await client.query(
+        `ALTER TABLE stores ADD COLUMN IF NOT EXISTS commission_percent numeric(12,4) NOT NULL DEFAULT 0`,
+      );
+      const r = await client.query(`UPDATE stores SET commission_percent = $2 WHERE id = $1::uuid RETURNING id`, [
+        storeId.trim(),
+        pct,
+      ]);
+      if (r.rowCount === 0) throw new NotFoundException();
+      await this.logAudit(client, adminUid, 'patch_store_commission', 'store', storeId, { commissionPercent: pct });
+      return { ok: true as const };
+    });
+  }
+
+  async getStoreCommissionReport(adminUid: string, storeId: string): Promise<Record<string, unknown>> {
+    logAdminAction({ adminUid, action: 'get_store_commission_report', targetId: storeId, targetType: 'store' });
+    return this.withClient(async (client) => {
+      await client.query(
+        `ALTER TABLE stores ADD COLUMN IF NOT EXISTS commission_percent numeric(12,4) NOT NULL DEFAULT 0`,
+      );
+      await client.query(
+        `ALTER TABLE store_commission_orders ADD COLUMN IF NOT EXISTS commission_percent numeric(12,4) NOT NULL DEFAULT 0`,
+      );
+      const storeRow = await client.query(
+        `SELECT COALESCE(commission_percent, 0)::float AS commission_percent FROM stores WHERE id = $1::uuid LIMIT 1`,
+        [storeId.trim()],
+      );
+      if (storeRow.rows.length === 0) throw new NotFoundException();
+      const agg = await client.query(
+        `SELECT COALESCE(SUM(commission_amount), 0)::numeric AS total_commission, COUNT(*)::int AS order_count
+         FROM store_commission_orders WHERE store_id = $1::uuid`,
+        [storeId.trim()],
+      );
+      const a = agg.rows[0] as Record<string, unknown>;
+      const s = storeRow.rows[0] as Record<string, unknown>;
+      return {
+        storeId: storeId.trim(),
+        commissionPercent: Number(s.commission_percent ?? 0),
+        totalCommission: Number(a.total_commission ?? 0),
+        orderCount: Number(a.order_count ?? 0),
+      };
     });
   }
 

@@ -800,24 +800,18 @@ final class BackendAdminClient {
     });
   }
 
-  static bool? _adminStoreCommissionPercentPatchWorks;
-
-  /// يحاول `PATCH /admin/rest/stores/:id` مع `{ "commission": percent }`.
-  /// عند **404/405** يُفترض أن المسار غير مطبّق في الخادم ولا يُعاد الاستدعاء.
+  /// `PATCH /admin/rest/stores/:id/commission` مع `{ "commissionPercent": … }` (0–100).
   Future<AdminStoreCommissionPercentPatchResult> patchAdminStoreCommissionPercent(
     String storeId,
     double percent,
   ) async {
-    if (_adminStoreCommissionPercentPatchWorks == false) {
-      return AdminStoreCommissionPercentPatchResult.notSupported;
-    }
     final id = storeId.trim();
     if (id.isEmpty) return AdminStoreCommissionPercentPatchResult.failed;
     try {
       final token = await _idToken();
       final base = _base();
       if (base.isEmpty) return AdminStoreCommissionPercentPatchResult.failed;
-      final uri = Uri.parse('$base/admin/rest/stores/${Uri.encodeComponent(id)}');
+      final uri = Uri.parse('$base/admin/rest/stores/${Uri.encodeComponent(id)}/commission');
       final res = await http
           .patch(
             uri,
@@ -825,18 +819,16 @@ final class BackendAdminClient {
               'Content-Type': 'application/json',
               'Authorization': 'Bearer $token',
             },
-            body: jsonEncode({'commission': percent}),
+            body: jsonEncode({'commissionPercent': percent}),
           )
           .timeout(const Duration(seconds: 25));
       if (res.statusCode == 404 || res.statusCode == 405) {
-        _adminStoreCommissionPercentPatchWorks = false;
         return AdminStoreCommissionPercentPatchResult.notSupported;
       }
       if (res.statusCode < 200 || res.statusCode >= 300) {
         debugPrint('[BackendAdminClient] patchAdminStoreCommissionPercent → ${res.statusCode} ${res.body}');
         return AdminStoreCommissionPercentPatchResult.failed;
       }
-      _adminStoreCommissionPercentPatchWorks = true;
       return AdminStoreCommissionPercentPatchResult.saved;
     } on Object catch (e) {
       debugPrint('[BackendAdminClient] patchAdminStoreCommissionPercent error: $e');

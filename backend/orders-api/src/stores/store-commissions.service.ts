@@ -8,6 +8,8 @@ export type CommissionOrderRow = {
   orderId: string;
   orderTotal: number;
   commissionAmount: number;
+  /** النسبة الفعلية المطبّقة وقت التسجيل (0–100). */
+  commissionPercent: number;
   recordedAt: string;
 };
 
@@ -15,6 +17,7 @@ export type CommissionOrderRow = {
 export class StoreCommissionsService {
   private readonly logger = new Logger(StoreCommissionsService.name);
   private readonly pool: Pool;
+  private commissionSchemaReady = false;
 
   constructor(@Optional() private readonly tenant?: TenantContextService) {
     const connectionString = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
@@ -45,6 +48,28 @@ export class StoreCommissionsService {
     throw new ForbiddenException('Access denied');
   }
 
+  private async ensureCommissionSchema(
+    client: { query: (sql: string, params?: unknown[]) => Promise<{ rows: unknown[] }> },
+  ): Promise<void> {
+    if (this.commissionSchemaReady) return;
+    await client.query(`
+      ALTER TABLE stores ADD COLUMN IF NOT EXISTS commission_percent numeric(12,4) NOT NULL DEFAULT 0;
+      ALTER TABLE store_commission_orders ADD COLUMN IF NOT EXISTS commission_percent numeric(12,4) NOT NULL DEFAULT 0;
+      CREATE TABLE IF NOT EXISTS store_commission_ledger_entry (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        store_id uuid NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
+        order_id text NOT NULL,
+        amount numeric(18,4) NOT NULL,
+        commission_percent numeric(12,4) NOT NULL DEFAULT 0,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        UNIQUE (store_id, order_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_store_commission_ledger_entry_store_created
+        ON store_commission_ledger_entry (store_id, created_at DESC);
+    `);
+    this.commissionSchemaReady = true;
+  }
+
   private normalizeCommissionRate(value: unknown, fallback: number): number {
     const n = Number(value);
     if (!Number.isFinite(n) || n < 0) return fallback;
@@ -55,6 +80,7 @@ export class StoreCommissionsService {
     client: { query: (sql: string, params?: unknown[]) => Promise<{ rows: unknown[] }> },
     storeId: string,
   ): Promise<number> {
+    await this.ensureCommissionSchema(client);
     let rate = COMMISSION_RATE;
     const settingsQ = await client.query(`SELECT payload FROM admin_settings WHERE key = 'platform' LIMIT 1`);
     const payload = (settingsQ.rows[0] as Record<string, unknown> | undefined)?.payload;
@@ -62,11 +88,18 @@ export class StoreCommissionsService {
       payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : ({} as Record<string, unknown>);
     rate = this.normalizeCommissionRate(settings['globalCommissionPercent'], rate);
 
-    const storeQ = await client.query(`SELECT store_type_key, category FROM stores WHERE id = $1::uuid LIMIT 1`, [
-      storeId.trim(),
-    ]);
+    const storeQ = await client.query(
+      `SELECT store_type_key, category, COALESCE(commission_percent, 0)::float AS commission_percent
+       FROM stores WHERE id = $1::uuid LIMIT 1`,
+      [storeId.trim()],
+    );
     if (storeQ.rows.length == 0) return rate;
     const storeRow = storeQ.rows[0] as Record<string, unknown>;
+    const storePct = Number(storeRow.commission_percent ?? 0);
+    if (Number.isFinite(storePct) && storePct > 0) {
+      const clamped = Math.min(100, Math.max(0, storePct));
+      return clamped / 100;
+    }
     const storeType = String(storeRow.store_type_key ?? '').trim().toLowerCase();
     const category = String(storeRow.category ?? '').trim().toLowerCase();
 
@@ -89,6 +122,34 @@ export class StoreCommissionsService {
   }
 
   /**
+   * عند إنشاء الطلب: تسجيل نسبة/مبلغ عمولة متوقع (لا يكتب في ledgers — ذلك عند التسليم فقط).
+   */
+  async logCommissionPreviewAtOrderCreate(storeId: string, orderTotalHint: number): Promise<void> {
+    const sid = storeId.trim();
+    if (!sid || orderTotalHint <= 0) return;
+    const client = await this.pool.connect();
+    try {
+      const rate = await this.resolveDynamicCommissionRate(client, sid);
+      const commissionPreview = Math.round(orderTotalHint * rate * 10000) / 10000;
+      const pctApplied = Math.round(rate * 10000) / 100;
+      this.logger.log(
+        JSON.stringify({
+          kind: 'order_commission_preview_at_create',
+          storeId: sid,
+          effectiveRate: rate,
+          commissionPercentApplied: pctApplied,
+          orderTotalHint,
+          commissionPreview,
+        }),
+      );
+    } catch (e) {
+      this.logger.warn(`logCommissionPreviewAtOrderCreate: ${e instanceof Error ? e.message : String(e)}`);
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
    * Idempotent: one row per (store_id, order_id). Called when order becomes delivered.
    */
   async recordCommissionOnDelivery(storeId: string, orderId: string, orderTotal: number): Promise<void> {
@@ -100,14 +161,21 @@ export class StoreCommissionsService {
       await client.query('BEGIN');
       const rate = await this.resolveDynamicCommissionRate(client, sid);
       const commissionAmount = Math.round(orderTotal * rate * 10000) / 10000;
+      const percentApplied = Math.round(rate * 10000) / 100;
       const ins = await client.query(
-        `INSERT INTO store_commission_orders (store_id, order_id, order_total, commission_amount)
-         VALUES ($1::uuid, $2, $3, $4)
+        `INSERT INTO store_commission_orders (store_id, order_id, order_total, commission_amount, commission_percent)
+         VALUES ($1::uuid, $2, $3, $4, $5)
          ON CONFLICT (store_id, order_id) DO NOTHING
          RETURNING id`,
-        [sid, oid, orderTotal, commissionAmount],
+        [sid, oid, orderTotal, commissionAmount, percentApplied],
       );
       if (ins.rows.length > 0) {
+        await client.query(
+          `INSERT INTO store_commission_ledger_entry (store_id, order_id, amount, commission_percent)
+           VALUES ($1::uuid, $2, $3, $4)
+           ON CONFLICT (store_id, order_id) DO NOTHING`,
+          [sid, oid, commissionAmount, percentApplied],
+        );
         await client.query(
           `INSERT INTO store_commission_ledger (store_id, total_commission, total_paid, balance)
            VALUES ($1::uuid, $2, 0, $2)
@@ -138,6 +206,7 @@ export class StoreCommissionsService {
     orders: CommissionOrderRow[];
   }> {
     await this.ensureStoreOwnerOrAdmin(storeId, 'commissions_read');
+    await this.ensureCommissionSchema(this.pool);
     const sid = storeId.trim();
     const ledger = await this.pool.query(
       `SELECT total_commission, total_paid, balance FROM store_commission_ledger WHERE store_id = $1::uuid LIMIT 1`,
@@ -153,7 +222,7 @@ export class StoreCommissionsService {
       balance = Number(r.balance ?? 0);
     }
     const ordersQ = await this.pool.query(
-      `SELECT order_id, order_total, commission_amount, recorded_at
+      `SELECT order_id, order_total, commission_amount, COALESCE(commission_percent, 0)::float AS commission_percent, recorded_at
        FROM store_commission_orders WHERE store_id = $1::uuid ORDER BY recorded_at DESC LIMIT 500`,
       [sid],
     );
@@ -163,6 +232,7 @@ export class StoreCommissionsService {
         orderId: String(r.order_id),
         orderTotal: Number(r.order_total ?? 0),
         commissionAmount: Number(r.commission_amount ?? 0),
+        commissionPercent: Number(r.commission_percent ?? 0),
         recordedAt: new Date(String(r.recorded_at)).toISOString(),
       };
     });

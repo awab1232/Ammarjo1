@@ -1,3 +1,4 @@
+import '../../../core/constants/jordan_regions.dart';
 import 'shipping_policy.dart';
 import 'store_opening_hours.dart';
 
@@ -38,6 +39,14 @@ class StoreModel {
   /// وقت توصيل تقريبي للعرض (نص حر من لوحة المتجر).
   final String deliveryTime;
   final ShippingPolicy shippingPolicy;
+  /// المتجر يوفّر توصيلاً بسواقيه؛ `false` = لا يوجد توصيل.
+  final bool hasOwnDrivers;
+  /// رسوم التوصيل من الخادم (دينار).
+  final double? deliveryFee;
+  /// حد أدنى للطلب لشحن مجاني.
+  final double? freeDeliveryMinOrder;
+  /// محافظات التوصيل؛ فارغ = كل الأردن.
+  final List<String> deliveryAreas;
   /// أوقات العمل؛ إن وُجدت ومفعّلة يُستخدم [StoreWeeklyHours.isOpenNow] لعرض «مغلق الآن».
   final StoreWeeklyHours? openingHours;
 
@@ -69,6 +78,10 @@ class StoreModel {
     this.storeType = 'retail',
     this.deliveryTime = '',
     this.shippingPolicy = ShippingPolicy.defaults,
+    this.hasOwnDrivers = true,
+    this.deliveryFee,
+    this.freeDeliveryMinOrder,
+    this.deliveryAreas = const <String>[],
     this.openingHours,
   });
 
@@ -78,7 +91,7 @@ class StoreModel {
     if (createdRaw != null && createdRaw.isNotEmpty) {
       createdAt = DateTime.tryParse(createdRaw) ?? createdAt;
     }
-    final city = raw['city']?.toString().trim() ?? (throw StateError('NULL_RESPONSE'));
+    final city = raw['city']?.toString().trim() ?? '';
     return StoreModel(
       id: raw['id']?.toString() ?? (throw StateError('NULL_RESPONSE')),
       ownerId: raw['ownerId']?.toString() ?? (throw StateError('NULL_RESPONSE')),
@@ -108,12 +121,27 @@ class StoreModel {
         raw['storeType']?.toString(),
         raw['storeTypeKey']?.toString() ?? raw['store_type_key']?.toString(),
       ),
-      deliveryTime: raw['deliveryTime']?.toString().trim() ?? (throw StateError('NULL_RESPONSE')),
+      deliveryTime: raw['deliveryTime']?.toString().trim() ?? raw['delivery_time']?.toString().trim() ?? '',
       shippingPolicy: ShippingPolicy.fromMap(
         raw['shippingPolicy'] is Map ? Map<String, dynamic>.from(raw['shippingPolicy'] as Map) : null,
       ),
+      hasOwnDrivers: !(raw['hasOwnDrivers'] == false || raw['has_own_drivers'] == false),
+      deliveryFee: _readDouble(raw['deliveryFee'] ?? raw['delivery_fee']),
+      freeDeliveryMinOrder: _readDouble(raw['freeDeliveryMinOrder'] ?? raw['free_delivery_min_order']),
+      deliveryAreas: _stringList(raw['deliveryAreas'] ?? raw['delivery_areas']),
       openingHours: StoreWeeklyHours.tryParse(raw['openingHours'] ?? raw['opening_hours']),
     );
+  }
+
+  static double? _readDouble(dynamic v) {
+    if (v == null) return null;
+    if (v is num) return v.toDouble();
+    return double.tryParse(v.toString().replaceAll(',', '.'));
+  }
+
+  static List<String> _stringList(dynamic raw) {
+    if (raw is! List) return const <String>[];
+    return raw.map((e) => e?.toString().trim() ?? '').where((s) => s.isNotEmpty).toList();
   }
 
   Map<String, dynamic> toMap() => {
@@ -143,8 +171,27 @@ class StoreModel {
         'storeType': storeType,
         if (deliveryTime.isNotEmpty) 'deliveryTime': deliveryTime,
         'shippingPolicy': shippingPolicy.toMap(),
+        'hasOwnDrivers': hasOwnDrivers,
+        if (deliveryFee != null) 'deliveryFee': deliveryFee,
+        if (freeDeliveryMinOrder != null) 'freeDeliveryMinOrder': freeDeliveryMinOrder,
+        'deliveryAreas': deliveryAreas,
         if (openingHours != null) 'openingHours': openingHours!.toJson(),
       };
+
+  /// هل يصل المتجر للعميل في [customerCity] (بعد تطبيع المحافظة).
+  bool deliversToCustomerCity(String? customerCity) {
+    if (!hasOwnDrivers) return false;
+    if (shippingPolicy.type == 'none') return false;
+    final c = matchJordanRegion(customerCity?.trim() ?? '') ?? customerCity?.trim() ?? '';
+    if (c.isEmpty) return true;
+    if (deliveryAreas.isEmpty) return true;
+    if (deliveryAreas.contains('كل الأردن')) return true;
+    for (final a in deliveryAreas) {
+      final ma = matchJordanRegion(a) ?? a;
+      if (ma == c || a == c) return true;
+    }
+    return false;
+  }
 }
 
 String _resolveStoreType(String? explicitType, String? storeTypeKey) {

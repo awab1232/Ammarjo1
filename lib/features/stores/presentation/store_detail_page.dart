@@ -401,7 +401,15 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
           SliverToBoxAdapter(
             child: Padding(
               padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-              child: _TopDeliveryInfoCard(policy: store.shippingPolicy),
+              child: Consumer<StoreController>(
+                builder: (context, sc, _) {
+                  return _TopDeliveryInfoCard(
+                    policy: store.shippingPolicy,
+                    store: store,
+                    customerCity: sc.profile?.city,
+                  );
+                },
+              ),
             ),
           ),
           SliverToBoxAdapter(
@@ -817,61 +825,102 @@ class _StoreRatingBadge extends StatelessWidget {
 }
 
 class _TopDeliveryInfoCard extends StatelessWidget {
-  const _TopDeliveryInfoCard({required this.policy});
+  const _TopDeliveryInfoCard({
+    required this.policy,
+    required this.store,
+    this.customerCity,
+  });
 
   final ShippingPolicy policy;
+  final StoreModel store;
+  final String? customerCity;
 
   @override
   Widget build(BuildContext context) {
+    final noService = !store.hasOwnDrivers || policy.type == 'none';
     String feeText;
-    switch (policy.type) {
-      case 'free':
-        feeText = 'مجاني';
-        break;
-      case 'percentage':
-        feeText = '${policy.amount ?? 0}%';
-        break;
-      case 'perItem':
-        feeText = '${(policy.amount ?? 0).toStringAsFixed(2)} د.أ/منتج';
-        break;
-      case 'fixed':
-      default:
-        feeText = '${(policy.amount ?? 2.0).toStringAsFixed(2)} د.أ';
-        break;
+    if (noService) {
+      feeText = 'لا يوجد توصيل';
+    } else {
+      switch (policy.type) {
+        case 'free':
+          feeText = 'مجاني';
+          break;
+        case 'percentage':
+          feeText = '${policy.amount ?? 0}%';
+          break;
+        case 'perItem':
+          feeText = '${(policy.amount ?? 0).toStringAsFixed(2)} د.أ/منتج';
+          break;
+        case 'fixed':
+        default:
+          feeText = '${(policy.amount ?? 2.0).toStringAsFixed(2)} د.أ';
+          break;
+      }
     }
     final etaText = policy.estimatedDays != null && policy.estimatedDays! > 0
         ? '${policy.estimatedDays} يوم'
         : '—';
-    final areaText = policy.freeShippingThreshold != null && policy.freeShippingThreshold! > 0
-        ? 'مجاني فوق ${policy.freeShippingThreshold} د.أ'
-        : 'حسب المنطقة';
+    var areaText = '—';
+    if (!noService) {
+      if (store.deliveryAreas.isEmpty || store.deliveryAreas.contains('كل الأردن')) {
+        areaText = 'جميع المحافظات';
+      } else {
+        areaText = store.deliveryAreas.join('، ');
+      }
+      if (policy.freeShippingThreshold != null && policy.freeShippingThreshold! > 0) {
+        areaText = '$areaText · مجاني فوق ${policy.freeShippingThreshold} د.أ';
+      }
+    }
+    final city = customerCity?.trim() ?? '';
+    final blocked = !noService &&
+        city.isNotEmpty &&
+        !store.deliversToCustomerCity(customerCity);
 
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.orange.shade50, Colors.orange.shade100],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.orange.shade200.withValues(alpha: 0.4),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.orange.shade50, Colors.orange.shade100],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.orange.shade200.withValues(alpha: 0.4),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
           ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(child: _deliveryInfoItem(Icons.local_shipping_rounded, 'رسوم التوصيل', feeText)),
-          const SizedBox(width: 10),
-          Expanded(child: _deliveryInfoItem(Icons.timer_rounded, 'مدة التوصيل', etaText)),
-          const SizedBox(width: 10),
-          Expanded(child: _deliveryInfoItem(Icons.location_on_rounded, 'منطقة التوصيل', areaText)),
-        ],
-      ),
+          child: Row(
+            children: [
+              Expanded(child: _deliveryInfoItem(Icons.local_shipping_rounded, 'رسوم التوصيل', feeText)),
+              const SizedBox(width: 10),
+              Expanded(child: _deliveryInfoItem(Icons.timer_rounded, 'مدة التوصيل', etaText)),
+              const SizedBox(width: 10),
+              Expanded(child: _deliveryInfoItem(Icons.location_on_rounded, 'مناطق التوصيل', areaText)),
+            ],
+          ),
+        ),
+        if (blocked)
+          Padding(
+            padding: const EdgeInsets.only(top: 8),
+            child: Text(
+              'لا يوجد توصيل لمنطقتك',
+              textAlign: TextAlign.center,
+              style: GoogleFonts.tajawal(
+                color: Colors.red.shade800,
+                fontWeight: FontWeight.w700,
+                fontSize: 13,
+              ),
+            ),
+          ),
+      ],
     );
   }
 }

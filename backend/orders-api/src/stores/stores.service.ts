@@ -65,7 +65,27 @@ export class StoresService {
     });
   }
 
+  private static parseTextArray(raw: unknown): string[] {
+    if (Array.isArray(raw)) return raw.map((x) => String(x).trim()).filter((s) => s.length > 0);
+    return [];
+  }
+
+  private buildShippingPolicy(row: Record<string, unknown>): StoreRecord['shippingPolicy'] {
+    if (row.has_own_drivers === false) {
+      return { type: 'none', amount: 0 };
+    }
+    const fee = row.delivery_fee != null ? Number(row.delivery_fee) : 2;
+    const safeFee = Number.isFinite(fee) ? fee : 2;
+    const thresh = row.free_delivery_min_order != null ? Number(row.free_delivery_min_order) : undefined;
+    const out: StoreRecord['shippingPolicy'] = { type: 'fixed', amount: safeFee };
+    if (thresh != null && thresh > 0 && Number.isFinite(thresh)) {
+      out.freeShippingThreshold = thresh;
+    }
+    return out;
+  }
+
   private mapStore(row: Record<string, unknown>): StoreRecord {
+    const hasOwnDrivers = row.has_own_drivers === false ? false : true;
     return {
       id: String(row.id),
       ownerId: String(row.owner_id ?? ''),
@@ -88,6 +108,12 @@ export class StoresService {
       logoUrl: resolvePublicUrl(row.logo_url as string | null | undefined),
       createdAt: new Date(String(row.created_at)).toISOString(),
       openingHours: StoresService.parseOpeningHours(row.opening_hours),
+      commissionPercent: Number((row as Record<string, unknown>).commission_percent ?? 0),
+      hasOwnDrivers,
+      deliveryFee: row.delivery_fee != null ? Number(row.delivery_fee) : null,
+      freeDeliveryMinOrder: row.free_delivery_min_order != null ? Number(row.free_delivery_min_order) : null,
+      deliveryAreas: StoresService.parseTextArray(row.delivery_areas),
+      shippingPolicy: this.buildShippingPolicy(row),
     };
   }
 
@@ -106,7 +132,8 @@ export class StoresService {
   private readonly storeColumns =
     `id, owner_id, tenant_id, name, description, category, status,
      is_featured, is_boosted, boost_expires_at, store_type, store_type_id, store_type_key,
-     image_url, logo_url, created_at, opening_hours,
+     image_url, logo_url, created_at, opening_hours, commission_percent,
+     has_own_drivers, delivery_fee, free_delivery_min_order, delivery_areas,
      EXISTS (
        SELECT 1
        FROM store_offers so
@@ -174,6 +201,22 @@ export class StoresService {
       CREATE INDEX IF NOT EXISTS idx_sub_categories_section_active_sort
         ON sub_categories (home_section_id, is_active, sort_order, created_at);
       ALTER TABLE stores ADD COLUMN IF NOT EXISTS opening_hours jsonb;
+      ALTER TABLE stores ADD COLUMN IF NOT EXISTS commission_percent numeric(12,4) NOT NULL DEFAULT 0;
+      ALTER TABLE stores ADD COLUMN IF NOT EXISTS has_own_drivers boolean NOT NULL DEFAULT true;
+      ALTER TABLE stores ADD COLUMN IF NOT EXISTS free_delivery_min_order numeric(12,2);
+      ALTER TABLE stores ADD COLUMN IF NOT EXISTS delivery_areas text[] NOT NULL DEFAULT '{}';
+      ALTER TABLE store_commission_orders ADD COLUMN IF NOT EXISTS commission_percent numeric(12,4) NOT NULL DEFAULT 0;
+      CREATE TABLE IF NOT EXISTS store_commission_ledger_entry (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        store_id uuid NOT NULL REFERENCES stores(id) ON DELETE CASCADE,
+        order_id text NOT NULL,
+        amount numeric(18,4) NOT NULL,
+        commission_percent numeric(12,4) NOT NULL DEFAULT 0,
+        created_at timestamptz NOT NULL DEFAULT now(),
+        UNIQUE (store_id, order_id)
+      );
+      CREATE INDEX IF NOT EXISTS idx_store_commission_ledger_entry_store_created
+        ON store_commission_ledger_entry (store_id, created_at DESC);
     `);
     this.schemaReady = true;
   }
@@ -250,6 +293,12 @@ export class StoresService {
       freeDelivery: false,
       createdAt: now,
       openingHours: null,
+      commissionPercent: 0,
+      hasOwnDrivers: true,
+      deliveryFee: 2 as number | null,
+      freeDeliveryMinOrder: null as number | null,
+      deliveryAreas: [] as string[],
+      shippingPolicy: { type: 'fixed' as const, amount: 2 },
     } as const;
     return [
       {
@@ -392,6 +441,25 @@ export class StoresService {
     }
     const openingPatch =
       input.openingHours === undefined ? null : JSON.stringify(input.openingHours ?? null);
+    const curRow = currentQ.rows[0] as Record<string, unknown>;
+    const nextHasOwn =
+      input.hasOwnDrivers !== undefined ? input.hasOwnDrivers : curRow.has_own_drivers !== false;
+    const nextFee =
+      input.deliveryFee !== undefined
+        ? input.deliveryFee
+        : curRow.delivery_fee != null
+          ? Number(curRow.delivery_fee)
+          : null;
+    const nextFreeMin =
+      input.freeDeliveryMinOrder !== undefined
+        ? input.freeDeliveryMinOrder
+        : curRow.free_delivery_min_order != null
+          ? Number(curRow.free_delivery_min_order)
+          : null;
+    let nextAreas: string[] = StoresService.parseTextArray(curRow.delivery_areas);
+    if (input.deliveryAreas !== undefined) {
+      nextAreas = input.deliveryAreas.map((x) => String(x).trim()).filter((s) => s.length > 0);
+    }
     const updated = await this.pool.query(
       `UPDATE stores
        SET name = $2,
@@ -399,7 +467,11 @@ export class StoresService {
            category = $4,
            status = $5,
            store_type = $8,
-           opening_hours = CASE WHEN $9::text IS NULL THEN opening_hours ELSE $9::jsonb END
+           opening_hours = CASE WHEN $9::text IS NULL THEN opening_hours ELSE $9::jsonb END,
+           has_own_drivers = $10,
+           delivery_fee = $11,
+           free_delivery_min_order = $12,
+           delivery_areas = $13::text[]
        WHERE id = $1::uuid AND ($6::boolean = true OR owner_id = $7)
        RETURNING ${this.storeColumns}`,
       [
@@ -412,6 +484,10 @@ export class StoresService {
         userId ?? '',
         input.storeType?.trim() ?? current.storeType,
         openingPatch,
+        nextHasOwn,
+        nextFee,
+        nextFreeMin,
+        nextAreas,
       ],
     );
     if (updated.rows.length === 0) {

@@ -10,6 +10,7 @@ import '../../../core/firebase/account_password_service.dart';
 import '../../../core/firebase/chat_firebase_sync.dart';
 import '../../../core/firebase/phone_auth_service.dart';
 import '../../../core/firebase/users_repository.dart';
+import '../../../core/constants/jordan_regions.dart';
 import '../../../core/utils/jordan_phone.dart';
 import '../../../core/utils/web_image_url.dart';
 import '../../../core/config/shipping_policy.dart';
@@ -900,6 +901,7 @@ class StoreController extends ChangeNotifier {
     }
     final list = <StoreShippingLineCost>[];
     final uncoveredStoreNames = <String>[];
+    final noDeliveryStoreNames = <String>[];
     for (final entry in grouped.entries) {
       final storeId = entry.key.trim();
       final items = entry.value;
@@ -919,18 +921,52 @@ class StoreController extends ChangeNotifier {
         FeatureSuccess(:final data) => data.toMap(),
         _ => <String, dynamic>{},
       };
+      final hasOwn = data['hasOwnDrivers'] != false && data['has_own_drivers'] != false;
+      if (!hasOwn) {
+        noDeliveryStoreNames.add(display);
+        list.add(StoreShippingLineCost(storeId: storeId, storeName: display, subtotal: subtotal, shippingCost: 0));
+        continue;
+      }
       final policy = store_shipping.ShippingPolicy.fromMap(
         data['shippingPolicy'] is Map ? Map<String, dynamic>.from(data['shippingPolicy'] as Map) : null,
       );
       final fee = policy.calculateShipping(subtotal: subtotal, itemCount: itemCount);
       final city = userCity?.trim() ?? '';
-      if (city.isNotEmpty && !_storeCoversCity(data, city)) {
+      if (city.isNotEmpty && !_storeDeliversToCustomerArea(data, city)) {
         uncoveredStoreNames.add(display);
       }
       list.add(StoreShippingLineCost(storeId: storeId, storeName: display, subtotal: subtotal, shippingCost: fee));
     }
     final shippingTotal = list.fold<double>(0, (s, e) => s + e.shippingCost);
-    return StoreShippingComputation(lines: list, totalShipping: shippingTotal, uncoveredStoreNames: uncoveredStoreNames);
+    return StoreShippingComputation(
+      lines: list,
+      totalShipping: shippingTotal,
+      uncoveredStoreNames: uncoveredStoreNames,
+      noDeliveryStoreNames: noDeliveryStoreNames,
+    );
+  }
+
+  /// محافظات التوصيل من المتجر + تطابق مع مدينة العميل.
+  bool _storeDeliversToCustomerArea(Map<String, dynamic> data, String cityRaw) {
+    final c = matchJordanRegion(cityRaw.trim()) ?? cityRaw.trim();
+    if (c.isEmpty) return true;
+    final rawAreas = data['deliveryAreas'] ?? data['delivery_areas'];
+    final areas = <String>[];
+    if (rawAreas is List) {
+      for (final e in rawAreas) {
+        final t = e?.toString().trim() ?? '';
+        if (t.isNotEmpty) areas.add(t);
+      }
+    }
+    if (areas.isEmpty) {
+      return _storeCoversCity(data, c);
+    }
+    if (areas.contains('كل الأردن')) return true;
+    for (final a in areas) {
+      final ma = matchJordanRegion(a) ?? a;
+      if (ma == c || a == c) return true;
+    }
+    return false;
   }
 
   bool _storeCoversCity(Map<String, dynamic> data, String city) {
@@ -984,8 +1020,12 @@ class StoreController extends ChangeNotifier {
       notifyListeners();
       final subtotal = lines.fold<double>(0, (s, e) => s + e.totalPrice);
       final shipping = await computeShippingForCartLines(lines, userCity: city);
+      if (shipping.noDeliveryStoreNames.isNotEmpty) {
+        errorMessage = 'لا يوجد توصيل من: ${shipping.noDeliveryStoreNames.join('، ')}';
+        return false;
+      }
       if (shipping.uncoveredStoreNames.isNotEmpty) {
-        errorMessage = 'بعض المتاجر لا تغطي منطقتك: ${shipping.uncoveredStoreNames.join('، ')}';
+        errorMessage = 'لا يوجد توصيل لمنطقتك من: ${shipping.uncoveredStoreNames.join('، ')}';
         return false;
       }
       final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -1153,9 +1193,12 @@ class StoreShippingComputation {
     required this.lines,
     required this.totalShipping,
     required this.uncoveredStoreNames,
+    this.noDeliveryStoreNames = const <String>[],
   });
 
   final List<StoreShippingLineCost> lines;
   final double totalShipping;
   final List<String> uncoveredStoreNames;
+  /// متاجر أوقفت التوصيل ([hasOwnDrivers] = false).
+  final List<String> noDeliveryStoreNames;
 }
