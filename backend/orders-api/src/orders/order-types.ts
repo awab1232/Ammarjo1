@@ -7,6 +7,25 @@ export type StoredOrder = Record<string, unknown> & {
   customerEmail: string;
   storeId: string;
   items: unknown[];
+  /** Set when migration 031+ applied; mirrored from orders.driver_id / delivery_* columns. */
+  driverId?: string | null;
+  deliveryStatus?: string;
+  deliveryLat?: number | null;
+  deliveryLng?: number | null;
+  etaMinutes?: number | null;
+  assignedAt?: string | null;
+  /** When driver marked en route (`on_the_way`). */
+  onTheWayAt?: string | null;
+  /** When order was marked delivered. */
+  deliveredAt?: string | null;
+  /** Order row `created_at` (ISO) for timeline «تم الطلب». */
+  createdAt?: string | null;
+  /** From drivers join when driver_id set. */
+  driverName?: string | null;
+  driverPhone?: string | null;
+  /** When deliveryStatus === no_driver_found — manual POST /orders/:id/retry-assignment. */
+  canRetry?: boolean;
+  retryRemaining?: number;
 };
 
 export type CreateOrderResult = {

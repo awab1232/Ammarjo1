@@ -1,4 +1,4 @@
-import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { Pool, type PoolClient } from 'pg';
 import { normalizeDbRoleToAppRole } from '../identity/db-user-role.util';
@@ -19,6 +19,7 @@ export type AppUserRow = {
 
 @Injectable()
 export class UsersService {
+  private readonly logger = new Logger(UsersService.name);
   private readonly pool: Pool | null;
 
   constructor() {
@@ -216,5 +217,68 @@ export class UsersService {
         .map((row) => String(row['firebase_uid'] ?? '').trim())
         .filter((x) => x.length > 0);
     });
+  }
+
+  /**
+   * Optional profile coordinates (migration 032+). Used when order payload has no delivery_lat/lng.
+   */
+  /**
+   * Lightweight write for client GPS — used as delivery coordinate fallback on order create.
+   * Returns false if DB unavailable or user row missing (caller should not throw).
+   */
+  async updateLastKnownLocation(firebaseUid: string, lat: number, lng: number): Promise<boolean> {
+    const uid = firebaseUid.trim();
+    if (!uid || !this.pool) {
+      return false;
+    }
+    try {
+      const r = await this.withClient(async (client) => {
+        const u = await client.query(
+          `UPDATE users SET last_lat = $1, last_lng = $2 WHERE firebase_uid = $3`,
+          [lat, lng, uid],
+        );
+        return (u.rowCount ?? 0) > 0;
+      });
+      if (!r) {
+        this.logger.warn(JSON.stringify({ kind: 'user_location_no_row', userId: uid }));
+      }
+      return r;
+    } catch (e) {
+      this.logger.warn(
+        JSON.stringify({
+          kind: 'user_location_update_failed',
+          userId: uid,
+          error: e instanceof Error ? e.message : String(e),
+        }),
+      );
+      return false;
+    }
+  }
+
+  async getLastKnownCoords(firebaseUid: string): Promise<{ lat: number; lng: number } | null> {
+    const uid = firebaseUid.trim();
+    if (!uid) {
+      return null;
+    }
+    try {
+      return await this.withClient(async (client) => {
+        const r = await client.query<{ last_lat: unknown; last_lng: unknown }>(
+          `SELECT last_lat, last_lng FROM users WHERE firebase_uid = $1 LIMIT 1`,
+          [uid],
+        );
+        if (r.rows.length === 0) {
+          return null;
+        }
+        const row = r.rows[0];
+        const lat = Number(row.last_lat);
+        const lng = Number(row.last_lng);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+          return null;
+        }
+        return { lat, lng };
+      });
+    } catch {
+      return null;
+    }
   }
 }

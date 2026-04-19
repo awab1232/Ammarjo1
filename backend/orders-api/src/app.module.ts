@@ -36,6 +36,7 @@ import { TelegramBotModule } from './telegram/telegram-bot.module';
 import { BlogController } from './blog/blog.controller';
 import { HomeModule } from './home/home.module';
 import { AppController } from './app.controller';
+import { DriversModule } from './drivers/drivers.module';
 
 @Module({
   imports: [
@@ -66,6 +67,7 @@ import { AppController } from './app.controller';
     OpsDashboardModule,
     TelegramBotModule,
     HomeModule,
+    DriversModule,
   ],
   controllers: [AppController, HealthController, InternalHealthController, BlogController],
   providers: [

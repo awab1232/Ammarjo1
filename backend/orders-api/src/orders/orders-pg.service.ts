@@ -5,6 +5,7 @@ import { DataRoutingService } from '../infrastructure/routing/data-routing.servi
 import { isMultiRegionRoutingEnabled } from '../infrastructure/routing/routing.config';
 import { safeErrorMessage } from '../config/safe-log';
 import { encodeOrderListCursor, type OrderListCursorPayload } from './order-cursor';
+import { mergeStoredOrderWithDeliveryColumns } from './delivery-order-merge';
 import type { StoredOrder } from './order-types';
 
 /**
@@ -219,6 +220,43 @@ export class OrdersPgService implements OnModuleDestroy {
     return this.getWriteClient();
   }
 
+  /**
+   * Runs [fn] inside BEGIN/COMMIT on the primary write pool (delivery / driver flows).
+   * Returns null when PostgreSQL is not configured.
+   */
+  async runInTransaction<R>(fn: (client: PoolClient) => Promise<R>): Promise<R | null> {
+    const client = await this.getWriteClient();
+    if (!client) {
+      return null;
+    }
+    try {
+      await client.query('BEGIN');
+      const out = await fn(client);
+      await client.query('COMMIT');
+      return out;
+    } catch (e) {
+      await client.query('ROLLBACK').catch(() => undefined);
+      throw e;
+    } finally {
+      client.release();
+    }
+  }
+
+  /**
+   * Single-statement write without transaction wrapper (caller composes transactions via [runInTransaction]).
+   */
+  async withWriteClient<R>(fn: (client: PoolClient) => Promise<R>): Promise<R | null> {
+    const client = await this.getWriteClient();
+    if (!client) {
+      return null;
+    }
+    try {
+      return await fn(client);
+    } finally {
+      client.release();
+    }
+  }
+
   /** Idempotent upsert — same order_id replaces row (safe retries). */
   async upsertOrder(order: StoredOrder): Promise<void> {
     await this.upsertOrderReturningOp(order);
@@ -250,6 +288,8 @@ export class OrdersPgService implements OnModuleDestroy {
       order['deliveryAddress'] != null ? String(order['deliveryAddress']) : null;
     const listTitle = order['listTitle'] != null ? String(order['listTitle']) : null;
     const payload = JSON.stringify(order);
+    const deliveryLat = num(order['deliveryLat']);
+    const deliveryLng = num(order['deliveryLng']);
 
     try {
       const existed = await client.query(`SELECT 1 FROM orders WHERE order_id = $1 LIMIT 1`, [
@@ -262,12 +302,14 @@ export class OrdersPgService implements OnModuleDestroy {
           order_id, user_id, store_id, items,
           subtotal_numeric, shipping_numeric, total_numeric,
           currency, write_source, customer_email, status,
-          billing, delivery_address, list_title, payload, updated_at
+          billing, delivery_address, list_title, payload,
+          delivery_lat, delivery_lng, updated_at
         ) VALUES (
           $1, $2, $3, $4::jsonb,
           $5, $6, $7,
           $8, $9, $10, $11,
-          $12::jsonb, $13, $14, $15::jsonb, NOW()
+          $12::jsonb, $13, $14, $15::jsonb,
+          $16, $17, NOW()
         )
         ON CONFLICT (order_id) DO UPDATE SET
           user_id = EXCLUDED.user_id,
@@ -284,6 +326,8 @@ export class OrdersPgService implements OnModuleDestroy {
           delivery_address = EXCLUDED.delivery_address,
           list_title = EXCLUDED.list_title,
           payload = EXCLUDED.payload,
+          delivery_lat = COALESCE(EXCLUDED.delivery_lat, orders.delivery_lat),
+          delivery_lng = COALESCE(EXCLUDED.delivery_lng, orders.delivery_lng),
           updated_at = NOW()`,
         [
           orderId,
@@ -301,6 +345,8 @@ export class OrdersPgService implements OnModuleDestroy {
           delivery,
           listTitle,
           payload,
+          deliveryLat,
+          deliveryLng,
         ],
       );
       return wasUpdate ? 'update' : 'insert';
@@ -313,14 +359,48 @@ export class OrdersPgService implements OnModuleDestroy {
     const client = await this.getReadClient();
     if (!client) return null;
     try {
-      const r = await client.query<{ payload: unknown }>(
-        `SELECT payload FROM orders WHERE order_id = $1`,
+      const r = await client.query<{
+        payload: unknown;
+        created_at: Date;
+        driver_id: string | null;
+        delivery_status: string | null;
+        delivery_lat: string | null;
+        delivery_lng: string | null;
+        eta_minutes: string | null;
+        assigned_at: Date | null;
+        delivery_on_the_way_at: Date | null;
+        delivery_delivered_at: Date | null;
+        driver_name: string | null;
+        driver_phone: string | null;
+        delivery_manual_retries: string | number | null;
+      }>(
+        `SELECT o.payload, o.created_at, o.driver_id, o.delivery_status, o.delivery_lat, o.delivery_lng, o.eta_minutes, o.assigned_at,
+                o.delivery_on_the_way_at, o.delivery_delivered_at,
+                o.delivery_manual_retries,
+                d.name AS driver_name, d.phone AS driver_phone
+         FROM orders o
+         LEFT JOIN drivers d ON d.id = o.driver_id
+         WHERE o.order_id = $1`,
         [orderId.trim()],
       );
       if (r.rows.length === 0) return null;
-      const raw = r.rows[0].payload;
+      const row = r.rows[0];
+      const raw = row.payload;
       if (raw == null || typeof raw !== 'object') return null;
-      return raw as StoredOrder;
+      return mergeStoredOrderWithDeliveryColumns(raw, {
+        driver_id: row.driver_id,
+        delivery_status: row.delivery_status,
+        delivery_lat: row.delivery_lat,
+        delivery_lng: row.delivery_lng,
+        eta_minutes: row.eta_minutes,
+        assigned_at: row.assigned_at,
+        created_at: row.created_at,
+        delivery_on_the_way_at: row.delivery_on_the_way_at,
+        delivery_delivered_at: row.delivery_delivered_at,
+        driver_name: row.driver_name,
+        driver_phone: row.driver_phone,
+        delivery_manual_retries: row.delivery_manual_retries,
+      });
     } finally {
       client.release();
     }
@@ -343,24 +423,49 @@ export class OrdersPgService implements OnModuleDestroy {
     const fetchN = lim + 1;
     try {
       let r: {
-        rows: Array<{ payload: unknown; created_at: Date; order_id: string }>;
+        rows: Array<{
+          payload: unknown;
+          created_at: Date;
+          order_id: string;
+          driver_id: string | null;
+          delivery_status: string | null;
+          delivery_lat: string | null;
+          delivery_lng: string | null;
+          eta_minutes: string | null;
+          assigned_at: Date | null;
+          delivery_on_the_way_at: Date | null;
+          delivery_delivered_at: Date | null;
+          driver_name: string | null;
+          driver_phone: string | null;
+          delivery_manual_retries: string | number | null;
+        }>;
       };
       if (cursor == null) {
         r = await client.query(
-          `SELECT payload, created_at, order_id
-           FROM orders
-           WHERE user_id = $1
-           ORDER BY created_at DESC, order_id DESC
+          `SELECT o.payload, o.created_at, o.order_id,
+                  o.driver_id, o.delivery_status, o.delivery_lat, o.delivery_lng, o.eta_minutes, o.assigned_at,
+                  o.delivery_on_the_way_at, o.delivery_delivered_at,
+                  o.delivery_manual_retries,
+                  d.name AS driver_name, d.phone AS driver_phone
+           FROM orders o
+           LEFT JOIN drivers d ON d.id = o.driver_id
+           WHERE o.user_id = $1
+           ORDER BY o.created_at DESC, o.order_id DESC
            LIMIT $2`,
           [userId.trim(), fetchN],
         );
       } else {
         r = await client.query(
-          `SELECT payload, created_at, order_id
-           FROM orders
-           WHERE user_id = $1
-             AND (created_at, order_id) < ($2::timestamptz, $3::text)
-           ORDER BY created_at DESC, order_id DESC
+          `SELECT o.payload, o.created_at, o.order_id,
+                  o.driver_id, o.delivery_status, o.delivery_lat, o.delivery_lng, o.eta_minutes, o.assigned_at,
+                  o.delivery_on_the_way_at, o.delivery_delivered_at,
+                  o.delivery_manual_retries,
+                  d.name AS driver_name, d.phone AS driver_phone
+           FROM orders o
+           LEFT JOIN drivers d ON d.id = o.driver_id
+           WHERE o.user_id = $1
+             AND (o.created_at, o.order_id) < ($2::timestamptz, $3::text)
+           ORDER BY o.created_at DESC, o.order_id DESC
            LIMIT $4`,
           [userId.trim(), cursor.c, cursor.o, fetchN],
         );
@@ -368,10 +473,33 @@ export class OrdersPgService implements OnModuleDestroy {
       const rows = r.rows;
       const hasMore = rows.length > lim;
       const slice = hasMore ? rows.slice(0, lim) : rows;
-      const items = slice
-        .map((row) => row.payload)
-        .filter((p): p is Record<string, unknown> => p != null && typeof p === 'object')
-        .map((p) => p as StoredOrder);
+      const items: StoredOrder[] = [];
+      for (const row of slice) {
+        const p = row.payload;
+        if (p == null || typeof p !== 'object' || Array.isArray(p)) {
+          continue;
+        }
+        try {
+          items.push(
+            mergeStoredOrderWithDeliveryColumns(p, {
+              driver_id: row.driver_id,
+              delivery_status: row.delivery_status,
+              delivery_lat: row.delivery_lat,
+              delivery_lng: row.delivery_lng,
+              eta_minutes: row.eta_minutes,
+              assigned_at: row.assigned_at,
+              created_at: row.created_at,
+              delivery_on_the_way_at: row.delivery_on_the_way_at,
+              delivery_delivered_at: row.delivery_delivered_at,
+              driver_name: row.driver_name,
+              driver_phone: row.driver_phone,
+              delivery_manual_retries: row.delivery_manual_retries,
+            }),
+          );
+        } catch {
+          continue;
+        }
+      }
       let nextCursor: string | null = null;
       if (hasMore && slice.length > 0) {
         const last = slice[slice.length - 1];
@@ -400,24 +528,49 @@ export class OrdersPgService implements OnModuleDestroy {
     const fetchN = lim + 1;
     try {
       let r: {
-        rows: Array<{ payload: unknown; created_at: Date; order_id: string }>;
+        rows: Array<{
+          payload: unknown;
+          created_at: Date;
+          order_id: string;
+          driver_id: string | null;
+          delivery_status: string | null;
+          delivery_lat: string | null;
+          delivery_lng: string | null;
+          eta_minutes: string | null;
+          assigned_at: Date | null;
+          delivery_on_the_way_at: Date | null;
+          delivery_delivered_at: Date | null;
+          driver_name: string | null;
+          driver_phone: string | null;
+          delivery_manual_retries: string | number | null;
+        }>;
       };
       if (cursor == null) {
         r = await client.query(
-          `SELECT payload, created_at, order_id
-           FROM orders
-           WHERE store_id = $1
-           ORDER BY created_at DESC, order_id DESC
+          `SELECT o.payload, o.created_at, o.order_id,
+                  o.driver_id, o.delivery_status, o.delivery_lat, o.delivery_lng, o.eta_minutes, o.assigned_at,
+                  o.delivery_on_the_way_at, o.delivery_delivered_at,
+                  o.delivery_manual_retries,
+                  d.name AS driver_name, d.phone AS driver_phone
+           FROM orders o
+           LEFT JOIN drivers d ON d.id = o.driver_id
+           WHERE o.store_id = $1
+           ORDER BY o.created_at DESC, o.order_id DESC
            LIMIT $2`,
           [sid, fetchN],
         );
       } else {
         r = await client.query(
-          `SELECT payload, created_at, order_id
-           FROM orders
-           WHERE store_id = $1
-             AND (created_at, order_id) < ($2::timestamptz, $3::text)
-           ORDER BY created_at DESC, order_id DESC
+          `SELECT o.payload, o.created_at, o.order_id,
+                  o.driver_id, o.delivery_status, o.delivery_lat, o.delivery_lng, o.eta_minutes, o.assigned_at,
+                  o.delivery_on_the_way_at, o.delivery_delivered_at,
+                  o.delivery_manual_retries,
+                  d.name AS driver_name, d.phone AS driver_phone
+           FROM orders o
+           LEFT JOIN drivers d ON d.id = o.driver_id
+           WHERE o.store_id = $1
+             AND (o.created_at, o.order_id) < ($2::timestamptz, $3::text)
+           ORDER BY o.created_at DESC, o.order_id DESC
            LIMIT $4`,
           [sid, cursor.c, cursor.o, fetchN],
         );
@@ -425,10 +578,33 @@ export class OrdersPgService implements OnModuleDestroy {
       const rows = r.rows;
       const hasMore = rows.length > lim;
       const slice = hasMore ? rows.slice(0, lim) : rows;
-      const items = slice
-        .map((row) => row.payload)
-        .filter((p): p is Record<string, unknown> => p != null && typeof p === 'object')
-        .map((p) => p as StoredOrder);
+      const items: StoredOrder[] = [];
+      for (const row of slice) {
+        const p = row.payload;
+        if (p == null || typeof p !== 'object' || Array.isArray(p)) {
+          continue;
+        }
+        try {
+          items.push(
+            mergeStoredOrderWithDeliveryColumns(p, {
+              driver_id: row.driver_id,
+              delivery_status: row.delivery_status,
+              delivery_lat: row.delivery_lat,
+              delivery_lng: row.delivery_lng,
+              eta_minutes: row.eta_minutes,
+              assigned_at: row.assigned_at,
+              created_at: row.created_at,
+              delivery_on_the_way_at: row.delivery_on_the_way_at,
+              delivery_delivered_at: row.delivery_delivered_at,
+              driver_name: row.driver_name,
+              driver_phone: row.driver_phone,
+              delivery_manual_retries: row.delivery_manual_retries,
+            }),
+          );
+        } catch {
+          continue;
+        }
+      }
       let nextCursor: string | null = null;
       if (hasMore && slice.length > 0) {
         const last = slice[slice.length - 1];
@@ -490,5 +666,19 @@ function num(v: unknown): number | null {
   if (v == null) return null;
   if (typeof v === 'number' && Number.isFinite(v)) return v;
   const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+}
+
+/** Numeric columns from pg may arrive as string. */
+function numish(v: unknown): number | null {
+  return num(v);
+}
+
+function intish(v: unknown): number | null {
+  if (v == null) return null;
+  if (typeof v === 'number' && Number.isFinite(v)) {
+    return Math.trunc(v);
+  }
+  const n = Number.parseInt(String(v), 10);
   return Number.isFinite(n) ? n : null;
 }

@@ -21,6 +21,12 @@ class TrackOrderItem {
     this.deliveryLongitude,
     this.pointsAdded = false,
     this.pointsEarned = 0,
+    this.driverName,
+    this.driverPhone,
+    this.etaMinutes,
+    this.deliveryStatus,
+    this.canRetry,
+    this.retryRemaining,
   });
 
   final String id;
@@ -43,6 +49,14 @@ class TrackOrderItem {
   final double? deliveryLongitude;
   final bool pointsAdded;
   final int pointsEarned;
+
+  /// Backend delivery (GET /orders, GET /orders/:id merged fields).
+  final String? driverName;
+  final String? driverPhone;
+  final int? etaMinutes;
+  final String? deliveryStatus;
+  final bool? canRetry;
+  final int? retryRemaining;
 
   static DateTime? _parseDate(dynamic value) {
     if (value == null) throw StateError('NULL_RESPONSE');
@@ -99,6 +113,12 @@ class TrackOrderItem {
                   return parsed.floor();
                 })()
               : 0),
+      driverName: d['driverName']?.toString(),
+      driverPhone: d['driverPhone']?.toString(),
+      etaMinutes: (d['etaMinutes'] as num?)?.toInt(),
+      deliveryStatus: d['deliveryStatus']?.toString(),
+      canRetry: d['canRetry'] as bool?,
+      retryRemaining: (d['retryRemaining'] as num?)?.toInt(),
     );
   }
 }

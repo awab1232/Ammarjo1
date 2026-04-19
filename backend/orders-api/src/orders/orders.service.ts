@@ -40,6 +40,8 @@ import { getTenantContext } from '../identity/tenant-context.storage';
 import type { IOrderService } from '../architecture/contracts/i-order.service';
 import { DomainId } from '../architecture/domain-id';
 import { StoreCommissionsService } from '../stores/store-commissions.service';
+import { UsersService } from '../users/users.service';
+import { resolveDeliveryCoordinates } from './delivery-coordinates.util';
 
 const AMOUNT_EPS = 0.001;
 
@@ -74,6 +76,7 @@ export class OrdersService implements IOrderService {
     private readonly metrics: OrderMetricsService,
     private readonly pg: OrdersPgService,
     private readonly domainEvents: DomainEventEmitterService,
+    private readonly users: UsersService,
     @Optional() private readonly consistencyPolicy?: ConsistencyPolicyService,
     @Optional() private readonly storeCommissions?: StoreCommissionsService,
   ) {
@@ -209,6 +212,24 @@ export class OrdersService implements IOrderService {
       receivedAt: new Date().toISOString(),
       shadowValidation: validation,
     };
+
+    const bodyMap = body as Record<string, unknown>;
+    const deliveryCoords = await resolveDeliveryCoordinates(bodyMap, firebaseUid, this.users);
+    if (deliveryCoords) {
+      order.deliveryLat = deliveryCoords.lat;
+      order.deliveryLng = deliveryCoords.lng;
+    } else {
+      this.logger.warn(
+        JSON.stringify({
+          kind: 'delivery_coords_missing_after_resolve',
+          orderId,
+          userId: firebaseUid,
+        }),
+      );
+      if (process.env.DELIVERY_COORDS_REQUIRED?.trim() === '1') {
+        throw new BadRequestException('Missing delivery coordinates (deliveryLat/deliveryLng or profile)');
+      }
+    }
 
     let pgOp: 'insert' | 'update' | 'skipped' | null = null;
     try {

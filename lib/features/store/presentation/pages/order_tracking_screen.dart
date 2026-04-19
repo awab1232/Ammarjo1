@@ -16,6 +16,7 @@ import '../../../reviews/data/reviews_repository.dart';
 import '../../../../core/contracts/feature_unit.dart';
 import '../store_controller.dart';
 import 'advanced_order_tracking_screen.dart';
+import 'order_tracking_page.dart';
 
 Future<void> _launchSafeTrackingUrl(String? raw) async {
   final u = SafeTrackingUrl.sanitize(raw);
@@ -283,7 +284,18 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                     color: Colors.white,
                     borderRadius: BorderRadius.circular(16),
                     elevation: 2,
-                    child: Padding(
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(16),
+                      onTap: () {
+                        final oid = o.firebaseOrderId ?? o.id;
+                        if (oid.trim().isEmpty) return;
+                        Navigator.of(context).push<void>(
+                          MaterialPageRoute<void>(
+                            builder: (_) => OrderTrackingPage(orderId: oid.trim()),
+                          ),
+                        );
+                      },
+                      child: Padding(
                       padding: const EdgeInsets.all(14),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -463,6 +475,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                             ),
                         ],
                       ),
+                    ),
                     ),
                   );
                 },

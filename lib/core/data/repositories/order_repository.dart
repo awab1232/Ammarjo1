@@ -382,6 +382,12 @@ TrackOrderItem _trackOrderFromBackend(Map<String, dynamic> row) {
         : null,
     pointsAdded: payload['pointsAdded'] == true,
     pointsEarned: (payload['pointsEarned'] as num?)?.toInt() ?? 0,
+    driverName: payload['driverName']?.toString(),
+    driverPhone: payload['driverPhone']?.toString(),
+    etaMinutes: (payload['etaMinutes'] as num?)?.toInt(),
+    deliveryStatus: payload['deliveryStatus']?.toString(),
+    canRetry: payload['canRetry'] as bool?,
+    retryRemaining: (payload['retryRemaining'] as num?)?.toInt(),
   );
 }
 

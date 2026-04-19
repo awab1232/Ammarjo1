@@ -298,6 +298,43 @@ final class BackendOrdersClient {
     }
   }
 
+  /// POST `/orders/:id/retry-assignment` — customer retry after `no_driver_found`.
+  Future<bool> postOrderRetryAssignment(String orderId) async {
+    if (!BackendOrdersConfig.useBackendOrdersRead) return false;
+    final base = BackendOrdersConfig.baseUrl.trim();
+    if (base.isEmpty) {
+      BackendOrdersConfig.warnIfBackendBaseUrlMissing('orders_retry_assignment');
+      return false;
+    }
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) return false;
+    final String? token = await _idToken(user);
+    if (token == null || token.isEmpty) return false;
+
+    final uri = Uri.parse(
+      '${base.replaceAll(RegExp(r'/$'), '')}/orders/${Uri.encodeComponent(orderId)}/retry-assignment',
+    );
+    final Duration t = BackendOrdersConfig.backendOrdersWriteTimeout;
+    try {
+      final res = await http
+          .post(
+            uri,
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': 'Bearer $token',
+            },
+            body: '{}',
+          )
+          .timeout(t);
+      return res.statusCode >= 200 && res.statusCode < 300;
+    } on Object {
+      if (kDebugMode) {
+        debugPrint('BackendOrders: POST retry-assignment error for $orderId');
+      }
+      return false;
+    }
+  }
+
   /// `PATCH /orders/:id/status` — عميل (إلغاء)، متجر، أو مسار مرخّص.
   Future<bool> patchOrderStatus({
     required String orderId,
