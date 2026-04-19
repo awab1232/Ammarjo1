@@ -122,7 +122,14 @@ async function bootstrap() {
     }),
   );
   app.useGlobalFilters(new SentryExceptionFilter());
-  app.enableCors({ origin: true });
+  // Flutter Web + browsers: `origin: '*'` cannot be combined with `credentials: true` (CORS spec).
+  // `origin: true` echoes the request `Origin` so cross-origin XHR/fetch works with Authorization.
+  app.enableCors({
+    origin: true,
+    methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
+    credentials: true,
+    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Accept-Language', 'x-internal-api-key'],
+  });
   const globalPrefix = process.env.GLOBAL_PREFIX?.trim() || process.env.API_PREFIX?.trim();
   if (globalPrefix) {
     app.setGlobalPrefix(globalPrefix);
