@@ -324,8 +324,55 @@ final class BackendAdminClient {
 
   // ——— Orders (admin list) ———
 
-  Future<Map<String, dynamic>?> fetchOrders({int limit = 50, int offset = 0}) {
-    return _get('/admin/rest/orders', query: {'limit': '$limit', 'offset': '$offset'});
+  Future<Map<String, dynamic>?> fetchOrders({
+    int limit = 50,
+    int offset = 0,
+    String? deliveryStatus,
+    String? driverId,
+    String? dateFrom,
+    String? dateTo,
+    String? search,
+  }) {
+    return _get(
+      '/admin/rest/orders',
+      query: {
+        'limit': '$limit',
+        'offset': '$offset',
+        if (deliveryStatus != null && deliveryStatus.trim().isNotEmpty) 'deliveryStatus': deliveryStatus.trim(),
+        if (driverId != null && driverId.trim().isNotEmpty) 'driverId': driverId.trim(),
+        if (dateFrom != null && dateFrom.trim().isNotEmpty) 'dateFrom': dateFrom.trim(),
+        if (dateTo != null && dateTo.trim().isNotEmpty) 'dateTo': dateTo.trim(),
+        if (search != null && search.trim().isNotEmpty) 'search': search.trim(),
+      },
+    );
+  }
+
+  /// سائقون متاحون (إحداثيات + متصلون) — GET `/drivers/available`.
+  Future<Map<String, dynamic>?> fetchAvailableDrivers() => _get('/drivers/available');
+
+  /// إعادة تعيين تلقائية — POST `/admin/rest/orders/:id/retry-assignment`.
+  Future<Map<String, dynamic>?> postAdminRetryDeliveryAssignment(String orderId) {
+    return _post(
+      '/admin/rest/orders/${Uri.encodeComponent(orderId.trim())}/retry-assignment',
+      body: const <String, dynamic>{},
+    );
+  }
+
+  /// PATCH `/orders/:id/assign-driver` — تعيين يدوي لسائق.
+  Future<Map<String, dynamic>?> patchAssignDriverToOrder(
+    String orderId,
+    String driverId, {
+    double? deliveryLat,
+    double? deliveryLng,
+  }) {
+    return _patch(
+      '/orders/${Uri.encodeComponent(orderId.trim())}/assign-driver',
+      body: <String, dynamic>{
+        'driverId': driverId.trim(),
+        if (deliveryLat != null) 'deliveryLat': deliveryLat,
+        if (deliveryLng != null) 'deliveryLng': deliveryLng,
+      },
+    );
   }
 
   Future<Map<String, dynamic>?> patchOrderStatus(String orderId, String status) {

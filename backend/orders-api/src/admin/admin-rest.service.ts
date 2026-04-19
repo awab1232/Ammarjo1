@@ -8,6 +8,7 @@ import {
 import { Pool, type PoolClient } from 'pg';
 
 import { logAuditJson } from '../common/audit-log';
+import { DriversService } from '../drivers/drivers.service';
 import { HomeService } from '../home/home.service';
 import { isValidPersistedRole, normalizeDbRoleToAppRole } from '../identity/db-user-role.util';
 
@@ -32,7 +33,7 @@ export class AdminRestService {
   private readonly pool: Pool | null;
   private auxTablesReady = false;
 
-  constructor() {
+  constructor(private readonly drivers: DriversService) {
     const url = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
     this.pool = url
       ? new Pool({
@@ -850,23 +851,125 @@ export class AdminRestService {
     adminUid: string,
     limit = 50,
     offset = 0,
+    filters: {
+      deliveryStatus?: string;
+      driverId?: string;
+      dateFrom?: string;
+      dateTo?: string;
+      search?: string;
+    } = {},
   ): Promise<{ items: unknown[]; total: number; nextOffset: number | null }> {
-    logAdminAction({ adminUid, action: 'list_orders' });
+    logAdminAction({ adminUid, action: 'list_orders', extra: filters as Record<string, unknown> });
     const lim = Math.min(Math.max(1, limit), 100);
     const off = Math.max(0, offset);
     return this.withClient(async (client) => {
-      const c = await client.query(`SELECT COUNT(*)::int AS n FROM orders`);
+      const conds: string[] = ['1=1'];
+      const vals: unknown[] = [];
+      let i = 1;
+      const ds = filters.deliveryStatus?.trim();
+      if (ds) {
+        conds.push(`o.delivery_status = $${i}`);
+        vals.push(ds);
+        i++;
+      }
+      const did = filters.driverId?.trim();
+      if (did) {
+        conds.push(`o.driver_id = $${i}::uuid`);
+        vals.push(did);
+        i++;
+      }
+      const df = filters.dateFrom?.trim();
+      if (df) {
+        conds.push(`o.created_at >= $${i}::timestamptz`);
+        vals.push(df);
+        i++;
+      }
+      const dt = filters.dateTo?.trim();
+      if (dt) {
+        conds.push(`o.created_at < ($${i}::date + interval '1 day')`);
+        vals.push(dt);
+        i++;
+      }
+      const sq = filters.search?.trim();
+      if (sq) {
+        const like = `%${sq.replace(/([%_])/g, '\\$1')}%`;
+        conds.push(
+          `(o.order_id ILIKE $${i} OR TRIM(CONCAT(COALESCE(o.payload->>'firstName',''), ' ', COALESCE(o.payload->>'lastName',''))) ILIKE $${i} OR COALESCE(o.payload->>'email','') ILIKE $${i})`,
+        );
+        vals.push(like);
+        i++;
+      }
+      const whereSql = conds.join(' AND ');
+
+      const c = await client.query(`SELECT COUNT(*)::int AS n FROM orders o WHERE ${whereSql}`, vals);
       const total = Number(c.rows[0]?.['n'] ?? 0);
+
       const q = await client.query(
-        `SELECT order_id, user_id, store_id, status, total_numeric, currency, created_at, payload
-         FROM orders
-         ORDER BY created_at DESC
-         LIMIT $1 OFFSET $2`,
-        [lim, off],
+        `SELECT
+           o.order_id,
+           o.user_id,
+           o.store_id,
+           o.status,
+           o.total_numeric,
+           o.currency,
+           o.created_at,
+           o.payload,
+           NULLIF(TRIM(CONCAT(COALESCE(o.payload->>'firstName',''), ' ', COALESCE(o.payload->>'lastName',''))), '') AS customer_name,
+           COALESCE(o.payload->>'email','') AS customer_email,
+           o.driver_id,
+           d.name AS driver_name,
+           d.phone AS driver_phone,
+           o.delivery_status,
+           o.eta_minutes
+         FROM orders o
+         LEFT JOIN drivers d ON d.id = o.driver_id
+         WHERE ${whereSql}
+         ORDER BY o.created_at DESC
+         LIMIT $${i} OFFSET $${i + 1}`,
+        [...vals, lim, off],
       );
+      const items = q.rows.map((row: Record<string, unknown>) => {
+        const cn = row['customer_name'] != null ? String(row['customer_name']).trim() : '';
+        const ce = row['customer_email'] != null ? String(row['customer_email']).trim() : '';
+        return {
+          orderId: String(row['order_id'] ?? ''),
+          customerName: (cn || ce || '—').trim(),
+          total: row['total_numeric'] != null ? Number(row['total_numeric']) : null,
+          driverId: row['driver_id'] != null ? String(row['driver_id']) : null,
+          driverName: row['driver_name'] != null ? String(row['driver_name']) : null,
+          driverPhone: row['driver_phone'] != null ? String(row['driver_phone']) : null,
+          deliveryStatus: row['delivery_status'] != null ? String(row['delivery_status']) : null,
+          etaMinutes: row['eta_minutes'] != null ? Number(row['eta_minutes']) : null,
+          createdAt:
+            row['created_at'] instanceof Date
+              ? (row['created_at'] as Date).toISOString()
+              : String(row['created_at'] ?? ''),
+          order_id: row['order_id'],
+          user_id: row['user_id'],
+          store_id: row['store_id'],
+          status: row['status'],
+          total_numeric: row['total_numeric'],
+          currency: row['currency'],
+          created_at: row['created_at'],
+          payload: row['payload'],
+          driver_id: row['driver_id'],
+          driver_name: row['driver_name'],
+          driver_phone: row['driver_phone'],
+          delivery_status: row['delivery_status'],
+          eta_minutes: row['eta_minutes'],
+        };
+      });
       const nextOffset = off + lim < total ? off + lim : null;
-      return { items: q.rows, total, nextOffset };
+      return { items, total, nextOffset };
     });
+  }
+
+  async adminRetryDeliveryAssignment(
+    adminUid: string,
+    orderId: string,
+  ): Promise<{ success: boolean; reason?: string; driverId?: string; etaMinutes?: number }> {
+    logAdminAction({ adminUid, action: 'admin_retry_delivery', targetId: orderId.trim(), targetType: 'order' });
+    return this.drivers.adminForceReassign(orderId.trim());
   }
 
   async listAuditLogs(

@@ -1,4 +1,4 @@
-import { BadRequestException, Body, Controller, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
 import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { ApiPolicy } from '../gateway/api-policy.decorator';
@@ -13,6 +13,23 @@ import { DriversService } from './drivers.service';
 @Controller()
 export class DriversController {
   constructor(private readonly drivers: DriversService) {}
+
+  @Get('drivers/available')
+  @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
+  @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 60 } })
+  @RequirePermissions('orders.write')
+  async listAvailableDrivers() {
+    const drivers = await this.drivers.listAvailableDrivers();
+    return { drivers };
+  }
+
+  @Get('drivers/workbench')
+  @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
+  @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 120 } })
+  @RequirePermissions('orders.write')
+  async workbench(@Req() req: RequestWithFirebase) {
+    return this.drivers.getWorkbench(req.firebaseUid!);
+  }
 
   @Post('drivers/register')
   @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)

@@ -44,6 +44,7 @@ export type DriverRow = {
 type OrderDeliveryRow = {
   order_id: string;
   user_id: string;
+  status: string | null;
   driver_id: string | null;
   delivery_status: string | null;
   delivery_lat: string | null;
@@ -721,13 +722,219 @@ export class DriversService {
   async loadOrderDeliveryRow(orderId: string): Promise<OrderDeliveryRow | null> {
     return this.pg.withWriteClient(async (c) => {
       const r = await c.query<OrderDeliveryRow>(
-        `SELECT order_id, user_id, driver_id, delivery_status, delivery_lat, delivery_lng,
+        `SELECT order_id, user_id, status, driver_id, delivery_status, delivery_lat, delivery_lng,
                 delivery_assign_attempts, delivery_manual_retries, eta_minutes, assigned_at
          FROM orders WHERE order_id = $1`,
         [orderId.trim()],
       );
       return r.rows[0] ?? null;
     });
+  }
+
+  /**
+   * Online drivers with coordinates (admin reassignment picker).
+   */
+  async listAvailableDrivers(): Promise<Array<{ id: string; name: string | null; phone: string | null }>> {
+    if (!this.pg.isEnabled()) {
+      return [];
+    }
+    const out = await this.pg.withWriteClient(async (c) => {
+      const r = await c.query<{ id: string; name: string | null; phone: string | null }>(
+        `SELECT id, name, phone FROM drivers
+         WHERE is_available = true
+           AND status = 'online'
+           AND current_lat IS NOT NULL
+           AND current_lng IS NOT NULL
+         ORDER BY name NULLS LAST
+         LIMIT 300`,
+      );
+      return r.rows;
+    });
+    return out ?? [];
+  }
+
+  /**
+   * Admin: clear assignment and re-run auto-assign (not for completed/cancelled orders).
+   */
+  async adminForceReassign(orderId: string): Promise<{
+    success: boolean;
+    reason?: string;
+    driverId?: string;
+    etaMinutes?: number;
+  }> {
+    if (!this.pg.isEnabled()) {
+      return { success: false, reason: 'db_unavailable' };
+    }
+    const order = await this.loadOrderDeliveryRow(orderId);
+    if (!order) {
+      throw new NotFoundException('Order not found');
+    }
+    const st = (order.delivery_status ?? '').trim().toLowerCase();
+    if (st === 'delivered') {
+      throw new BadRequestException('Cannot reassign a delivered order');
+    }
+    const orderShopStatus = String(order.status ?? '')
+      .trim()
+      .toLowerCase();
+    if (orderShopStatus === 'cancelled' || orderShopStatus === 'refunded') {
+      throw new BadRequestException('Cannot reassign cancelled/refunded order');
+    }
+
+    const tx = await this.pg.runInTransaction(async (c) => {
+      if (order.driver_id) {
+        await c.query(
+          `UPDATE drivers SET status = 'online', is_available = true WHERE id = $1`,
+          [order.driver_id],
+        );
+      }
+      await c.query(
+        `UPDATE orders
+         SET driver_id = NULL,
+             delivery_status = 'pending',
+             assigned_at = NULL,
+             eta_minutes = NULL,
+             delivery_on_the_way_at = NULL,
+             delivery_delivered_at = NULL,
+             no_driver_found_at = NULL,
+             delivery_assign_attempts = 0,
+             updated_at = NOW()
+         WHERE order_id = $1`,
+        [order.order_id],
+      );
+      return true;
+    });
+    if (tx === null) {
+      throw new BadRequestException('Database unavailable');
+    }
+    this.logger.log(
+      JSON.stringify({
+        kind: 'admin_force_reassign',
+        orderId: order.order_id.trim(),
+      }),
+    );
+    return this.autoAssignDriver(order.order_id.trim());
+  }
+
+  /**
+   * لوحة السائق: طلبات مُعيَّنة للقبول، طلب نشط (مقبول/في الطريق)، وسجل التسليم.
+   */
+  async getWorkbench(authUid: string): Promise<Record<string, unknown>> {
+    const driver = await this.getDriverByAuthUid(authUid);
+    if (!driver) {
+      return {
+        driver: null,
+        assignedOrders: [],
+        activeOrder: null,
+        history: [],
+      };
+    }
+    const rows =
+      (await this.pg.withWriteClient(async (c) => {
+        const r = await c.query<{
+          order_id: string;
+          payload: unknown;
+          delivery_status: string | null;
+          eta_minutes: string | number | null;
+          delivery_lat: string | null;
+          delivery_lng: string | null;
+          updated_at: Date;
+        }>(
+          `SELECT order_id, payload, delivery_status, eta_minutes, delivery_lat, delivery_lng, updated_at
+           FROM orders
+           WHERE driver_id = $1::uuid
+             AND delivery_status IS NOT NULL
+           ORDER BY updated_at DESC
+           LIMIT 100`,
+          [driver.id],
+        );
+        return r.rows;
+      })) ?? [];
+
+    const assignedOrders: Record<string, unknown>[] = [];
+    const history: Record<string, unknown>[] = [];
+    let bestActive: {
+      row: {
+        order_id: string;
+        payload: unknown;
+        delivery_status: string | null;
+        eta_minutes: string | number | null;
+        delivery_lat: string | null;
+        delivery_lng: string | null;
+        updated_at: Date;
+      };
+      card: Record<string, unknown>;
+    } | null = null;
+
+    for (const row of rows) {
+      const ds = String(row.delivery_status ?? '').toLowerCase();
+      const card = this.driverOrderCard(driver, row);
+      if (ds === 'assigned') {
+        assignedOrders.push(card);
+      } else if (ds === 'accepted' || ds === 'on_the_way') {
+        if (
+          bestActive == null ||
+          row.updated_at.getTime() > bestActive.row.updated_at.getTime()
+        ) {
+          bestActive = { row, card };
+        }
+      } else if (ds === 'delivered') {
+        history.push(card);
+      }
+    }
+
+    return {
+      driver: {
+        id: driver.id,
+        name: driver.name,
+        phone: driver.phone,
+        status: driver.status,
+        isAvailable: driver.is_available,
+      },
+      assignedOrders,
+      activeOrder: bestActive?.card ?? null,
+      history: history.slice(0, 50),
+    };
+  }
+
+  private driverOrderCard(
+    driver: DriverRow,
+    row: {
+      order_id: string;
+      payload: unknown;
+      delivery_status: string | null;
+      eta_minutes: string | number | null;
+      delivery_lat: string | null;
+      delivery_lng: string | null;
+      updated_at: Date;
+    },
+  ): Record<string, unknown> {
+    const payload =
+      row.payload != null && typeof row.payload === 'object' && !Array.isArray(row.payload)
+        ? (row.payload as Record<string, unknown>)
+        : {};
+    const fn = String(payload['firstName'] ?? '').trim();
+    const ln = String(payload['lastName'] ?? '').trim();
+    const customerName = `${fn} ${ln}`.trim() || String(payload['email'] ?? '—');
+    const a1 = String(payload['address1'] ?? payload['address'] ?? '').trim();
+    const city = String(payload['city'] ?? '').trim();
+    const address = [a1, city].filter(Boolean).join('، ') || '—';
+    const olat = num(row.delivery_lat);
+    const olng = num(row.delivery_lng);
+    const dlat = num(driver.current_lat);
+    const dlng = num(driver.current_lng);
+    let distanceKm: number | null = null;
+    if (olat != null && olng != null && dlat != null && dlng != null) {
+      distanceKm = Math.round(calculateDistanceKm(olat, olng, dlat, dlng) * 10) / 10;
+    }
+    const eta = intish(row.eta_minutes);
+    return {
+      orderId: row.order_id,
+      customerName,
+      address,
+      etaMinutes: eta,
+      deliveryStatus: row.delivery_status ?? '',
+      distanceKm,
+    };
   }
 }
 

@@ -32,6 +32,7 @@ import '../../data/admin_notification_repository.dart';
 import '../sections/admin_sessions_section.dart';
 import '../../../store/presentation/pages/main_navigation_page.dart';
 import 'admin_audit_log_screen.dart';
+import 'admin_delivery_dashboard_page.dart';
 import 'admin_notifications_screen.dart';
 import 'admin_overview_screen.dart';
 import 'admin_products_screen.dart';
@@ -208,6 +209,11 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           index: 7,
           icon: Icons.receipt_long_outlined,
           labelAr: 'الطلبات',
+        ),
+        _AdminNavItem(
+          index: 36,
+          icon: Icons.delivery_dining_outlined,
+          labelAr: 'إدارة التوصيل',
         ),
         _AdminNavItem(
           index: 6,
@@ -406,6 +412,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     'إعدادات العمولة العامة',
     'أنواع المتاجر',
     'الأجهزة والجلسات',
+    'إدارة التوصيل',
   ];
 
   Widget _body() {
@@ -426,6 +433,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         return const AdminProductsScreen(initialTab: AdminProductsTabIndex.products);
       case 7:
         return const AdminOrdersSection();
+      case 36:
+        return const AdminDeliveryDashboardPage();
       case 8:
         return const AdminTechniciansSection();
       case 9:

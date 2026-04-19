@@ -296,8 +296,25 @@ export class AdminRestController {
     @Req() req: RequestWithFirebase,
     @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
     @Query('offset', new ParseIntPipe({ optional: true })) offset?: number,
+    @Query('deliveryStatus') deliveryStatus?: string,
+    @Query('driverId') driverId?: string,
+    @Query('dateFrom') dateFrom?: string,
+    @Query('dateTo') dateTo?: string,
+    @Query('search') search?: string,
   ) {
-    return this.admin.listOrders(req.firebaseUid!, limit ?? 50, offset ?? 0);
+    return this.admin.listOrders(req.firebaseUid!, limit ?? 50, offset ?? 0, {
+      deliveryStatus: deliveryStatus?.trim(),
+      driverId: driverId?.trim(),
+      dateFrom: dateFrom?.trim(),
+      dateTo: dateTo?.trim(),
+      search: search?.trim(),
+    });
+  }
+
+  @Post('orders/:id/retry-assignment')
+  @RequirePermissions('stores.manage')
+  adminRetryDelivery(@Req() req: RequestWithFirebase, @Param('id') orderId: string) {
+    return this.admin.adminRetryDeliveryAssignment(req.firebaseUid!, orderId);
   }
 
   @Get('audit-logs')

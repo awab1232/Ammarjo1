@@ -1647,4 +1647,51 @@ final class BackendOrdersClient {
     if (items is! List) return const <Map<String, dynamic>>[];
     return items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
   }
+
+  // ——— Driver panel (Firebase + [BackendOrdersConfig] base URL) ———
+
+  Future<Map<String, dynamic>?> fetchDriverWorkbench() =>
+      _authedGetJson('/drivers/workbench', flow: 'driver_workbench');
+
+  Future<Map<String, dynamic>?> postDriverRegister({String? name, String? phone}) => _authedPostJson(
+        '/drivers/register',
+        body: <String, dynamic>{
+          if (name != null && name.trim().isNotEmpty) 'name': name.trim(),
+          if (phone != null && phone.trim().isNotEmpty) 'phone': phone.trim(),
+        },
+        flow: 'driver_register',
+      );
+
+  Future<Map<String, dynamic>?> postDriverStatus(String status) =>
+      _authedPostJson('/drivers/status', body: <String, dynamic>{'status': status}, flow: 'driver_status');
+
+  Future<Map<String, dynamic>?> postDriverLocation({required double lat, required double lng}) => _authedPostJson(
+        '/drivers/location',
+        body: <String, dynamic>{'lat': lat, 'lng': lng},
+        flow: 'driver_location',
+      );
+
+  Future<Map<String, dynamic>?> postDriverAcceptOrder(String orderId) => _authedPostJson(
+        '/drivers/accept-order',
+        body: <String, dynamic>{'orderId': orderId.trim()},
+        flow: 'driver_accept',
+      );
+
+  Future<Map<String, dynamic>?> postDriverRejectOrder(String orderId) => _authedPostJson(
+        '/drivers/reject-order',
+        body: <String, dynamic>{'orderId': orderId.trim()},
+        flow: 'driver_reject',
+      );
+
+  Future<Map<String, dynamic>?> postDriverOnTheWay(String orderId) => _authedPostJson(
+        '/drivers/on-the-way',
+        body: <String, dynamic>{'orderId': orderId.trim()},
+        flow: 'driver_on_way',
+      );
+
+  Future<Map<String, dynamic>?> postDriverCompleteOrder(String orderId) => _authedPostJson(
+        '/drivers/complete-order',
+        body: <String, dynamic>{'orderId': orderId.trim()},
+        flow: 'driver_complete',
+      );
 }

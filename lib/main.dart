@@ -41,6 +41,7 @@ import 'core/seo/seo_indexing_hooks.dart';
 import 'core/seo/organic_traffic_system.dart';
 import 'core/seo/seo_service.dart';
 import 'core/theme/app_theme.dart';
+import 'features/driver/presentation/driver_ui.dart';
 import 'features/splash/presentation/ammarjo_splash_screen.dart';
 import 'features/store/data/failed_mirror_orders_worker.dart';
 import 'features/store/domain/models.dart';
@@ -353,6 +354,7 @@ class AmmarStoreApp extends StatelessWidget {
       home: const AmmarJoSplashScreen(),
       routes: {
         '/main': (_) => const MainNavigationPage(),
+        '/driver': (_) => const DriverDashboardPage(),
         '/privacy': (_) => const PrivacyPolicyPage(),
         '/about': (_) => const AboutUsPage(),
         '/terms': (_) => const TermsOfUsePage(),

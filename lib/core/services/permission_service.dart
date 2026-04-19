@@ -142,6 +142,7 @@ class PermissionService {
       case 33:
       case 34:
       case 35:
+      case 36:
         return isAdminRole;
       case 7:
         return canViewOrders(r);
