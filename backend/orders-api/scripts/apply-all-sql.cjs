@@ -79,7 +79,9 @@ async function main() {
     .sort((a, b) => {
       const na = parseInt(a.slice(0, 3), 10);
       const nb = parseInt(b.slice(0, 3), 10);
-      return na - nb;
+      if (na !== nb) return na - nb;
+      // Stable tie-breaker when multiple files share same numeric prefix (e.g. 031_*).
+      return a.localeCompare(b);
     });
 
   const sql = postgres(url, {
