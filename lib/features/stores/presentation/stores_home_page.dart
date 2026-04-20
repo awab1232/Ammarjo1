@@ -398,23 +398,9 @@ class _StoresHomePageState extends State<StoresHomePage> {
   ) {
     var all = List<StoreModel>.from(allStores);
     all.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-    final rest = all.where((s) => s.id.toLowerCase().trim() != 'ammarjo').toList();
     final userCity = storeController.profile?.city?.trim();
     final showRegionalEmpty = userCity != null && userCity.isNotEmpty && all.isEmpty;
-    final showAmmarJoRow = widget.storeCategoryFilter == null;
     final out = <Widget>[];
-    if (showAmmarJoRow) {
-      out.add(
-        StoreCard(
-          store: ammarJoCatalogStoreModel(),
-          onTap: () {
-            Navigator.of(context).push<void>(
-              MaterialPageRoute<void>(builder: (_) => StoreDetailPage(store: ammarJoCatalogStoreModel())),
-            );
-          },
-        ),
-      );
-    }
     if (showRegionalEmpty) {
       out.add(
         Padding(
@@ -434,7 +420,7 @@ class _StoresHomePageState extends State<StoresHomePage> {
       return out;
     }
     final byCategory = <String, List<StoreModel>>{};
-    for (final s in rest) {
+    for (final s in all) {
       final key = s.category.trim().isEmpty ? 'أخرى' : s.category.trim();
       byCategory.putIfAbsent(key, () => <StoreModel>[]).add(s);
     }
@@ -464,7 +450,7 @@ class _StoresHomePageState extends State<StoresHomePage> {
         );
       }
     }
-    if (rest.isEmpty && !showRegionalEmpty) {
+    if (all.isEmpty && !showRegionalEmpty) {
       out.add(
         const Padding(
           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
@@ -568,9 +554,6 @@ class _StoresHomePageState extends State<StoresHomePage> {
           onRetry: () => setState(() => _storesReloadNonce++),
           dataBuilder: (ctx, allStores) {
         final stores = allStores.where((s) => s.name.toLowerCase().contains(q)).toList();
-        final products = storeController.products.where((p) => p.name.toLowerCase().contains(q)).toList();
-
-        final isWebGrid = kIsWeb && MediaQuery.of(context).size.width > 800;
         return ListView(
           padding: const EdgeInsets.fromLTRB(0, 8, 0, 24),
           physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
@@ -596,104 +579,6 @@ class _StoresHomePageState extends State<StoresHomePage> {
                     Navigator.of(context).push<void>(
                       MaterialPageRoute<void>(builder: (_) => StoreDetailPage(store: s)),
                     );
-                  },
-                ),
-              ),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-              child: Text(
-                'المنتجات',
-                textAlign: TextAlign.right,
-                style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 18, color: AppColors.textPrimary),
-              ),
-            ),
-            if (products.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: EmptyStateWidget(type: EmptyStateType.search),
-              )
-            else if (isWebGrid)
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 16),
-                child: GridView.builder(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: _getSearchCrossAxisCount(context),
-                    childAspectRatio: 0.75,
-                    crossAxisSpacing: 16,
-                    mainAxisSpacing: 16,
-                  ),
-                  itemCount: products.length,
-                  itemBuilder: (context, i) {
-                    final p = products[i];
-                    return StoresSearchProductTile(
-                      product: p,
-                      storeId: 'ammarjo',
-                      storeName: kAmmarJoCatalogStoreName,
-                      onProductTap: () {
-                        openProductPage(
-                          context,
-                          product: p,
-                          cartStoreId: 'ammarjo',
-                          cartStoreName: kAmmarJoCatalogStoreName,
-                        );
-                      },
-                      onVisitStore: () {
-                        Navigator.of(context).push<void>(
-                          MaterialPageRoute<void>(
-                            builder: (_) => StoreDetailPage(store: ammarJoCatalogStoreModel()),
-                          ),
-                        );
-                      },
-                      onAddToCart: () async {
-                        await storeController.addToCart(
-                          p,
-                          storeId: 'ammarjo',
-                          storeName: kAmmarJoCatalogStoreName,
-                        );
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('تمت الإضافة للسلة', style: GoogleFonts.tajawal())),
-                          );
-                        }
-                      },
-                    );
-                  },
-                ),
-              )
-            else
-              ...products.map(
-                (p) => StoresSearchProductTile(
-                  product: p,
-                  storeId: 'ammarjo',
-                  storeName: kAmmarJoCatalogStoreName,
-                  onProductTap: () {
-                    openProductPage(
-                      context,
-                      product: p,
-                      cartStoreId: 'ammarjo',
-                      cartStoreName: kAmmarJoCatalogStoreName,
-                    );
-                  },
-                  onVisitStore: () {
-                    Navigator.of(context).push<void>(
-                      MaterialPageRoute<void>(
-                        builder: (_) => StoreDetailPage(store: ammarJoCatalogStoreModel()),
-                      ),
-                    );
-                  },
-                  onAddToCart: () async {
-                    await storeController.addToCart(
-                      p,
-                      storeId: 'ammarjo',
-                      storeName: kAmmarJoCatalogStoreName,
-                    );
-                    if (context.mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        SnackBar(content: Text('تمت الإضافة للسلة', style: GoogleFonts.tajawal())),
-                      );
-                    }
                   },
                 ),
               ),

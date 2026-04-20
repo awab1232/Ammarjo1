@@ -124,8 +124,7 @@ class _StoresListPageState extends State<StoresListPage> {
             FeatureSuccess<List<StoreModel>>(:final data) => data,
             _ => const <StoreModel>[],
           };
-          final withoutCatalog = raw.where((s) => s.id.toLowerCase().trim() != 'ammarjo').toList();
-          return (sub: sub, stores: withoutCatalog);
+          return (sub: sub, stores: raw);
         }),
       );
       if (!mounted) return;
@@ -257,13 +256,6 @@ class _StoresListPageState extends State<StoresListPage> {
     }
   }
 
-  /// يمنع تكرار بطاقة كتالوج عمّار جو إن وُجدت في نتائج Firestore.
-  List<StoreModel> _storesExcludingCatalog() {
-    return _stores
-        .where((s) => s.id.toLowerCase().trim() != 'ammarjo')
-        .toList();
-  }
-
   Future<void> _loadInitial() async {
     if (_loading) return;
     setState(() {
@@ -357,7 +349,7 @@ class _StoresListPageState extends State<StoresListPage> {
       );
     }
 
-    final filtered = _applyFilter(_storesExcludingCatalog());
+    final filtered = _applyFilter(_stores);
     final q = _searchController.text.trim().toLowerCase();
     final flatForSearch = q.isEmpty
         ? filtered
@@ -407,18 +399,6 @@ class _StoresListPageState extends State<StoresListPage> {
           ),
         ),
       if (_useGroupedLayout) SliverToBoxAdapter(child: _buildSubcategoryChipsStrip()),
-      SliverToBoxAdapter(
-        child: StoreExpandedCard(
-          store: ammarJoCatalogStoreModel(),
-          onVisitStore: () {
-            Navigator.of(context).push<void>(
-              MaterialPageRoute<void>(
-                builder: (_) => StoreDetailPage(store: ammarJoCatalogStoreModel()),
-              ),
-            );
-          },
-        ),
-      ),
     ];
 
     if (_useGroupedLayout) {

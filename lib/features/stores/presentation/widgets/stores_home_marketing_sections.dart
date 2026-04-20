@@ -372,15 +372,14 @@ class StoresHomeMostRequestedStrip extends StatelessWidget {
           FeatureSuccess<List<StoreModel>>(:final data) => List<StoreModel>.from(data),
           _ => const <StoreModel>[],
         };
-        final rest = all.where((s) => s.id.toLowerCase().trim() != 'ammarjo').toList();
-        rest.sort((a, b) {
+        all.sort((a, b) {
           final f = (b.isFeatured ? 1 : 0).compareTo(a.isFeatured ? 1 : 0);
           if (f != 0) return f;
           final g = (b.isBoosted ? 1 : 0).compareTo(a.isBoosted ? 1 : 0);
           if (g != 0) return g;
           return a.name.toLowerCase().compareTo(b.name.toLowerCase());
         });
-        final pick = rest.take(maxItems).toList();
+        final pick = all.take(maxItems).toList();
         if (pick.isEmpty) return const SizedBox.shrink();
         return SizedBox(
           height: 132,

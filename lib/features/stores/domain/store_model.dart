@@ -210,28 +210,3 @@ String _resolveStoreType(String? explicitType, String? storeTypeKey) {
   if (key.contains('wholesale') || key.contains('jmla')) return 'wholesale';
   return 'retail';
 }
-
-/// اسم المتجر في الكتالوج الرئيسي (مجموعة `products`).
-const String kAmmarJoCatalogStoreName = 'متجر عمار جو';
-
-/// نموذج اصطناعي لبطاقة كتالوج عمار جو في قوائم المتاجر.
-StoreModel ammarJoCatalogStoreModel() {
-  return StoreModel(
-    id: 'ammarjo',
-    ownerId: '',
-    name: kAmmarJoCatalogStoreName,
-    phone: '',
-    description: 'الكتالوج الرئيسي لمواد البناء والتشييد والسباكة والدهانات والأدوات.',
-    category: 'مواد بناء',
-    cities: const ['all'],
-    status: 'approved',
-    rating: 4.8,
-    reviewCount: 0,
-    createdAt: DateTime.utc(2020, 1, 1),
-    hasActivePromotions: false,
-    hasDiscountedProducts: false,
-    freeDelivery: false,
-    deliveryTime: '',
-    openingHours: null,
-  );
-}
