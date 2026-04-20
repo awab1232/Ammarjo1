@@ -1,24 +1,14 @@
-﻿import 'package:firebase_auth/firebase_auth.dart';
+﻿import 'dart:async';
+
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 
+import 'phone_auth_bootstrap.dart';
 import '../utils/jordan_phone.dart';
 
-/// مصادقة الهاتف (OTP).
-///
-/// **Android/iOS:** [FirebaseAuth.verifyPhoneNumber].
-/// **Web:** [FirebaseAuth.signInWithPhoneNumber] + [ConfirmationResult.confirm] (مسار Firebase الموصى به للويب).
+/// مصادقة الهاتف عبر [FirebaseAuth.verifyPhoneNumber] (OTP).
 abstract final class PhoneAuthService {
   static const String autoVerifiedSentinel = '__firebase_phone_auto__';
-  static const String phoneAuthTemporarilyDisabledMessage =
-      'تسجيل الدخول عبر الهاتف متوقف مؤقتًا. استخدم البريد الإلكتروني وكلمة المرور.';
-
-  static ConfirmationResult? _webConfirmation;
-
-  /// يُستدعى عند إلغاء خطوة OTP (مثلاً من [StoreController.clearPhoneVerificationState]).
-  static void resetWebPendingVerification() {
-    if (!kIsWeb) return;
-    _webConfirmation = null;
-  }
 
   static String jordanPhoneE164(String localNineDigits) {
     final u = normalizeJordanPhoneForUsername(localNineDigits);
@@ -32,24 +22,112 @@ abstract final class PhoneAuthService {
     return d.length == 12 && d.startsWith('962') && d[3] == '7';
   }
 
+  /// تشغيل [verifyPhoneNumber] مرة واحدة وإرجاع verificationId/resendToken.
+  static Future<({String verificationId, int? resendToken})> _verifyPhoneNumberOnce(
+    FirebaseAuth auth,
+    String trimmedE164, {
+    int? forceResendingToken,
+  }) async {
+    final completer = Completer<({String verificationId, int? resendToken})>();
+
+    try {
+      await auth.verifyPhoneNumber(
+        phoneNumber: trimmedE164,
+        verificationCompleted: (PhoneAuthCredential credential) async {
+          await auth.signInWithCredential(credential);
+          if (!completer.isCompleted) {
+            completer.complete((verificationId: autoVerifiedSentinel, resendToken: null));
+          }
+        },
+        verificationFailed: (FirebaseAuthException e) {
+          if (!completer.isCompleted) {
+            completer.completeError(e);
+          }
+        },
+        codeSent: (String verificationId, int? resendToken) {
+          if (!completer.isCompleted) {
+            completer.complete((verificationId: verificationId, resendToken: resendToken));
+          }
+        },
+        codeAutoRetrievalTimeout: (_) {},
+        timeout: const Duration(seconds: 120),
+        forceResendingToken: forceResendingToken,
+      );
+    } on FirebaseAuthException {
+      if (!completer.isCompleted) {
+        completer.completeError(
+          FirebaseAuthException(code: 'verify-failed', message: 'تعذر بدء التحقق.'),
+        );
+      }
+    } on Object {
+      if (!completer.isCompleted) {
+        completer.completeError(
+          FirebaseAuthException(code: 'unknown', message: 'تعذر بدء التحقق.'),
+        );
+      }
+    }
+
+    return completer.future.timeout(
+      const Duration(seconds: 125),
+      onTimeout: () {
+        throw FirebaseAuthException(
+          code: 'timeout',
+          message: 'انتهت مهلة انتظار التحقق بالهاتف.',
+        );
+      },
+    );
+  }
+
   static Future<({String verificationId, int? resendToken})> startVerification(
     String phoneE164, {
     int? forceResendingToken,
   }) async {
-    throw FirebaseAuthException(
-      code: 'operation-not-allowed',
-      message: phoneAuthTemporarilyDisabledMessage,
-    );
+    final trimmed = phoneE164.trim();
+    if (!isValidE164Jordan(trimmed)) {
+      throw FirebaseAuthException(
+        code: 'invalid-phone-number',
+        message: 'Expected Jordan mobile E.164 like +9627XXXXXXXX',
+      );
+    }
+
+    final auth = FirebaseAuth.instance;
+    await auth.setLanguageCode('ar');
+
+    if (kIsWeb) {
+      try {
+        await ensurePhoneAuthEnvironmentReadyWithRetry();
+      } on Object {
+        throw FirebaseAuthException(
+          code: 'recaptcha-config-failed',
+          message: 'فشل تهيئة reCAPTCHA للويب.',
+        );
+      }
+    }
+
+    Future<({String verificationId, int? resendToken})> run() =>
+        _verifyPhoneNumberOnce(auth, trimmed, forceResendingToken: forceResendingToken);
+
+    try {
+      return await run();
+    } on FirebaseAuthException {
+      if (kIsWeb) {
+        await Future<void>.delayed(const Duration(milliseconds: 700));
+        await ensurePhoneAuthEnvironmentReadyWithRetry(maxAttempts: 2).onError((_, _) => null);
+        return await run();
+      }
+      rethrow;
+    }
   }
 
   static Future<UserCredential> signInWithSmsCode({
     required String verificationId,
     required String smsCode,
-  }) async {
-    throw FirebaseAuthException(
-      code: 'operation-not-allowed',
-      message: phoneAuthTemporarilyDisabledMessage,
+  }) {
+    final cred = PhoneAuthProvider.credential(
+      verificationId: verificationId,
+      smsCode: smsCode.trim(),
     );
+    return FirebaseAuth.instance.signInWithCredential(cred);
   }
 
   static String userFacingMessage(FirebaseAuthException e) {
@@ -58,9 +136,7 @@ abstract final class PhoneAuthService {
         return 'عملية التحقق مقيّدة من إعدادات المشروع. تأكد من تفعيل Phone Auth، '
             'وإضافة SHA-1 وSHA-256، وتفعيل Identity Toolkit API.';
       case 'operation-not-allowed':
-        return e.message?.trim().isNotEmpty == true
-            ? e.message!.trim()
-            : 'تسجيل الدخول بالهاتف غير مفعّل في Firebase.';
+        return 'تسجيل الدخول بالهاتف غير مفعّل في Firebase.';
       case 'app-not-authorized':
         return 'هذا التطبيق غير مصرح له باستخدام Phone Auth. تحقق من إعدادات Firebase وملفات التهيئة.';
       case 'unauthorized-domain':
@@ -113,3 +189,4 @@ abstract final class PhoneAuthService {
     return d.isNotEmpty ? d : '';
   }
 }
+

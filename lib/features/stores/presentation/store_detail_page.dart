@@ -3,7 +3,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
-import '../../../core/contracts/feature_not_implemented_error.dart';
 import '../../../core/contracts/feature_state.dart';
 import '../../../core/data/repositories/user_repository.dart';
 import '../../../core/services/chat_service.dart';
@@ -48,17 +47,17 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
     final catsState = await StoresRepository.instance.fetchStoreCategoriesMaps(store.id);
     final cats = switch (catsState) {
       FeatureSuccess(:final data) => data,
-      FeatureFailure(:final message) => throw FeatureNotImplementedError(message),
+      FeatureFailure() => <Map<String, dynamic>>[],
       _ => <Map<String, dynamic>>[],
     };
     final productsState = await StoresRepository.instance.fetchStoreShelfProducts(store.id);
     final List<StoreShelfProduct> products = switch (productsState) {
       FeatureSuccess(:final data) => data,
-      FeatureMissingBackend(:final featureName) => throw FeatureNotImplementedError(featureName),
-      FeatureAdminNotWired(:final featureName) => throw FeatureNotImplementedError(featureName),
-      FeatureAdminMissingEndpoint(:final featureName) => throw FeatureNotImplementedError(featureName),
-      FeatureCriticalPublicDataFailure(:final featureName) => throw FeatureNotImplementedError(featureName),
-      FeatureFailure(:final message) => throw FeatureNotImplementedError(message),
+      FeatureMissingBackend() => const <StoreShelfProduct>[],
+      FeatureAdminNotWired() => const <StoreShelfProduct>[],
+      FeatureAdminMissingEndpoint() => const <StoreShelfProduct>[],
+      FeatureCriticalPublicDataFailure() => const <StoreShelfProduct>[],
+      FeatureFailure() => const <StoreShelfProduct>[],
     };
     final available = products.where((p) => p.isAvailable).toList();
     final namesFromApi = cats.map((c) => c['name']?.toString().trim() ?? '').where((s) => s.isNotEmpty).toList();
