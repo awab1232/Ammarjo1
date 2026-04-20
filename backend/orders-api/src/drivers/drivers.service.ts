@@ -62,11 +62,69 @@ type OrderDeliveryRow = {
 export class DriversService {
   private readonly logger = new Logger(DriversService.name);
   private driverRequestsTableReady = false;
+  private deliveryColumnsReady: boolean | null = null;
 
   constructor(
     private readonly pg: OrdersPgService,
     private readonly notifications: NotificationsService,
   ) {}
+
+  private async ensureDeliverySchedulerColumns(): Promise<boolean> {
+    if (this.deliveryColumnsReady !== null) {
+      return this.deliveryColumnsReady;
+    }
+    if (!this.pg.isEnabled()) {
+      this.deliveryColumnsReady = false;
+      return false;
+    }
+
+    const required = new Set([
+      'driver_id',
+      'delivery_status',
+      'assigned_at',
+      'no_driver_found_at',
+      'delivery_auto_retry_count',
+    ]);
+
+    try {
+      const names = await this.pg.withWriteClient(async (c) => {
+        const r = await c.query<{ column_name: string }>(
+          `SELECT column_name
+           FROM information_schema.columns
+           WHERE table_schema = 'public'
+             AND table_name = 'orders'
+             AND column_name = ANY($1::text[])`,
+          [Array.from(required)],
+        );
+        return new Set((r.rows ?? []).map((x) => String(x.column_name).trim()));
+      });
+
+      const namesSet = names ?? new Set<string>();
+      const missing = Array.from(required).filter((col) => !namesSet.has(col));
+      if (missing.length > 0) {
+        this.deliveryColumnsReady = false;
+        this.logger.warn(
+          JSON.stringify({
+            kind: 'delivery_scheduler_columns_missing',
+            missing,
+          }),
+        );
+        return false;
+      }
+
+      this.deliveryColumnsReady = true;
+      return true;
+    } catch (e) {
+      this.deliveryColumnsReady = false;
+      this.logger.warn(
+        JSON.stringify({
+          kind: 'delivery_scheduler_columns_check_failed',
+          error: e instanceof Error ? e.message : String(e),
+        }),
+      );
+      return false;
+    }
+  }
 
   private async ensureDriverRequestsTable(): Promise<void> {
     if (this.driverRequestsTableReady) {
@@ -533,6 +591,9 @@ export class DriversService {
     if (!this.pg.isEnabled()) {
       return;
     }
+    if (!(await this.ensureDeliverySchedulerColumns())) {
+      return;
+    }
     const rows = await this.pg.withWriteClient(async (c) => {
       const r = await c.query<{ order_id: string; driver_id: string }>(
         `SELECT order_id, driver_id FROM orders
@@ -597,6 +658,9 @@ export class DriversService {
    */
   async processNoDriverAutoRetries(): Promise<void> {
     if (!this.pg.isEnabled()) {
+      return;
+    }
+    if (!(await this.ensureDeliverySchedulerColumns())) {
       return;
     }
     const candidates = await this.pg.withWriteClient(async (c) => {
