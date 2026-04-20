@@ -857,9 +857,18 @@ class StoreController extends ChangeNotifier {
       cartState.removeFromCart(productId, storeId: storeId);
 
   Future<void> removeCartLine(CartItem item) => cartState.removeCartLine(item);
-  Future<bool> applyCoupon(String code, String userId) => cartState.applyCoupon(code, userId);
+  Future<bool> applyCoupon(
+    String code,
+    String userId, {
+    List<CartItem>? lines,
+  }) =>
+      cartState.applyCoupon(code, userId);
   void removeCoupon() => cartState.removeCoupon();
-  Future<bool> applyPromotions(String userId) => cartState.applyPromotions(userId);
+  Future<bool> applyPromotions(
+    String userId, {
+    List<CartItem>? lines,
+  }) =>
+      cartState.applyPromotions(userId);
   void clearPromotions() => cartState.clearPromotions();
 
   /// تحديث بيانات المنتجات في السلة من Firestore (`products`).
@@ -906,7 +915,32 @@ class StoreController extends ChangeNotifier {
       list.add(StoreShippingLineCost(storeId: storeId, storeName: display, subtotal: subtotal, shippingCost: fee));
     }
     final shippingTotal = list.fold<double>(0, (s, e) => s + e.shippingCost);
-    return StoreShippingComputation(lines: list, totalShipping: shippingTotal, uncoveredStoreNames: uncoveredStoreNames);
+    return StoreShippingComputation(
+      lines: list,
+      totalShipping: shippingTotal,
+      uncoveredStoreNames: uncoveredStoreNames,
+      noDeliveryStoreNames: const <String>[],
+    );
+  }
+
+  Future<
+      ({
+        StoreShippingComputation shipping,
+        double couponDiscount,
+        double promotionsDiscount,
+        bool freeShipping,
+      })> previewCheckoutTotals({
+    required List<CartItem> lines,
+    required String userId,
+    String? userCity,
+  }) async {
+    final shipping = await computeShippingForCartLines(lines, userCity: userCity);
+    return (
+      shipping: shipping,
+      couponDiscount: discountAmount,
+      promotionsDiscount: promotionsDiscountAmount,
+      freeShipping: freeShippingByPromotion,
+    );
   }
 
   bool _storeCoversCity(Map<String, dynamic> data, String city) {
@@ -1093,9 +1127,11 @@ class StoreShippingComputation {
     required this.lines,
     required this.totalShipping,
     required this.uncoveredStoreNames,
+    required this.noDeliveryStoreNames,
   });
 
   final List<StoreShippingLineCost> lines;
   final double totalShipping;
   final List<String> uncoveredStoreNames;
+  final List<String> noDeliveryStoreNames;
 }

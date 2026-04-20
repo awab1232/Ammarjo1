@@ -1,9 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
-import 'package:firebase_auth/firebase_auth.dart';
-
-import 'package:ammar_store/core/routing/role_home_resolver.dart';
 import 'package:ammar_store/features/store/presentation/pages/main_navigation_page.dart';
 
 const Color _kSplashDark = Color(0xFF1A1A2E);
@@ -60,6 +56,14 @@ class _AmmarJoSplashScreenState extends State<AmmarJoSplashScreen> with TickerPr
   @override
   void initState() {
     super.initState();
+    Future<void>.delayed(const Duration(milliseconds: 800), () {
+      if (!mounted) return;
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(
+          builder: (_) => const MainNavigationPage(),
+        ),
+      );
+    });
     _initAnimations();
     _startAnimationSequence();
   }
@@ -126,43 +130,6 @@ class _AmmarJoSplashScreenState extends State<AmmarJoSplashScreen> with TickerPr
     await Future<void>.delayed(const Duration(milliseconds: 1090));
 
     await _fadeOutController.forward();
-    if (!mounted) return;
-    await _navigateToMain();
-  }
-
-  Future<void> _navigateToMain() async {
-    final deepLink = _resolvePublicDeepLinkFromBaseUri();
-    if (deepLink.isNotEmpty) {
-      Navigator.of(context).pushReplacementNamed(deepLink);
-      return;
-    }
-    final user = FirebaseAuth.instance.currentUser;
-    final Widget home = user != null ? await resolveHomeForSignedInUser(user) : const MainNavigationPage();
-    if (!mounted) return;
-    Navigator.of(context).pushReplacement<void, void>(
-      PageRouteBuilder<void>(
-        pageBuilder: (context, animation, _) => home,
-        transitionsBuilder: (context, animation, _, child) => FadeTransition(opacity: animation, child: child),
-        transitionDuration: const Duration(milliseconds: 500),
-      ),
-    );
-  }
-
-  String _resolvePublicDeepLinkFromBaseUri() {
-    if (!kIsWeb) return '';
-    final path = Uri.base.path.trim();
-    if (path.isEmpty || path == '/' || path == '/home') return '';
-    if (_isPublicPath(path)) return path;
-    return '';
-  }
-
-  bool _isPublicPath(String path) {
-    if (path == '/' || path == '/home') return true;
-    if (path.startsWith('/product/')) return true;
-    if (path.startsWith('/category/')) return true;
-    if (path.startsWith('/blog/')) return true;
-    if (path.startsWith('/store/')) return true;
-    return false;
   }
 
   @override
