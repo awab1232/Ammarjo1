@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'package:flutter/foundation.dart' show debugPrint;
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
@@ -17,46 +18,52 @@ final class BackendUserClient {
   Future<Map<String, dynamic>?> fetchUserById(String uid) async {
     final id = uid.trim();
     if (id.isEmpty) throw StateError('NULL_RESPONSE');
-    return _authedGet('/users/${Uri.encodeComponent(id)}');
+    final me = await fetchMe();
+    if (me == null) return null;
+    final firebaseUid = (me['firebaseUid'] ?? '').toString().trim();
+    final internalId = (me['id'] ?? '').toString().trim();
+    final email = (me['email'] ?? '').toString().trim();
+    if (id == firebaseUid || id == internalId || (email.isNotEmpty && id == email)) {
+      return me;
+    }
+    // `/users/:id` is not exposed in the backend; avoid hitting a non-existent endpoint.
+    return null;
   }
 
   Future<bool> patchUser(String uid, Map<String, dynamic> fields) async {
     final id = uid.trim();
     if (id.isEmpty || fields.isEmpty) return false;
-    final body = await _authedPatch('/users/${Uri.encodeComponent(id)}', fields);
-    return body != null;
+    // Hotfix: disable broken `/users/:id` calls until a public profile endpoint is exposed.
+    debugPrint('[BackendUserClient] patchUser skipped: /users/:id is not wired. fields=${fields.keys.toList()}');
+    return false;
   }
 
   Future<FeatureState<List<Map<String, dynamic>>>> fetchTechSpecialties() async {
-    final body = await _authedGet('/tech-specialties');
-    final items = body?['items'];
-    if (items is! List) return FeatureState.failure('Invalid specialties payload.');
-    return FeatureState.success(items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList());
+    debugPrint('[BackendUserClient] fetchTechSpecialties skipped: endpoint not publicly wired.');
+    return FeatureState.success(const <Map<String, dynamic>>[]);
   }
 
   Future<FeatureState<List<Map<String, dynamic>>>> fetchUserFavorites(String uid) async {
     final id = uid.trim();
     if (id.isEmpty) return FeatureState.failure('User id is required.');
-    final body = await _authedGet('/users/${Uri.encodeComponent(id)}/favorites');
-    final items = body?['items'];
-    if (items is! List) return FeatureState.failure('Invalid favorites payload.');
-    return FeatureState.success(items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList());
+    debugPrint('[BackendUserClient] fetchUserFavorites skipped: /users/:id/favorites is not wired.');
+    return FeatureState.success(const <Map<String, dynamic>>[]);
   }
 
   Future<bool> putUserFavorite(String uid, Map<String, dynamic> payload) async {
     final id = uid.trim();
     final pid = payload['productId']?.toString().trim() ?? '';
     if (id.isEmpty || pid.isEmpty) return false;
-    final body = await _authedPatch('/users/${Uri.encodeComponent(id)}/favorites/${Uri.encodeComponent(pid)}', payload);
-    return body != null;
+    debugPrint('[BackendUserClient] putUserFavorite skipped: /users/:id/favorites is not wired.');
+    return false;
   }
 
   Future<bool> deleteUserFavorite(String uid, String productId) async {
     final id = uid.trim();
     final pid = productId.trim();
     if (id.isEmpty || pid.isEmpty) return false;
-    final ok = await _authedDelete('/users/${Uri.encodeComponent(id)}/favorites/${Uri.encodeComponent(pid)}');
-    return ok;
+    debugPrint('[BackendUserClient] deleteUserFavorite skipped: /users/:id/favorites is not wired.');
+    return false;
   }
 
   Future<Map<String, dynamic>?> _authedGet(String path) async {
@@ -68,26 +75,6 @@ final class BackendUserClient {
     if (decoded is Map<String, dynamic>) return decoded;
     if (decoded is Map) return Map<String, dynamic>.from(decoded);
     throw StateError('NULL_RESPONSE');
-  }
-
-  Future<Map<String, dynamic>?> _authedPatch(String path, Map<String, dynamic> body) async {
-    final req = await _request(path);
-    if (req == null) throw StateError('NULL_RESPONSE');
-    final headers = <String, String>{...req.$2, 'Content-Type': 'application/json'};
-    final res = await http.patch(req.$1, headers: headers, body: jsonEncode(body));
-    if (res.statusCode < 200 || res.statusCode >= 300) throw StateError('NULL_RESPONSE');
-    if (res.body.trim().isEmpty) return <String, dynamic>{};
-    final decoded = jsonDecode(res.body);
-    if (decoded is Map<String, dynamic>) return decoded;
-    if (decoded is Map) return Map<String, dynamic>.from(decoded);
-    return <String, dynamic>{};
-  }
-
-  Future<bool> _authedDelete(String path) async {
-    final req = await _request(path);
-    if (req == null) return false;
-    final res = await http.delete(req.$1, headers: req.$2);
-    return res.statusCode >= 200 && res.statusCode < 300;
   }
 
   Future<(Uri, Map<String, String>)?> _request(String path) async {

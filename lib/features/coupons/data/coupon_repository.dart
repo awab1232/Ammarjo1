@@ -25,7 +25,7 @@ class CouponRepository {
   Future<FeatureState<List<Coupon>>> getCouponsPage({int limit = 30, Object? startAfter}) async {
     final base = BackendOrdersConfig.baseUrl.trim().replaceAll(RegExp(r'/$'), '');
     if (base.isEmpty) return FeatureState.failure('Backend URL missing for coupons.');
-    final uri = Uri.parse('$base/coupons').replace(queryParameters: {'limit': '$limit'});
+    final uri = Uri.parse('$base/admin/rest/coupons').replace(queryParameters: {'limit': '$limit'});
     http.Response res;
     try {
       res = await http.get(uri, headers: await _headers()).timeout(const Duration(seconds: 10));
@@ -43,7 +43,9 @@ class CouponRepository {
     } on Object {
       return FeatureState.failure('INVALID_JSON');
     }
-    final items = decoded is Map && decoded['items'] is List ? decoded['items'] as List : const <dynamic>[];
+    final items = decoded is List
+        ? decoded
+        : (decoded is Map && decoded['items'] is List ? decoded['items'] as List : const <dynamic>[]);
     return FeatureState.success(
       items.whereType<Map>().map((e) => Coupon.fromMap(Map<String, dynamic>.from(e))).toList(),
     );
@@ -114,7 +116,11 @@ class CouponRepository {
   Future<FeatureState<FeatureUnit>> createCoupon(Coupon coupon) async {
     final base = BackendOrdersConfig.baseUrl.trim().replaceAll(RegExp(r'/$'), '');
     if (base.isEmpty) return FeatureState.failure('Backend URL missing for coupons.');
-    final res = await http.post(Uri.parse('$base/coupons'), headers: await _headers(), body: jsonEncode(coupon.toMap()));
+    final res = await http.post(
+      Uri.parse('$base/admin/rest/coupons'),
+      headers: await _headers(),
+      body: jsonEncode(coupon.toMap()),
+    );
     if (res.statusCode < 200 || res.statusCode >= 300) {
       return FeatureState.failure('تعذر إنشاء الكوبون (${res.statusCode})');
     }
@@ -125,7 +131,7 @@ class CouponRepository {
     final base = BackendOrdersConfig.baseUrl.trim().replaceAll(RegExp(r'/$'), '');
     if (base.isEmpty) return FeatureState.failure('Backend URL missing for coupons.');
     final res = await http.patch(
-      Uri.parse('$base/coupons/${Uri.encodeComponent(id.trim())}'),
+      Uri.parse('$base/admin/rest/coupons/${Uri.encodeComponent(id.trim())}'),
       headers: await _headers(),
       body: jsonEncode(data),
     );
@@ -139,7 +145,7 @@ class CouponRepository {
     final base = BackendOrdersConfig.baseUrl.trim().replaceAll(RegExp(r'/$'), '');
     if (base.isEmpty) return FeatureState.failure('Backend URL missing for coupons.');
     final res = await http.delete(
-      Uri.parse('$base/coupons/${Uri.encodeComponent(id.trim())}'),
+      Uri.parse('$base/admin/rest/coupons/${Uri.encodeComponent(id.trim())}'),
       headers: await _headers(),
     );
     if (res.statusCode < 200 || res.statusCode >= 300) {

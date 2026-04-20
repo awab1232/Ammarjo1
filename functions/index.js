@@ -129,7 +129,7 @@ exports.sendPushNotification = onCall(async (request) => {
     android: {
       priority: 'high',
       notification: {
-        channel_id: 'ammarjo_channel',
+        channel_id: 'ammarjo_high_importance',
         icon: 'ic_launcher',
         color: '#FF6B00',
         sound: 'default',
@@ -213,7 +213,7 @@ exports.onUnifiedChatMessage = functions.firestore
       android: {
         priority: 'high',
         notification: {
-          channel_id: 'ammarjo_channel',
+          channel_id: 'ammarjo_high_importance',
           icon: 'ic_launcher',
           color: '#FF6B00',
           sound: 'default',
