@@ -196,7 +196,7 @@ class _RegisterPageState extends State<RegisterPage> {
               onPressed: _submitting
                   ? null
                   : () {
-                      Navigator.of(context).pushReplacement<void>(
+                      Navigator.of(context).pushReplacement<void, void>(
                         MaterialPageRoute<void>(builder: (_) => const LoginPage()),
                       );
                     },

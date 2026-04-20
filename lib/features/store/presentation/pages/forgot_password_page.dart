@@ -44,7 +44,7 @@ class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
           ),
         ),
       );
-      Navigator.of(context).pushReplacement<void>(
+      Navigator.of(context).pushReplacement<void, void>(
         MaterialPageRoute<void>(builder: (_) => const LoginPage()),
       );
     } on FirebaseAuthException catch (e) {
