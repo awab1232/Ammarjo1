@@ -92,21 +92,30 @@ class StoreModel {
       createdAt = DateTime.tryParse(createdRaw) ?? createdAt;
     }
     final city = raw['city']?.toString().trim() ?? '';
+    final coverImage =
+        (raw['coverImage'] ?? raw['imageUrl'] ?? raw['logo'] ?? '').toString();
+    final logo =
+        (raw['logo'] ?? raw['logoUrl'] ?? raw['coverImage'] ?? raw['imageUrl'] ?? '')
+            .toString();
+    final rating = _readDouble(raw['rating']) ?? 0.0;
+    final reviewCount = (raw['reviewCount'] as num?)?.toInt() ?? 0;
+    final deliveryFee =
+        _readDouble(raw['deliveryFee'] ?? raw['delivery_fee']) ?? 0.0;
     return StoreModel(
-      id: raw['id']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      ownerId: raw['ownerId']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      name: raw['name']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      phone: raw['phone']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      description: raw['description']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      category: raw['category']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+      id: raw['id']?.toString() ?? '',
+      ownerId: raw['ownerId']?.toString() ?? '',
+      name: raw['name']?.toString() ?? '',
+      phone: raw['phone']?.toString() ?? '',
+      description: raw['description']?.toString() ?? '',
+      category: raw['category']?.toString() ?? '',
       sellScope: city.isEmpty ? 'all_jordan' : 'city',
       city: city.isEmpty ? null : city,
       cities: city.isEmpty ? const ['all'] : <String>[city],
-      status: raw['status']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      coverImage: raw['coverImage']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      logo: raw['logo']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      rating: (raw['rating'] as num?)?.toDouble() ?? (throw StateError('INVALID_NUMERIC_DATA')),
-      reviewCount: (raw['reviewCount'] as num?)?.toInt() ?? (throw StateError('INVALID_NUMERIC_DATA')),
+      status: raw['status']?.toString() ?? 'approved',
+      coverImage: coverImage,
+      logo: logo,
+      rating: rating,
+      reviewCount: reviewCount,
       createdAt: createdAt,
       hasOffers: raw['hasOffers'] == true || raw['hasActivePromotions'] == true || raw['has_active_promotions'] == true,
       hasActivePromotions: raw['hasActivePromotions'] == true || raw['has_active_promotions'] == true,
@@ -126,7 +135,7 @@ class StoreModel {
         raw['shippingPolicy'] is Map ? Map<String, dynamic>.from(raw['shippingPolicy'] as Map) : null,
       ),
       hasOwnDrivers: !(raw['hasOwnDrivers'] == false || raw['has_own_drivers'] == false),
-      deliveryFee: _readDouble(raw['deliveryFee'] ?? raw['delivery_fee']),
+      deliveryFee: deliveryFee,
       freeDeliveryMinOrder: _readDouble(raw['freeDeliveryMinOrder'] ?? raw['free_delivery_min_order']),
       deliveryAreas: _stringList(raw['deliveryAreas'] ?? raw['delivery_areas']),
       openingHours: StoreWeeklyHours.tryParse(raw['openingHours'] ?? raw['opening_hours']),
