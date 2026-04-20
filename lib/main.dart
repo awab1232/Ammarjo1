@@ -11,7 +11,6 @@ import 'package:package_info_plus/package_info_plus.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'core/config/backend_orders_config.dart';
 import 'core/contracts/feature_contract_validator.dart';
-import 'core/contracts/feature_state.dart';
 import 'core/security/build_integrity_marker.dart';
 import 'core/security/firestore_killer.dart';
 import 'core/security/runtime_safety_enforcer.dart';
@@ -34,7 +33,6 @@ import 'web_pages/terms_of_use_page.dart';
 import 'core/config/gemini_config.dart';
 import 'core/startup/staging_startup_guard.dart';
 import 'core/firebase/app_check_bootstrap.dart';
-import 'core/firebase/phone_auth_bootstrap.dart';
 import 'core/firebase/fcm_bootstrap.dart';
 import 'core/firebase/local_chat_notification_service.dart';
 import 'core/services/gemini_ai_service.dart';
@@ -43,17 +41,12 @@ import 'core/seo/seo_indexing_hooks.dart';
 import 'core/seo/organic_traffic_system.dart';
 import 'core/seo/seo_service.dart';
 import 'core/theme/app_theme.dart';
-import 'features/driver/presentation/driver_ui.dart';
 import 'features/splash/presentation/ammarjo_splash_screen.dart';
 import 'features/store/data/failed_mirror_orders_worker.dart';
 import 'features/store/domain/models.dart';
 import 'features/store/presentation/pages/product_details_page.dart';
 import 'features/store/presentation/store_controller.dart';
 import 'features/store/presentation/pages/main_navigation_page.dart';
-import 'features/stores/data/stores_repository.dart';
-import 'features/stores/domain/store_model.dart';
-import 'features/stores/presentation/stores_home_page.dart';
-import 'features/stores/presentation/store_detail_page.dart';
 import 'features/stores/presentation/stores_list_page.dart';
 import 'core/monitoring/sentry_safe.dart';
 
@@ -83,24 +76,23 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 /// flutter run --dart-define=SENTRY_DSN=https://8f6710a4cc2492c6ac6414329b8fb028@o4511219698237440.ingest.de.sentry.io/4511219712655440
 Future<void> main() async {
   // ignore: avoid_print
-  print('APP STARTED');
+  print('APP START');
   final sentryDsn = const String.fromEnvironment('SENTRY_DSN', defaultValue: '').trim();
   final appEnv = const String.fromEnvironment('APP_ENV', defaultValue: '').trim();
   final resolvedEnv = appEnv.isNotEmpty ? appEnv : (kDebugMode ? 'staging' : 'production');
   final tracesSampleRate = resolvedEnv == 'production' ? 0.1 : 1.0;
   Future<void> runner() async {
-    // Bindings + runApp must run in the same zone as [runZonedGuarded] (avoids Zone mismatch).
+    FlutterError.onError = (details) {
+      FlutterError.dumpErrorToConsole(details);
+      unawaited(
+        sentryCaptureExceptionSafe(
+          details.exception,
+          stackTrace: details.stack,
+        ),
+      );
+    };
     await runZonedGuarded<Future<void>>(() async {
       WidgetsFlutterBinding.ensureInitialized();
-      FlutterError.onError = (details) {
-        FlutterError.dumpErrorToConsole(details);
-        unawaited(
-          sentryCaptureExceptionSafe(
-            details.exception,
-            stackTrace: details.stack,
-          ),
-        );
-      };
       await _appMain();
     }, (error, stack) async {
       await sentryCaptureExceptionSafe(error, stackTrace: stack);
@@ -180,10 +172,6 @@ Future<void> _appMain() async {
     }
     if (Firebase.apps.isNotEmpty && kIsWeb) {
       await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);
-      // Phone Auth web: warm up reCAPTCHA config before any UI flow (non-fatal if it fails).
-      unawaited(
-        ensurePhoneAuthEnvironmentReady().onError((_, _) => null),
-      );
       SeoIndexingHooks.start();
       OrganicTrafficSystem.instance.start();
     }
@@ -364,10 +352,7 @@ class AmmarStoreApp extends StatelessWidget {
       },
       home: const AmmarJoSplashScreen(),
       routes: {
-        '/home': (_) => const StoresHomePage(),
         '/main': (_) => const MainNavigationPage(),
-        '/driver': (_) => const DriverDashboardPage(),
-        '/driver/register': (_) => const DriverRegisterPage(),
         '/privacy': (_) => const PrivacyPolicyPage(),
         '/about': (_) => const AboutUsPage(),
         '/terms': (_) => const TermsOfUsePage(),
@@ -414,7 +399,9 @@ class AmmarStoreApp extends StatelessWidget {
           }
           if (product == null) {
             return MaterialPageRoute<void>(
-              builder: (_) => _ProductDeepLinkFallbackPage(productId: productId),
+              builder: (_) => const Scaffold(
+                body: Center(child: CircularProgressIndicator()),
+              ),
               settings: settings,
             );
           }
@@ -424,15 +411,6 @@ class AmmarStoreApp extends StatelessWidget {
               cartStoreId: cartStoreId,
               cartStoreName: cartStoreName,
             ),
-            settings: settings,
-          );
-        }
-        if (routeName.startsWith('/store/')) {
-          final storeId = Uri.decodeComponent(
-            routeName.replaceFirst('/store/', '').trim(),
-          );
-          return MaterialPageRoute<void>(
-            builder: (_) => _StoreDeepLinkPage(storeId: storeId),
             settings: settings,
           );
         }
@@ -447,84 +425,6 @@ class AmmarStoreApp extends StatelessWidget {
         }
         return null;
       },
-      onUnknownRoute: (settings) => MaterialPageRoute<void>(
-        builder: (_) => const MainNavigationPage(),
-        settings: settings,
-      ),
-    );
-  }
-}
-
-class _StoreDeepLinkPage extends StatelessWidget {
-  const _StoreDeepLinkPage({required this.storeId});
-
-  final String storeId;
-
-  @override
-  Widget build(BuildContext context) {
-    if (storeId.trim().isEmpty) {
-      return const Scaffold(
-        body: Center(child: Text('متجر غير صالح')),
-      );
-    }
-    return FutureBuilder<FeatureState<StoreModel>>(
-      future: StoresRepository.instance.fetchStoreById(storeId),
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
-          return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
-          );
-        }
-        final state = snap.data;
-        if (state is FeatureSuccess<StoreModel>) {
-          return StoreDetailPage(store: state.data);
-        }
-        return Scaffold(
-          appBar: AppBar(title: const Text('تفاصيل المتجر')),
-          body: Center(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Text('تعذر فتح المتجر'),
-                const SizedBox(height: 12),
-                FilledButton(
-                  onPressed: () => Navigator.of(context).pushReplacementNamed('/main'),
-                  child: const Text('العودة للرئيسية'),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-}
-
-class _ProductDeepLinkFallbackPage extends StatelessWidget {
-  const _ProductDeepLinkFallbackPage({required this.productId});
-
-  final int? productId;
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: const Text('المنتج')),
-      body: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              productId == null ? 'الرابط غير صالح' : 'المنتج غير متاح حالياً',
-              textAlign: TextAlign.center,
-            ),
-            const SizedBox(height: 12),
-            FilledButton(
-              onPressed: () => Navigator.of(context).pushReplacementNamed('/main'),
-              child: const Text('العودة للرئيسية'),
-            ),
-          ],
-        ),
-      ),
     );
   }
 }

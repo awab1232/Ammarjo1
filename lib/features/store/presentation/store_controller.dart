@@ -10,8 +10,6 @@ import '../../../core/firebase/account_password_service.dart';
 import '../../../core/firebase/chat_firebase_sync.dart';
 import '../../../core/firebase/phone_auth_service.dart';
 import '../../../core/firebase/users_repository.dart';
-import '../../../core/services/backend_user_client.dart';
-import '../../../core/constants/jordan_regions.dart';
 import '../../../core/utils/jordan_phone.dart';
 import '../../../core/utils/web_image_url.dart';
 import '../../../core/config/shipping_policy.dart';
@@ -420,21 +418,8 @@ class StoreController extends ChangeNotifier {
 
   /// تسجيل دخول برقم الجوال (٩ أرقام) وكلمة المرور — بدون OTP.
   Future<bool> signInWithPhonePassword(String localNineDigits, String password) async {
-    errorMessage = 'تسجيل الدخول برقم الهاتف متوقف مؤقتًا. استخدم البريد الإلكتروني وكلمة المرور.';
-    notifyListeners();
-    return false;
-  }
-
-  /// تسجيل دخول بالبريد وكلمة المرور (مناسب للويب).
-  Future<bool> signInWithEmailPassword(String email, String password) async {
     if (!Firebase.apps.isNotEmpty) {
       errorMessage = 'يتطلب Firebase.';
-      notifyListeners();
-      return false;
-    }
-    final e = email.trim();
-    if (e.isEmpty || password.isEmpty) {
-      errorMessage = 'أدخل البريد الإلكتروني وكلمة المرور.';
       notifyListeners();
       return false;
     }
@@ -442,14 +427,9 @@ class StoreController extends ChangeNotifier {
       isLoading = true;
       errorMessage = null;
       notifyListeners();
-      await FirebaseAuth.instance.signInWithEmailAndPassword(email: e, password: password);
-      final u = FirebaseAuth.instance.currentUser;
-      if (u != null && u.email != null && u.email!.trim().isNotEmpty) {
-        await BackendUserClient.instance.postUserRegistration(
-          firebaseUid: u.uid,
-          email: u.email!.trim(),
-        );
-      }
+      final un = normalizeJordanPhoneForUsername(localNineDigits);
+      final email = syntheticEmailForPhone(un);
+      await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
       await _local.setLocalBypassSession(false);
       await syncLocalProfileWithFirebaseSession();
       if (await user.isUserBannedInFirestore()) {
@@ -459,8 +439,44 @@ class StoreController extends ChangeNotifier {
       }
       await _syncFavoritesAfterAuth();
       return true;
-    } on FirebaseAuthException catch (ex) {
-      errorMessage = PhoneAuthService.userFacingMessage(ex);
+    } on FirebaseAuthException {
+      errorMessage = 'رقم الجوال أو كلمة المرور غير صحيحة.';
+      return false;
+    } on Object {
+      errorMessage = 'تعذر تسجيل الدخول حالياً.';
+      return false;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  /// تسجيل دخول بالبريد وكلمة المرور (مناسب للويب).
+  Future<bool> signInWithEmailPassword(String email, String password) async {
+    if (!Firebase.apps.isNotEmpty) {
+      errorMessage = 'يتطلب Firebase.';
+      notifyListeners();
+      return false;
+    }
+    try {
+      isLoading = true;
+      errorMessage = null;
+      notifyListeners();
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email.trim(),
+        password: password,
+      );
+      await _local.setLocalBypassSession(false);
+      await syncLocalProfileWithFirebaseSession();
+      if (await user.isUserBannedInFirestore()) {
+        errorMessage = 'تم حظر حسابك. تواصل مع الدعم.';
+        await logout();
+        return false;
+      }
+      await _syncFavoritesAfterAuth();
+      return true;
+    } on FirebaseAuthException {
+      errorMessage = 'تعذر تسجيل الدخول. تحقق من البريد وكلمة المرور.';
       return false;
     } on Object {
       errorMessage = 'تعذر تسجيل الدخول حالياً.';
@@ -652,11 +668,49 @@ class StoreController extends ChangeNotifier {
     String? lastName,
     bool isResendSms = false,
   }) async {
-    errorMessage = 'تسجيل الدخول عبر الهاتف متوقف مؤقتًا. استخدم البريد الإلكتروني وكلمة المرور.';
-    phoneVerificationId = null;
-    phoneResendToken = null;
-    notifyListeners();
-    return false;
+    if (!Firebase.apps.isNotEmpty) {
+      errorMessage = 'يتطلب Firebase.';
+      notifyListeners();
+      return false;
+    }
+    try {
+      isLoading = true;
+      errorMessage = null;
+      final tokenForResend = isResendSms ? phoneResendToken : null;
+      phoneVerificationId = null;
+      phoneResendToken = null;
+      notifyListeners();
+      final e164 = PhoneAuthService.jordanPhoneE164(localNineDigits);
+      final result = await PhoneAuthService.startVerification(
+        e164,
+        forceResendingToken: tokenForResend,
+      );
+      if (result.verificationId == PhoneAuthService.autoVerifiedSentinel) {
+        // التسجيل / نسيان كلمة المرور: لا نكتب الملف المحلي/Firestore حتى يُكمل المسار صراحة.
+        if (isRegistration || forgotPassword) {
+          phoneVerificationId = PhoneAuthService.autoVerifiedSentinel;
+          phoneResendToken = result.resendToken;
+          return true;
+        }
+        return await _finalizePhoneSession(
+          isRegistration: isRegistration,
+          firstName: firstName,
+          lastName: lastName,
+        );
+      }
+      phoneVerificationId = result.verificationId;
+      phoneResendToken = result.resendToken;
+      return true;
+    } on FirebaseAuthException {
+      errorMessage = 'تعذر إرسال رمز التحقق.';
+      return false;
+    } on Object {
+      errorMessage = 'تعذر إرسال رمز التحقق حالياً.';
+      return false;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
   }
 
   /// إكمال التسجيل أو الدخول بعد إدخال رمز SMS.
@@ -668,11 +722,58 @@ class StoreController extends ChangeNotifier {
     String? firstName,
     String? lastName,
   }) async {
-    errorMessage = 'تسجيل الدخول عبر الهاتف متوقف مؤقتًا. استخدم البريد الإلكتروني وكلمة المرور.';
-    phoneVerificationId = null;
-    phoneResendToken = null;
-    notifyListeners();
-    return false;
+    if (!Firebase.apps.isNotEmpty) {
+      errorMessage = 'يتطلب Firebase.';
+      return false;
+    }
+    final vid = phoneVerificationId;
+    if (vid == null || vid.isEmpty) {
+      errorMessage = 'أرسل رمز التحقق أولاً.';
+      return false;
+    }
+    if (vid == PhoneAuthService.autoVerifiedSentinel) {
+      if (skipProfileFinalize) {
+        phoneVerificationId = null;
+        phoneResendToken = null;
+        notifyListeners();
+        return true;
+      }
+      final ok = await _finalizePhoneSession(
+        isRegistration: isRegistration,
+        firstName: firstName,
+        lastName: lastName,
+      );
+      if (ok) {
+        phoneVerificationId = null;
+        phoneResendToken = null;
+      }
+      return ok;
+    }
+    try {
+      isLoading = true;
+      errorMessage = null;
+      notifyListeners();
+      await PhoneAuthService.signInWithSmsCode(verificationId: vid, smsCode: smsCode);
+      phoneVerificationId = null;
+      phoneResendToken = null;
+      if (skipProfileFinalize) {
+        return true;
+      }
+      return await _finalizePhoneSession(
+        isRegistration: isRegistration,
+        firstName: firstName,
+        lastName: lastName,
+      );
+    } on FirebaseAuthException {
+      errorMessage = 'رمز التحقق غير صالح.';
+      return false;
+    } on Object {
+      errorMessage = 'تعذر التحقق من الرمز حالياً.';
+      return false;
+    } finally {
+      isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<bool> _finalizePhoneSession({
@@ -724,7 +825,6 @@ class StoreController extends ChangeNotifier {
   void clearPhoneVerificationState() {
     phoneVerificationId = null;
     phoneResendToken = null;
-    PhoneAuthService.resetWebPendingVerification();
     notifyListeners();
   }
 
@@ -757,34 +857,10 @@ class StoreController extends ChangeNotifier {
       cartState.removeFromCart(productId, storeId: storeId);
 
   Future<void> removeCartLine(CartItem item) => cartState.removeCartLine(item);
-  Future<bool> applyCoupon(String code, String userId, {List<CartItem>? lines}) =>
-      cartState.applyCoupon(code, userId, lines: lines);
+  Future<bool> applyCoupon(String code, String userId) => cartState.applyCoupon(code, userId);
   void removeCoupon() => cartState.removeCoupon();
-  Future<bool> applyPromotions(String userId, {List<CartItem>? lines}) =>
-      cartState.applyPromotions(userId, lines: lines);
+  Future<bool> applyPromotions(String userId) => cartState.applyPromotions(userId);
   void clearPromotions() => cartState.clearPromotions();
-
-  /// شحن + خصومات على [lines] فقط (لملخص الدفع عند `checkoutLines`).
-  Future<
-      ({
-        StoreShippingComputation shipping,
-        double couponDiscount,
-        double promotionsDiscount,
-        bool freeShipping,
-      })> previewCheckoutTotals({
-    required List<CartItem> lines,
-    required String userId,
-    String? userCity,
-  }) async {
-    final shipping = await computeShippingForCartLines(lines, userCity: userCity);
-    final d = await cartState.checkoutDiscountBreakdownForLines(lines, userId);
-    return (
-      shipping: shipping,
-      couponDiscount: d.couponDiscount,
-      promotionsDiscount: d.promotionsDiscount,
-      freeShipping: d.freeShipping,
-    );
-  }
 
   /// تحديث بيانات المنتجات في السلة من Firestore (`products`).
   Future<void> refreshCartFromCatalog() => cartState.refreshCartFromCatalog();
@@ -800,7 +876,6 @@ class StoreController extends ChangeNotifier {
     }
     final list = <StoreShippingLineCost>[];
     final uncoveredStoreNames = <String>[];
-    final noDeliveryStoreNames = <String>[];
     for (final entry in grouped.entries) {
       final storeId = entry.key.trim();
       final items = entry.value;
@@ -820,52 +895,18 @@ class StoreController extends ChangeNotifier {
         FeatureSuccess(:final data) => data.toMap(),
         _ => <String, dynamic>{},
       };
-      final hasOwn = data['hasOwnDrivers'] != false && data['has_own_drivers'] != false;
-      if (!hasOwn) {
-        noDeliveryStoreNames.add(display);
-        list.add(StoreShippingLineCost(storeId: storeId, storeName: display, subtotal: subtotal, shippingCost: 0));
-        continue;
-      }
       final policy = store_shipping.ShippingPolicy.fromMap(
         data['shippingPolicy'] is Map ? Map<String, dynamic>.from(data['shippingPolicy'] as Map) : null,
       );
       final fee = policy.calculateShipping(subtotal: subtotal, itemCount: itemCount);
       final city = userCity?.trim() ?? '';
-      if (city.isNotEmpty && !_storeDeliversToCustomerArea(data, city)) {
+      if (city.isNotEmpty && !_storeCoversCity(data, city)) {
         uncoveredStoreNames.add(display);
       }
       list.add(StoreShippingLineCost(storeId: storeId, storeName: display, subtotal: subtotal, shippingCost: fee));
     }
     final shippingTotal = list.fold<double>(0, (s, e) => s + e.shippingCost);
-    return StoreShippingComputation(
-      lines: list,
-      totalShipping: shippingTotal,
-      uncoveredStoreNames: uncoveredStoreNames,
-      noDeliveryStoreNames: noDeliveryStoreNames,
-    );
-  }
-
-  /// محافظات التوصيل من المتجر + تطابق مع مدينة العميل.
-  bool _storeDeliversToCustomerArea(Map<String, dynamic> data, String cityRaw) {
-    final c = matchJordanRegion(cityRaw.trim()) ?? cityRaw.trim();
-    if (c.isEmpty) return true;
-    final rawAreas = data['deliveryAreas'] ?? data['delivery_areas'];
-    final areas = <String>[];
-    if (rawAreas is List) {
-      for (final e in rawAreas) {
-        final t = e?.toString().trim() ?? '';
-        if (t.isNotEmpty) areas.add(t);
-      }
-    }
-    if (areas.isEmpty) {
-      return _storeCoversCity(data, c);
-    }
-    if (areas.contains('كل الأردن')) return true;
-    for (final a in areas) {
-      final ma = matchJordanRegion(a) ?? a;
-      if (ma == c || a == c) return true;
-    }
-    return false;
+    return StoreShippingComputation(lines: list, totalShipping: shippingTotal, uncoveredStoreNames: uncoveredStoreNames);
   }
 
   bool _storeCoversCity(Map<String, dynamic> data, String city) {
@@ -919,30 +960,13 @@ class StoreController extends ChangeNotifier {
       notifyListeners();
       final subtotal = lines.fold<double>(0, (s, e) => s + e.totalPrice);
       final shipping = await computeShippingForCartLines(lines, userCity: city);
-      if (shipping.noDeliveryStoreNames.isNotEmpty) {
-        errorMessage = 'لا يوجد توصيل من: ${shipping.noDeliveryStoreNames.join('، ')}';
-        return false;
-      }
       if (shipping.uncoveredStoreNames.isNotEmpty) {
-        errorMessage = 'لا يوجد توصيل لمنطقتك من: ${shipping.uncoveredStoreNames.join('، ')}';
+        errorMessage = 'بعض المتاجر لا تغطي منطقتك: ${shipping.uncoveredStoreNames.join('، ')}';
         return false;
       }
-      final uid = FirebaseAuth.instance.currentUser?.uid;
-      if (uid == null) {
-        errorMessage = 'انتهت الجلسة. سجّل الدخول مرة أخرى.';
-        return false;
-      }
-      final CheckoutScopedDiscounts scoped = cartLines != null
-          ? await _checkoutScopedDiscounts(lines: lines, userId: uid)
-          : CheckoutScopedDiscounts(
-              couponDiscount: cartState.discountAmount,
-              promotionsDiscount: cartState.promotionsDiscountAmount,
-              freeShipping: cartState.freeShippingByPromotion,
-              promotionIds: cartState.appliedPromotions.map((e) => e.id).toList(),
-            );
-      final ship = scoped.freeShipping ? 0.0 : shipping.totalShipping;
-      final couponCode = scoped.couponDiscount > 0 ? cartState.appliedCoupon?.code : null;
-      final discount = scoped.couponDiscount + scoped.promotionsDiscount;
+      final ship = shipping.totalShipping;
+      final couponCode = cartState.appliedCoupon?.code;
+      final discount = cartState.discountAmount + cartState.promotionsDiscountAmount;
       final beforeDiscountTotal = subtotal + ship;
       final grandTotal = (beforeDiscountTotal - discount) < 0 ? 0.0 : (beforeDiscountTotal - discount);
       var orderEmail = email.trim();
@@ -962,6 +986,11 @@ class StoreController extends ChangeNotifier {
         notifyListeners();
         return false;
       }
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) {
+        errorMessage = 'انتهت الجلسة. سجّل الدخول مرة أخرى.';
+        return false;
+      }
       final orderState = await BackendOrderRepository.instance.createOrderFromCart(
         cart: lines,
         cartSubtotal: subtotal,
@@ -972,7 +1001,7 @@ class StoreController extends ChangeNotifier {
         orderTotal: grandTotal,
         couponCode: couponCode,
         discountAmount: discount > 0 ? discount : 0.0,
-        promotionIds: scoped.promotionIds,
+        promotionIds: cartState.appliedPromotions.map((e) => e.id).toList(),
         customerUid: uid,
         customerEmail: orderEmail,
         firstName: firstName,
@@ -1042,35 +1071,7 @@ class StoreController extends ChangeNotifier {
     }
   }
 
-  Future<CheckoutScopedDiscounts> _checkoutScopedDiscounts({
-    required List<CartItem> lines,
-    required String userId,
-  }) async {
-    final d = await cartState.checkoutDiscountBreakdownForLines(lines, userId);
-    return CheckoutScopedDiscounts(
-      couponDiscount: d.couponDiscount,
-      promotionsDiscount: d.promotionsDiscount,
-      freeShipping: d.freeShipping,
-      promotionIds: d.promotionIds,
-    );
-  }
-
   /// Deprecated: points are now awarded only on `delivered`.
-}
-
-/// خصومات مُعاد حسابها لأسطر طلب جزئية (متجر واحد من السلة).
-class CheckoutScopedDiscounts {
-  const CheckoutScopedDiscounts({
-    required this.couponDiscount,
-    required this.promotionsDiscount,
-    required this.freeShipping,
-    required this.promotionIds,
-  });
-
-  final double couponDiscount;
-  final double promotionsDiscount;
-  final bool freeShipping;
-  final List<String> promotionIds;
 }
 
 class StoreShippingLineCost {
@@ -1092,12 +1093,9 @@ class StoreShippingComputation {
     required this.lines,
     required this.totalShipping,
     required this.uncoveredStoreNames,
-    this.noDeliveryStoreNames = const <String>[],
   });
 
   final List<StoreShippingLineCost> lines;
   final double totalShipping;
   final List<String> uncoveredStoreNames;
-  /// متاجر أوقفت التوصيل ([hasOwnDrivers] = false).
-  final List<String> noDeliveryStoreNames;
 }

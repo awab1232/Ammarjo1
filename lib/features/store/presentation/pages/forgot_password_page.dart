@@ -1,12 +1,15 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
+import '../../../../core/firebase/phone_auth_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_bar_back_button.dart';
-import 'login_page.dart';
+import '../../../../core/utils/jordan_phone.dart';
+import '../store_controller.dart';
 
-/// استعادة كلمة المرور بالبريد الإلكتروني فقط.
+/// نسيت كلمة المرور: هاتف → OTP → تعيين كلمة مرور جديدة (Firebase Auth + مزامنة الملف من Firestore).
 class ForgotPasswordPage extends StatefulWidget {
   const ForgotPasswordPage({super.key});
 
@@ -16,132 +19,226 @@ class ForgotPasswordPage extends StatefulWidget {
 
 class _ForgotPasswordPageState extends State<ForgotPasswordPage> {
   final _formKey = GlobalKey<FormState>();
-  final _email = TextEditingController();
-  bool _submitting = false;
-  String? _error;
+  final _phoneLocal = TextEditingController();
+  final _otp = TextEditingController();
+  final _newPass = TextEditingController();
+  final _confirm = TextEditingController();
 
   @override
   void dispose() {
-    _email.dispose();
+    _phoneLocal.dispose();
+    _otp.dispose();
+    _newPass.dispose();
+    _confirm.dispose();
     super.dispose();
   }
 
-  Future<void> _sendResetLink() async {
+  Future<void> _sendOtp(StoreController store) async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    final email = _email.text.trim();
-    setState(() {
-      _submitting = true;
-      _error = null;
-    });
-    try {
-      await FirebaseAuth.instance.sendPasswordResetEmail(email: email);
-      if (!mounted) return;
+    final ok = await store.sendPhoneVerificationCode(
+      _phoneLocal.text.trim(),
+      forgotPassword: true,
+    );
+    if (!mounted) return;
+    if (ok) {
+      setState(() {});
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'تم إرسال رابط إعادة تعيين كلمة المرور إلى بريدك الإلكتروني.',
-            style: GoogleFonts.tajawal(),
-          ),
-        ),
+        SnackBar(content: Text('تم إرسال رمز التحقق.', style: GoogleFonts.tajawal())),
       );
-      Navigator.of(context).pushReplacement<void, void>(
-        MaterialPageRoute<void>(builder: (_) => const LoginPage()),
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(store.errorMessage ?? 'تعذر الإرسال', textAlign: TextAlign.right)),
       );
-    } on FirebaseAuthException catch (e) {
-      setState(() => _error = e.message ?? 'تعذر إرسال رابط إعادة التعيين.');
-    } on Object catch (e) {
-      setState(() => _error = 'تعذر إرسال رابط إعادة التعيين: $e');
-    } finally {
-      if (mounted) setState(() => _submitting = false);
     }
   }
 
-  Widget _errorBanner(String msg) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-      decoration: BoxDecoration(
-        color: Colors.red.shade50,
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.red.shade200),
-      ),
-      child: Text(
-        msg,
-        textAlign: TextAlign.right,
-        style: GoogleFonts.tajawal(color: Colors.red.shade800, fontSize: 13, height: 1.4),
-      ),
-    );
+  Future<void> _submit(StoreController store) async {
+    final vid = store.phoneVerificationId;
+    if (vid == null) return;
+
+    if (vid != PhoneAuthService.autoVerifiedSentinel && _otp.text.trim().length < 4) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('أدخل رمز التحقق.', style: GoogleFonts.tajawal())),
+      );
+      return;
+    }
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+
+    final messenger = ScaffoldMessenger.of(context);
+    final nav = Navigator.of(context);
+
+    final okVerify = vid == PhoneAuthService.autoVerifiedSentinel
+        ? await store.verifyPhoneCode('', isRegistration: false, skipProfileFinalize: true)
+        : await store.verifyPhoneCode(_otp.text.trim(), isRegistration: false, skipProfileFinalize: true);
+
+    if (!mounted) return;
+    if (!okVerify) {
+      messenger.showSnackBar(
+        SnackBar(content: Text(store.errorMessage ?? 'فشل التحقق', textAlign: TextAlign.right)),
+      );
+      return;
+    }
+
+    final ok = await store.finishForgotPasswordWithNewPassword(_newPass.text);
+    if (!mounted) return;
+    if (ok) {
+      messenger.showSnackBar(
+        SnackBar(content: Text('تم تحديث كلمة المرور. يمكنك المتابعة.', style: GoogleFonts.tajawal())),
+      );
+      nav.pop();
+    } else {
+      messenger.showSnackBar(
+        SnackBar(content: Text(store.errorMessage ?? 'تعذر التحديث', textAlign: TextAlign.right)),
+      );
+    }
   }
 
   @override
   Widget build(BuildContext context) {
+    final store = context.watch<StoreController>();
+    final awaiting = store.phoneVerificationId != null;
+    final autoVerified = store.phoneVerificationId == PhoneAuthService.autoVerifiedSentinel;
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
-        leading: const AppBarBackButton(),
-        title: Text('نسيت كلمة المرور', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        foregroundColor: AppColors.heading,
+        backgroundColor: AppColors.background,
+        leading: Navigator.of(context).canPop() ? const AppBarBackButton() : null,
+        title: Text('نسيت كلمة المرور', style: GoogleFonts.tajawal(fontWeight: FontWeight.w600)),
       ),
-      body: _buildBody(),
-    );
-  }
-
-  Widget _buildBody() {
-    return Form(
-      key: _formKey,
-      child: ListView(
-        padding: const EdgeInsets.fromLTRB(24, 12, 24, 40),
-        children: [
-          Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: AppColors.orange.withValues(alpha: 0.08),
-              borderRadius: BorderRadius.circular(16),
-            ),
-            child: Text(
-              'أدخل البريد الإلكتروني المرتبط بحسابك لإرسال رابط إعادة تعيين كلمة المرور.',
+      body: Form(
+        key: _formKey,
+        child: ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            Text(
+              awaiting
+                  ? (autoVerified
+                      ? 'تم التحقق تلقائياً. اختر كلمة مرور جديدة.'
+                      : 'أدخل رمز SMS ثم كلمة المرور الجديدة.')
+                  : 'أدخل رقم جوالك المسجّل لإرسال رمز التحقق وإعادة تعيين كلمة المرور.',
               textAlign: TextAlign.right,
-              style: GoogleFonts.tajawal(fontSize: 14, height: 1.5, fontWeight: FontWeight.w600),
+              style: GoogleFonts.tajawal(fontSize: 14, color: AppColors.textSecondary, height: 1.4),
             ),
-          ),
-          const SizedBox(height: 20),
-          TextFormField(
-            controller: _email,
-            keyboardType: TextInputType.emailAddress,
-            textAlign: TextAlign.right,
-            decoration: InputDecoration(
-              labelText: 'البريد الإلكتروني',
-              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-              filled: true,
-              fillColor: Colors.white,
+            const SizedBox(height: 16),
+            Directionality(
+              textDirection: TextDirection.ltr,
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 16),
+                    decoration: BoxDecoration(
+                      color: AppColors.orangeLight,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: AppColors.border),
+                    ),
+                    child: Text('+962', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700, color: AppColors.orange)),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: TextFormField(
+                      controller: _phoneLocal,
+                      enabled: !awaiting,
+                      keyboardType: TextInputType.phone,
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly, LengthLimitingTextInputFormatter(9)],
+                      decoration: InputDecoration(
+                        hintText: '7XXXXXXXX',
+                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                        filled: true,
+                        fillColor: Colors.white,
+                      ),
+                      validator: (v) {
+                        if (v == null || v.isEmpty) return 'أدخل رقم الهاتف';
+                        if (!isValidJordanMobileLocal(v)) return 'رقم أردني صحيح';
+                        return null;
+                      },
+                    ),
+                  ),
+                ],
+              ),
             ),
-            validator: (v) {
-              final t = v?.trim() ?? '';
-              if (t.isEmpty) return 'مطلوب';
-              return RegExp(r'^[^@\s]+@[^@\s]+\.[^@\s]+$').hasMatch(t) ? null : 'صيغة بريد غير صحيحة';
-            },
-          ),
-          const SizedBox(height: 16),
-          if (_error != null) _errorBanner(_error!),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.orange,
-              foregroundColor: Colors.white,
-              padding: const EdgeInsets.symmetric(vertical: 16),
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-            ),
-            onPressed: _submitting ? null : _sendResetLink,
-            child: _submitting
-                ? const SizedBox(
-                    height: 22,
-                    width: 22,
-                    child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
-                  )
-                : Text('إرسال رابط إعادة التعيين', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700, fontSize: 16)),
-          ),
-        ],
+            if (awaiting && !autoVerified) ...[
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _otp,
+                keyboardType: TextInputType.number,
+                textAlign: TextAlign.center,
+                style: GoogleFonts.tajawal(letterSpacing: 4, fontSize: 20),
+                decoration: InputDecoration(
+                  labelText: 'رمز التحقق',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  filled: true,
+                  fillColor: Colors.white,
+                ),
+              ),
+            ],
+            if (awaiting) ...[
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _newPass,
+                obscureText: true,
+                textAlign: TextAlign.right,
+                decoration: InputDecoration(
+                  labelText: 'كلمة المرور الجديدة',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  filled: true,
+                  fillColor: Colors.white,
+                ),
+                validator: (v) => (v == null || v.length < 6) ? '6 أحرف على الأقل' : null,
+              ),
+              const SizedBox(height: 10),
+              TextFormField(
+                controller: _confirm,
+                obscureText: true,
+                textAlign: TextAlign.right,
+                decoration: InputDecoration(
+                  labelText: 'تأكيد كلمة المرور',
+                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  filled: true,
+                  fillColor: Colors.white,
+                ),
+                validator: (v) => v != _newPass.text ? 'غير متطابقة' : null,
+              ),
+            ],
+            const SizedBox(height: 24),
+            if (!awaiting)
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.orange,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                onPressed: store.isLoading ? null : () => _sendOtp(store),
+                child: store.isLoading
+                    ? const SizedBox(height: 22, width: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : Text('إرسال رمز التحقق', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+              )
+            else
+              FilledButton(
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.navy,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                ),
+                onPressed: store.isLoading ? null : () => _submit(store),
+                child: store.isLoading
+                    ? const SizedBox(height: 22, width: 22, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                    : Text('حفظ كلمة المرور الجديدة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+              ),
+            if (awaiting)
+              TextButton(
+                onPressed: store.isLoading
+                    ? null
+                    : () {
+                        store.clearPhoneVerificationState();
+                        setState(() {});
+                      },
+                child: Text('إلغاء', style: GoogleFonts.tajawal()),
+              ),
+          ],
+        ),
       ),
     );
   }
