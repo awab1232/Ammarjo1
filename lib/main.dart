@@ -52,6 +52,7 @@ import 'features/store/presentation/store_controller.dart';
 import 'features/store/presentation/pages/main_navigation_page.dart';
 import 'features/stores/data/stores_repository.dart';
 import 'features/stores/domain/store_model.dart';
+import 'features/stores/presentation/stores_home_page.dart';
 import 'features/stores/presentation/store_detail_page.dart';
 import 'features/stores/presentation/stores_list_page.dart';
 import 'core/monitoring/sentry_safe.dart';
@@ -82,7 +83,7 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 /// flutter run --dart-define=SENTRY_DSN=https://8f6710a4cc2492c6ac6414329b8fb028@o4511219698237440.ingest.de.sentry.io/4511219712655440
 Future<void> main() async {
   // ignore: avoid_print
-  print('APP START');
+  print('APP STARTED');
   final sentryDsn = const String.fromEnvironment('SENTRY_DSN', defaultValue: '').trim();
   final appEnv = const String.fromEnvironment('APP_ENV', defaultValue: '').trim();
   final resolvedEnv = appEnv.isNotEmpty ? appEnv : (kDebugMode ? 'staging' : 'production');
@@ -363,6 +364,7 @@ class AmmarStoreApp extends StatelessWidget {
       },
       home: const AmmarJoSplashScreen(),
       routes: {
+        '/home': (_) => const StoresHomePage(),
         '/main': (_) => const MainNavigationPage(),
         '/driver': (_) => const DriverDashboardPage(),
         '/driver/register': (_) => const DriverRegisterPage(),
