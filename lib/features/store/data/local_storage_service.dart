@@ -21,7 +21,7 @@ class LocalStorageService {
 
   Future<int> loyaltyPointsForEmail(String email) async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getInt(_loyaltyKey(email)) ?? (throw StateError('INVALID_NUMERIC_DATA'));
+    return prefs.getInt(_loyaltyKey(email)) ?? 0;
   }
 
   Future<void> saveCart(List<CartItem> items) async {
@@ -55,8 +55,8 @@ class LocalStorageService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_profileJsonKey, jsonEncode(profile.toJson()));
     await prefs.setString(_emailKey, profile.email);
-    await prefs.setString(_tokenKey, profile.token ?? (throw StateError('NULL_RESPONSE')));
-    await prefs.setString(_nameKey, profile.fullName ?? (throw StateError('NULL_RESPONSE')));
+    await prefs.setString(_tokenKey, profile.token ?? '');
+    await prefs.setString(_nameKey, profile.fullName ?? '');
     await prefs.setInt(_loyaltyKey(profile.email), profile.loyaltyPoints);
   }
 
@@ -67,15 +67,15 @@ class LocalStorageService {
       try {
         final j = jsonDecode(jsonRaw) as Map<String, dynamic>;
         final p = CustomerProfile.fromJson(j);
-        final pts = prefs.getInt(_loyaltyKey(p.email)) ?? (throw StateError('INVALID_NUMERIC_DATA'));
+        final pts = prefs.getInt(_loyaltyKey(p.email)) ?? 0;
         return p.copyWith(loyaltyPoints: pts);
       } on Object {
-        throw StateError('NULL_RESPONSE');
+        return null;
       }
     }
     final email = prefs.getString(_emailKey);
-    if (email == null || email.isEmpty) throw StateError('NULL_RESPONSE');
-    final pts = prefs.getInt(_loyaltyKey(email)) ?? (throw StateError('INVALID_NUMERIC_DATA'));
+    if (email == null || email.isEmpty) return null;
+    final pts = prefs.getInt(_loyaltyKey(email)) ?? 0;
     return CustomerProfile(
       email: email,
       token: prefs.getString(_tokenKey),
@@ -105,7 +105,7 @@ class LocalStorageService {
 
   Future<bool> getLocalBypassSession() async {
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool(_localBypassSessionKey) ?? (throw StateError('NULL_RESPONSE'));
+    return prefs.getBool(_localBypassSessionKey) ?? false;
   }
 
   Future<StringList> getRecentSearches() async {

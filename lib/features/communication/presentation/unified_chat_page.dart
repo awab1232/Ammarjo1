@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/config/chat_feature_config.dart';
 import '../../../core/contracts/feature_state.dart';
 import '../../../core/firebase/chat_firebase_sync.dart';
 import '../../../core/theme/app_colors.dart';
@@ -54,6 +55,11 @@ class _UnifiedChatPageState extends State<UnifiedChatPage> {
   @override
   void initState() {
     super.initState();
+    if (!kChatFeatureEnabled) {
+      _initError = kChatFeatureUnavailableMessage;
+      _loading = false;
+      return;
+    }
     final resume = widget.existingChatId;
     if (resume != null && resume.isNotEmpty) {
       _chatId = resume;
@@ -233,6 +239,9 @@ class _UnifiedChatPageState extends State<UnifiedChatPage> {
   }
 
   String _messageForInitError(Object? err) {
+    if (err?.toString().trim() == kChatFeatureUnavailableMessage) {
+      return kChatFeatureUnavailableMessage;
+    }
     if (err == 'غير مسجّل') return 'سجّل الدخول لبدء المحادثة.';
     if (err == 'Firebase') return 'Firebase غير مهيأ.';
     if (err is StateError) return err.message;
@@ -273,11 +282,12 @@ class _UnifiedChatPageState extends State<UnifiedChatPage> {
                           style: GoogleFonts.tajawal(color: AppColors.textSecondary, height: 1.4),
                         ),
                         const SizedBox(height: 20),
-                        FilledButton.icon(
-                          onPressed: _retryOpen,
-                          icon: const Icon(Icons.refresh_rounded),
-                          label: Text('إعادة المحاولة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
-                        ),
+                        if (_initError?.toString().trim() != kChatFeatureUnavailableMessage)
+                          FilledButton.icon(
+                            onPressed: _retryOpen,
+                            icon: const Icon(Icons.refresh_rounded),
+                            label: Text('إعادة المحاولة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                          ),
                       ],
                     ),
                   ),

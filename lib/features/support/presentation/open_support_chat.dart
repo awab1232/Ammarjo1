@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
+import '../../../core/config/chat_feature_config.dart';
 import '../../../core/firebase/user_notifications_repository.dart';
 import '../../store/presentation/pages/login_page.dart';
 import '../../store/presentation/store_controller.dart';
@@ -22,6 +23,12 @@ String _displayNameFromStore(StoreController store) {
 
 /// يفتح محادثة الدعم: محادثة مفتوحة واحدة لكل مستخدم، أو إنشاء جديدة.
 Future<void> openSupportChat(BuildContext context) async {
+  if (!kChatFeatureEnabled) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(kChatFeatureUnavailableMessage, style: GoogleFonts.tajawal())),
+    );
+    return;
+  }
   if (!Firebase.apps.isNotEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('Firebase غير جاهز.', style: GoogleFonts.tajawal())),

@@ -9,8 +9,9 @@ abstract final class BackendOrdersConfig {
   /// Production API (HTTPS, no trailing slash). Release builds use this unless a non-dev URL is passed via `BACKEND_ORDERS_BASE_URL`.
   static const String defaultBaseUrl = 'https://api.ammarjo.org';
 
-  /// Debug-only fallback when `BACKEND_ORDERS_BASE_URL` is unset (Android emulator → host machine).
-  static const String _debugEmulatorBackendUrl = 'http://10.0.2.2:3000';
+  /// Debug fallback when `BACKEND_ORDERS_BASE_URL` is unset — same as production so real devices
+  /// (Android/iOS) load stores without `--dart-define` (emulator localhost was causing empty home).
+  static const String _debugDefaultBackendUrl = defaultBaseUrl;
   static const bool stagingMode = true;
   static const bool _useBackendOrdersDev = true;
   static const bool _useBackendOrdersReadDev = true;
@@ -87,7 +88,7 @@ abstract final class BackendOrdersConfig {
     }
 
     if (trimmed.isNotEmpty) return trimmed;
-    return _debugEmulatorBackendUrl;
+    return _debugDefaultBackendUrl;
   }
 
   static bool _isLocalhostUrl(String url) {

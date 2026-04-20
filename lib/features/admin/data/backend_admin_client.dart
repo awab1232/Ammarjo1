@@ -55,6 +55,10 @@ final class BackendAdminClient {
       final decoded = jsonDecode(res.body);
       if (decoded is Map<String, dynamic>) return decoded;
       if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      if (decoded is List) {
+        debugPrint('[BackendAdminClient] GET $path responseJson runtimeType: ${decoded.runtimeType}');
+        return <String, dynamic>{'items': decoded};
+      }
       throw StateError('NULL_RESPONSE');
     } on Object {
       debugPrint('[BackendAdminClient] GET $path failed');

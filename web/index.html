@@ -43,6 +43,27 @@
 
   <title>AmmarJo</title>
   <link rel="manifest" href="manifest.json">
+  <!--
+    Firebase Phone Auth (flutterfire firebase_auth_web): reCAPTCHA mounts under
+    #__ff-recaptcha-container (created by the plugin). Flutter canvas can sit on
+    top and steal clicks — keep the widget and challenge iframe above the app.
+  -->
+  <style>
+    #__ff-recaptcha-container {
+      position: relative !important;
+      z-index: 2147483000 !important;
+      pointer-events: auto !important;
+    }
+    iframe[src*="recaptcha"],
+    iframe[title*="reCAPTCHA"],
+    iframe[src*="google.com/recaptcha"] {
+      z-index: 2147483000 !important;
+      pointer-events: auto !important;
+    }
+    div[class*="grecaptcha"] {
+      z-index: 2147483000 !important;
+    }
+  </style>
   <script>
     (function () {
       var SITE_URL = "https://ammarjo.net";

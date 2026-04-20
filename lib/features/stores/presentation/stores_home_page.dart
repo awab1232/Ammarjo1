@@ -1,6 +1,6 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -86,6 +86,394 @@ class _StoresHomePageState extends State<StoresHomePage> {
   bool get _hasSearchQuery => _searchController.text.trim().isNotEmpty;
 
   void _refreshCategories() => setState(() => _categoriesRetryKey++);
+
+  /// Single scroll surface (ListView) — avoids nested sliver / scroll overlap on Android.
+  Widget _buildHomeStoreDirectoryList(
+    BuildContext context,
+    StoreController storeController,
+    Future<FeatureState<List<StoreModel>>> storeFut,
+  ) {
+    return FutureBuilder<FeatureState<List<StoreModel>>>(
+      future: storeFut,
+      builder: (context, storeSnap) {
+        if (storeSnap.connectionState == ConnectionState.waiting && !storeSnap.hasData) {
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+            children: const [
+              SizedBox(height: 4),
+              SizedBox(height: 218, child: HomeBannerSkeleton()),
+              SizedBox(height: 16),
+              HomeStoreListSkeleton(rows: 5),
+            ],
+          );
+        }
+        if (storeSnap.hasError) {
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+            padding: const EdgeInsets.all(24),
+            children: [
+              Text('تعذر تحميل المتاجر', textAlign: TextAlign.center, style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+              const SizedBox(height: 8),
+              Text(
+                '${storeSnap.error}',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.tajawal(fontSize: 12, color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 16),
+              Center(
+                child: FilledButton(
+                  onPressed: () => setState(() => _storesReloadNonce++),
+                  style: FilledButton.styleFrom(backgroundColor: AppColors.primaryOrange),
+                  child: Text('إعادة المحاولة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                ),
+              ),
+            ],
+          );
+        }
+        final st = storeSnap.data;
+        if (st == null) {
+          return ListView(
+            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+            padding: const EdgeInsets.all(24),
+            children: [
+              Center(child: Text('لا توجد بيانات', style: GoogleFonts.tajawal())),
+            ],
+          );
+        }
+        final bottomPad = MediaQuery.paddingOf(context).bottom + 24;
+        return ListView(
+          padding: EdgeInsets.only(bottom: bottomPad),
+          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+          children: [
+            const SizedBox(height: 4),
+            SizedBox(
+              height: 218,
+              child: _StoresHomePageBannerCarousel(page: widget.homeBannersPageKey),
+            ),
+            if (widget.storeCategoryFilter == null && kIsWeb) ...[
+              const StoresHomeMarketingSectionTitle(
+                title: 'أقسام المتاجر',
+                subtitle: 'تُدار من لوحة التحكم: المتاجر ← الأقسام الرئيسية',
+              ),
+              const StoresHomeSectionsCardsStrip(),
+              const SizedBox(height: 8),
+              const StoresHomeMarketingSectionTitle(
+                title: 'عروض اليوم',
+                subtitle: 'تُعدّل من لوحة التحكم: إدارة البنرات والصفحة الرئيسية',
+              ),
+              const StoresHomeOffersStrip(),
+              const StoresHomeMarketingSectionTitle(title: 'المتاجر الأكثر طلباً'),
+              StoresHomeMostRequestedStrip(futureStores: storeFut),
+              const StoresHomeBottomMarketingBanner(),
+              const SizedBox(height: 12),
+            ],
+            if (widget.storeCategoryFilter == null) ...[
+              SizedBox(
+                height: 54,
+                child: ListView(
+                  scrollDirection: Axis.horizontal,
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  children: [
+                    ChoiceChip(
+                      label: Text('كل الأنواع', style: GoogleFonts.tajawal()),
+                      selected: _selectedStoreTypeId == null,
+                      onSelected: (_) => setState(() => _selectedStoreTypeId = null),
+                    ),
+                    const SizedBox(width: 8),
+                    ..._storeTypes.map(
+                      (type) => Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: ChoiceChip(
+                          label: Text(type.name, style: GoogleFonts.tajawal()),
+                          selected: _selectedStoreTypeId == type.id,
+                          onSelected: (_) => setState(() => _selectedStoreTypeId = type.id),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'التصنيفات',
+                      textAlign: TextAlign.right,
+                      style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 18, color: AppColors.textPrimary),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      children: [
+                        Icon(Icons.swipe_rounded, size: 14, color: AppColors.primaryOrange.withValues(alpha: 0.85)),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: Text(
+                            'اسحب للاطلاع على كل التصنيفات',
+                            textAlign: TextAlign.right,
+                            style: GoogleFonts.tajawal(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 8),
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 12),
+                child: StreamBuilder<FeatureState<List<StoreCategoryEntry>>>(
+                  key: ValueKey<int>(_categoriesRetryKey),
+                  stream: watchActiveStoreCategoriesWithFallback(),
+                  builder: (context, catSnap) {
+                    if (catSnap.hasError) {
+                      debugPrint('Store categories (builder) error: ${catSnap.error}');
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          Text('التصنيفات غير متاحة', style: GoogleFonts.tajawal(color: AppColors.textSecondary)),
+                          TextButton(
+                            onPressed: _refreshCategories,
+                            child: Text('إعادة المحاولة', style: GoogleFonts.tajawal(color: AppColors.primaryOrange)),
+                          ),
+                        ],
+                      );
+                    }
+                    final cats = switch (catSnap.data) {
+                      FeatureSuccess(:final data) => data,
+                      _ => const <StoreCategoryEntry>[],
+                    };
+                    if (cats.isEmpty) return const SizedBox.shrink();
+                    final maps = <Map<String, dynamic>>[];
+                    for (var index = 0; index < cats.length; index++) {
+                      final cat = cats[index];
+                      final fallbackImg = index < kStoresCategoryImageUrls.length
+                          ? kStoresCategoryImageUrls[index]
+                          : kStoresCategoryImageUrls[0];
+                      final imgRaw = cat.imageUrl.trim().isNotEmpty ? cat.imageUrl : fallbackImg;
+                      maps.add(<String, dynamic>{
+                        'name': cat.name,
+                        'imageUrl': webSafeImageUrl(imgRaw),
+                      });
+                    }
+                    return PremiumCategoriesStrip(
+                      categories: maps,
+                      selectedName: _selectedStoreCategoryName,
+                      onSelect: (name, _) {
+                        setState(() => _selectedStoreCategoryName = name);
+                        Navigator.of(context).pushNamed(SeoRoutes.category(name));
+                      },
+                    );
+                  },
+                ),
+              ),
+              const SizedBox(height: 12),
+            ] else ...[
+              const SizedBox(height: 8),
+            ],
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                children: [
+                  Container(
+                    width: 4,
+                    height: 22,
+                    decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(2)),
+                  ),
+                  const SizedBox(width: 10),
+                  Text('كل المتاجر', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 18, color: AppColors.textPrimary)),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            ..._buildHomeStoreRowsFromState(context, storeController, st),
+            const SizedBox(height: 16),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Card(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                  side: const BorderSide(color: AppColors.border),
+                ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Text(
+                        'هل أنت صاحب متجر؟ انضم إلينا',
+                        textAlign: TextAlign.center,
+                        style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 16, color: AppColors.textPrimary),
+                      ),
+                      const SizedBox(height: 14),
+                      FilledButton(
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.primaryOrange,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
+                        onPressed: () {
+                          Navigator.of(context).push<void>(
+                            MaterialPageRoute<void>(
+                              builder: (_) => const ApplyStorePage(lockedCategory: null),
+                            ),
+                          );
+                        },
+                        child: Text('تقديم طلب', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            if (kIsWeb) const _StoresWebInlineFooter(),
+            SizedBox(height: MediaQuery.paddingOf(context).bottom + 60),
+          ],
+        );
+      },
+    );
+  }
+
+  List<Widget> _buildHomeStoreRowsFromState(
+    BuildContext context,
+    StoreController storeController,
+    FeatureState<List<StoreModel>> st,
+  ) {
+    return switch (st) {
+      FeatureSuccess(:final data) => _groupedStoreListWidgets(context, storeController, data),
+      FeatureFailure(:final message) => <Widget>[
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('تعذر تحميل المتاجر', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 8),
+                Text(message, style: GoogleFonts.tajawal(fontSize: 12, color: AppColors.textSecondary)),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: () => setState(() => _storesReloadNonce++),
+                  style: FilledButton.styleFrom(backgroundColor: AppColors.primaryOrange),
+                  child: Text('إعادة المحاولة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      FeatureCriticalPublicDataFailure() => <Widget>[
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text('تعذر الاتصال بالخادم', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+                const SizedBox(height: 16),
+                FilledButton(
+                  onPressed: () => setState(() => _storesReloadNonce++),
+                  style: FilledButton.styleFrom(backgroundColor: AppColors.primaryOrange),
+                  child: Text('إعادة المحاولة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                ),
+              ],
+            ),
+          ),
+        ],
+      _ => <Widget>[
+          Padding(
+            padding: const EdgeInsets.all(24),
+            child: Text('المتاجر غير متاحة', style: GoogleFonts.tajawal()),
+          ),
+        ],
+    };
+  }
+
+  List<Widget> _groupedStoreListWidgets(
+    BuildContext context,
+    StoreController storeController,
+    List<StoreModel> allStores,
+  ) {
+    var all = List<StoreModel>.from(allStores);
+    all.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
+    final rest = all.where((s) => s.id.toLowerCase().trim() != 'ammarjo').toList();
+    final userCity = storeController.profile?.city?.trim();
+    final showRegionalEmpty = userCity != null && userCity.isNotEmpty && all.isEmpty;
+    final showAmmarJoRow = widget.storeCategoryFilter == null;
+    final out = <Widget>[];
+    if (showAmmarJoRow) {
+      out.add(
+        StoreCard(
+          store: ammarJoCatalogStoreModel(),
+          onTap: () {
+            Navigator.of(context).push<void>(
+              MaterialPageRoute<void>(builder: (_) => StoreDetailPage(store: ammarJoCatalogStoreModel())),
+            );
+          },
+        ),
+      );
+    }
+    if (showRegionalEmpty) {
+      out.add(
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: EmptyStateWidget(
+            type: EmptyStateType.stores,
+            customTitle: 'لا توجد متاجر في منطقتك',
+            onAction: () {
+              Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(builder: (_) => const CustomerDeliverySettingsPage()),
+              );
+            },
+            actionLabel: 'تغيير المنطقة',
+          ),
+        ),
+      );
+      return out;
+    }
+    final byCategory = <String, List<StoreModel>>{};
+    for (final s in rest) {
+      final key = s.category.trim().isEmpty ? 'أخرى' : s.category.trim();
+      byCategory.putIfAbsent(key, () => <StoreModel>[]).add(s);
+    }
+    final keys = byCategory.keys.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    for (final cat in keys) {
+      final list = byCategory[cat]!;
+      out.add(
+        Padding(
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+          child: Text(
+            cat,
+            textAlign: TextAlign.right,
+            style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 15, color: AppColors.textPrimary),
+          ),
+        ),
+      );
+      for (final s in list) {
+        out.add(
+          StoreCard(
+            store: s,
+            onTap: () {
+              Navigator.of(context).push<void>(
+                MaterialPageRoute<void>(builder: (_) => StoreDetailPage(store: s)),
+              );
+            },
+          ),
+        );
+      }
+    }
+    if (rest.isEmpty && !showRegionalEmpty) {
+      out.add(
+        const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          child: EmptyStateWidget(type: EmptyStateType.stores),
+        ),
+      );
+    }
+    return out;
+  }
 
   @override
   void initState() {
@@ -366,307 +754,7 @@ class _StoresHomePageState extends State<StoresHomePage> {
           Expanded(
             child: _hasSearchQuery
                 ? _buildSearchResults(context, storeController, storeListFuture)
-                : CustomScrollView(
-                    cacheExtent: 480,
-                    physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-                    slivers: [
-                      const SliverToBoxAdapter(child: SizedBox(height: 4)),
-                      SliverToBoxAdapter(
-                        child: _StoresHomePageBannerCarousel(page: widget.homeBannersPageKey),
-                      ),
-                      if (widget.storeCategoryFilter == null) ...[
-                        const SliverToBoxAdapter(
-                          child: StoresHomeMarketingSectionTitle(
-                            title: 'أقسام المتاجر',
-                            subtitle: 'تُدار من لوحة التحكم: المتاجر ← الأقسام الرئيسية',
-                          ),
-                        ),
-                        const SliverToBoxAdapter(child: StoresHomeSectionsCardsStrip()),
-                        const SliverToBoxAdapter(child: SizedBox(height: 8)),
-                        const SliverToBoxAdapter(
-                          child: StoresHomeMarketingSectionTitle(
-                            title: 'عروض اليوم',
-                            subtitle: 'تُعدّل من لوحة التحكم: إدارة البنرات والصفحة الرئيسية',
-                          ),
-                        ),
-                        const SliverToBoxAdapter(child: StoresHomeOffersStrip()),
-                        const SliverToBoxAdapter(
-                          child: StoresHomeMarketingSectionTitle(title: 'المتاجر الأكثر طلباً'),
-                        ),
-                        SliverToBoxAdapter(child: StoresHomeMostRequestedStrip(futureStores: storeListFuture)),
-                        const SliverToBoxAdapter(child: StoresHomeBottomMarketingBanner()),
-                        const SliverToBoxAdapter(child: SizedBox(height: 12)),
-                        SliverToBoxAdapter(
-                          child: SizedBox(
-                            height: 54,
-                            child: ListView(
-                              scrollDirection: Axis.horizontal,
-                              padding: const EdgeInsets.symmetric(horizontal: 12),
-                              children: [
-                                ChoiceChip(
-                                  label: Text('كل الأنواع', style: GoogleFonts.tajawal()),
-                                  selected: _selectedStoreTypeId == null,
-                                  onSelected: (_) => setState(() => _selectedStoreTypeId = null),
-                                ),
-                                const SizedBox(width: 8),
-                                ..._storeTypes.map(
-                                  (type) => Padding(
-                                    padding: const EdgeInsets.only(left: 8),
-                                    child: ChoiceChip(
-                                      label: Text(type.name, style: GoogleFonts.tajawal()),
-                                      selected: _selectedStoreTypeId == type.id,
-                                      onSelected: (_) => setState(() => _selectedStoreTypeId = type.id),
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SliverToBoxAdapter(child: SizedBox(height: 8)),
-                        SliverToBoxAdapter(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.end,
-                              children: [
-                                Text(
-                                  'التصنيفات',
-                                  textAlign: TextAlign.right,
-                                  style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 18, color: AppColors.textPrimary),
-                                ),
-                                const SizedBox(height: 4),
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.end,
-                                  children: [
-                                    Icon(Icons.swipe_rounded, size: 14, color: AppColors.primaryOrange.withValues(alpha: 0.85)),
-                                    const SizedBox(width: 6),
-                                    Text(
-                                      'اسحب للاطلاع على كل التصنيفات',
-                                      style: GoogleFonts.tajawal(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        const SliverToBoxAdapter(child: SizedBox(height: 10)),
-                        SliverToBoxAdapter(
-                          child: Padding(
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            child: StreamBuilder<FeatureState<List<StoreCategoryEntry>>>(
-                              key: ValueKey<int>(_categoriesRetryKey),
-                              stream: watchActiveStoreCategoriesWithFallback(),
-                              builder: (context, catSnap) {
-                                if (catSnap.hasError) {
-                                  debugPrint('Store categories (builder) error: ${catSnap.error}');
-                                  return Padding(
-                                    padding: const EdgeInsets.symmetric(vertical: 24),
-                                    child: Center(
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            'حدث خطأ في تحميل التصنيفات',
-                                            textAlign: TextAlign.center,
-                                            style: GoogleFonts.tajawal(color: AppColors.textSecondary),
-                                          ),
-                                          const SizedBox(height: 12),
-                                          FilledButton(
-                                            onPressed: _refreshCategories,
-                                            style: FilledButton.styleFrom(backgroundColor: AppColors.primaryOrange),
-                                            child: Text('إعادة المحاولة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  );
-                                }
-                                final cats = switch (catSnap.data) {
-                                  FeatureSuccess(:final data) => data,
-                                  _ => const <StoreCategoryEntry>[],
-                                };
-                                if (cats.isEmpty) {
-                                  return const SizedBox.shrink();
-                                }
-                                final maps = <Map<String, dynamic>>[];
-                                for (var index = 0; index < cats.length; index++) {
-                                  final cat = cats[index];
-                                  final fallbackImg = index < kStoresCategoryImageUrls.length
-                                      ? kStoresCategoryImageUrls[index]
-                                      : kStoresCategoryImageUrls[0];
-                                  final imgRaw = cat.imageUrl.trim().isNotEmpty ? cat.imageUrl : fallbackImg;
-                                  maps.add(<String, dynamic>{
-                                    'name': cat.name,
-                                    'imageUrl': webSafeImageUrl(imgRaw),
-                                  });
-                                }
-                                return PremiumCategoriesStrip(
-                                  categories: maps,
-                                  selectedName: _selectedStoreCategoryName,
-                                  onSelect: (name, _) {
-                                    setState(() => _selectedStoreCategoryName = name);
-                                    Navigator.of(context).pushNamed(SeoRoutes.category(name));
-                                  },
-                                );
-                              },
-                            ),
-                          ),
-                        ),
-                        const SliverToBoxAdapter(child: SizedBox(height: 16)),
-                      ] else
-                        const SliverToBoxAdapter(child: SizedBox(height: 8)),
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Row(
-                            children: [
-                              Container(
-                                  width: 4,
-                                  height: 22,
-                                  decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(2))),
-                              const SizedBox(width: 10),
-                              Text('المتاجر', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 18, color: AppColors.textPrimary)),
-                            ],
-                          ),
-                        ),
-                      ),
-                      const SliverToBoxAdapter(child: SizedBox(height: 12)),
-                      SliverToBoxAdapter(
-                        child: FutureBuilder<FeatureState<List<StoreModel>>>(
-                          future: storeListFuture,
-                          builder: (context, snap) {
-                            if (snap.connectionState == ConnectionState.waiting) {
-                              return const HomeStoreListSkeleton(rows: 5);
-                            }
-                            if (!snap.hasData) {
-                              return const SizedBox.shrink();
-                            }
-                            return buildFeatureStateUi<List<StoreModel>>(
-                              context: context,
-                              state: snap.data!,
-                              onRetry: () => setState(() => _storesReloadNonce++),
-                              dataBuilder: (ctx, allStores) {
-                            var all = List<StoreModel>.from(allStores);
-                            all.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
-                            final rest = all.where((s) => s.id.toLowerCase().trim() != 'ammarjo').toList();
-                            final userCity = storeController.profile?.city?.trim();
-                            final showRegionalEmpty = userCity != null && userCity.isNotEmpty && all.isEmpty;
-                            final showAmmarJoRow = widget.storeCategoryFilter == null;
-                            return Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              children: [
-                                if (showAmmarJoRow)
-                                  StoreCard(
-                                    store: ammarJoCatalogStoreModel(),
-                                    onTap: () {
-                                      Navigator.of(context).push<void>(
-                                        MaterialPageRoute<void>(
-                                          builder: (_) => StoreDetailPage(store: ammarJoCatalogStoreModel()),
-                                        ),
-                                      );
-                                    },
-                                  ),
-                                if (!kIsWeb && !showRegionalEmpty && rest.isNotEmpty) ...[
-                                  Padding(
-                                    padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
-                                    child: Row(
-                                      children: [
-                                        const Expanded(child: Divider()),
-                                        Padding(
-                                          padding: const EdgeInsets.symmetric(horizontal: 8),
-                                          child: Text('متاجر أخرى', style: GoogleFonts.tajawal(color: AppColors.textSecondary, fontSize: 13)),
-                                        ),
-                                        const Expanded(child: Divider()),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                                if (showRegionalEmpty)
-                                  Padding(
-                                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                                    child: EmptyStateWidget(
-                                      type: EmptyStateType.stores,
-                                      customTitle: 'لا توجد متاجر في منطقتك',
-                                      onAction: () {
-                                        Navigator.of(context).push<void>(
-                                          MaterialPageRoute<void>(builder: (_) => const CustomerDeliverySettingsPage()),
-                                        );
-                                      },
-                                      actionLabel: 'تغيير المنطقة',
-                                    ),
-                                  )
-                                else
-                                  ...rest.map(
-                                    (s) => StoreCard(
-                                      store: s,
-                                      onTap: () {
-                                        Navigator.of(context).push<void>(
-                                          MaterialPageRoute<void>(builder: (_) => StoreDetailPage(store: s)),
-                                        );
-                                      },
-                                    ),
-                                  ),
-                              ],
-                            );
-                              },
-                            );
-                          },
-                        ),
-                      ),
-                      const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                      SliverToBoxAdapter(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16),
-                          child: Card(
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                              side: const BorderSide(color: AppColors.border),
-                            ),
-                            child: Padding(
-                              padding: const EdgeInsets.all(20),
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Text(
-                                    'هل أنت صاحب متجر؟ انضم إلينا',
-                                    textAlign: TextAlign.center,
-                                    style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 16, color: AppColors.textPrimary),
-                                  ),
-                                  const SizedBox(height: 14),
-                                  FilledButton(
-                                    style: FilledButton.styleFrom(
-                                      backgroundColor: AppColors.primaryOrange,
-                                      foregroundColor: Colors.white,
-                                      padding: const EdgeInsets.symmetric(vertical: 14),
-                                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                                    ),
-                                    onPressed: () {
-                                      Navigator.of(context).push<void>(
-                                        MaterialPageRoute<void>(
-                                          builder: (_) => ApplyStorePage(
-                                            lockedCategory: null,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    child: Text('تقديم طلب', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                      const SliverToBoxAdapter(child: SizedBox(height: 24)),
-                      SliverToBoxAdapter(
-                        child: SizedBox(height: MediaQuery.paddingOf(context).bottom + 100),
-                      ),
-                      if (kIsWeb) const SliverToBoxAdapter(child: _StoresWebInlineFooter()),
-                    ],
-                  ),
+                : _buildHomeStoreDirectoryList(context, storeController, storeListFuture),
           ),
         ],
       ),
@@ -825,10 +913,23 @@ class _StoresHomePageBannerCarouselState extends State<_StoresHomePageBannerCaro
   int _bannerIndex = 0;
   int _autoScheduledForCount = -1;
 
+  Future<FeatureState<List<WpHomeBannerSlide>>> _safeFetchBanners({bool forceRefresh = false}) async {
+    try {
+      final state = await context.read<ProductRepository>().fetchHomeBanners(forceRefresh: forceRefresh);
+      return switch (state) {
+        FeatureSuccess<List<WpHomeBannerSlide>>(:final data) => FeatureState.success(data),
+        _ => FeatureState.success(const <WpHomeBannerSlide>[]),
+      };
+    } on Object catch (e) {
+      debugPrint('[StoresHomePageBannerCarousel] safe fetch failed: $e');
+      return FeatureState.success(const <WpHomeBannerSlide>[]);
+    }
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _future ??= context.read<ProductRepository>().fetchHomeBanners();
+    _future ??= _safeFetchBanners();
     _ensurePageController();
   }
 
@@ -839,7 +940,7 @@ class _StoresHomePageBannerCarouselState extends State<_StoresHomePageBannerCaro
       _cancelAuto();
       _autoScheduledForCount = -1;
       _bannerIndex = 0;
-      _future = context.read<ProductRepository>().fetchHomeBanners(forceRefresh: true);
+      _future = _safeFetchBanners(forceRefresh: true);
     }
   }
 
@@ -879,7 +980,7 @@ class _StoresHomePageBannerCarouselState extends State<_StoresHomePageBannerCaro
 
   void _reloadBanners() {
     setState(() {
-      _future = context.read<ProductRepository>().fetchHomeBanners(forceRefresh: true);
+      _future = _safeFetchBanners(forceRefresh: true);
       _bannerIndex = 0;
       _autoScheduledForCount = -1;
       _cancelAuto();
@@ -913,6 +1014,46 @@ class _StoresHomePageBannerCarouselState extends State<_StoresHomePageBannerCaro
         builder: (context, snap) {
           if (snap.connectionState == ConnectionState.waiting || _future == null) {
             return const HomeBannerSkeleton();
+          }
+          if (snap.hasError) {
+            debugPrint('[StoresHomePageBannerCarousel] ${snap.error}');
+            return buildFeatureStateUi<List<WpHomeBannerSlide>>(
+              context: context,
+              state: FeatureState.success(const <WpHomeBannerSlide>[
+                WpHomeBannerSlide(
+                  imageUrl: 'https://placehold.co/600x200/e2e8f0/94a3b8/png?text=AmmarJo',
+                  title: 'عرض خاص',
+                  linkUrl: null,
+                ),
+              ]),
+              onRetry: null,
+              dataBuilder: (ctx, slides) {
+                if (pc == null) return const HomeBannerSkeleton();
+                final slide = slides.first;
+                final url = webSafeImageUrl(slide.imageUrl);
+                return Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    SizedBox(
+                      height: 196,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(16),
+                          child: AmmarCachedImage(
+                            imageUrl: url,
+                            width: double.infinity,
+                            height: 196,
+                            fit: BoxFit.cover,
+                            useShimmerPlaceholder: true,
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                );
+              },
+            );
           }
           if (!snap.hasData) {
             return _StoresHomeBannerUnavailable(onRetry: _reloadBanners);
@@ -1011,7 +1152,7 @@ class _StoresHomeBannerUnavailable extends StatelessWidget {
   final VoidCallback? onRetry;
   final bool compact;
 
-  static const String _placeholder = 'https://via.placeholder.com/600x200';
+  static const String _placeholder = 'https://placehold.co/600x200/e2e8f0/94a3b8/png?text=AmmarJo';
 
   @override
   Widget build(BuildContext context) {

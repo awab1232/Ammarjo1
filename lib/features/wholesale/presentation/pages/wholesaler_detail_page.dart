@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/contracts/feature_state.dart';
+import '../../../../core/config/chat_feature_config.dart';
 import '../../../../core/services/chat_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/web_image_url.dart';
@@ -88,6 +89,12 @@ class _WholesalerDetailPageState extends State<WholesalerDetailPage> {
   }
 
   Future<void> _openChat() async {
+    if (!kChatFeatureEnabled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(kChatFeatureUnavailableMessage, style: GoogleFonts.tajawal())),
+      );
+      return;
+    }
     final store = context.read<StoreController>();
     final myEmail = store.profile?.email.trim() ?? '';
     if (myEmail.isEmpty) {
@@ -273,12 +280,13 @@ class _WholesalerDetailPageState extends State<WholesalerDetailPage> {
                           Text(deliveryLine, textAlign: TextAlign.right, style: GoogleFonts.tajawal(fontSize: 12, color: AppColors.darkOrange, fontWeight: FontWeight.w600)),
                         ],
                         const SizedBox(height: 10),
-                        FilledButton.icon(
-                          onPressed: _openChat,
-                          style: FilledButton.styleFrom(backgroundColor: AppColors.primaryOrange),
-                          icon: const Icon(Icons.chat_bubble_outline_rounded),
-                          label: Text('محادثة مع التاجر', style: GoogleFonts.tajawal(color: Colors.white)),
-                        ),
+                        if (kChatFeatureEnabled)
+                          FilledButton.icon(
+                            onPressed: _openChat,
+                            style: FilledButton.styleFrom(backgroundColor: AppColors.primaryOrange),
+                            icon: const Icon(Icons.chat_bubble_outline_rounded),
+                            label: Text('محادثة مع التاجر', style: GoogleFonts.tajawal(color: Colors.white)),
+                          ),
                       ],
                     ),
                   ),

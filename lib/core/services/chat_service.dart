@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import '../config/chat_feature_config.dart';
 import '../../features/communication/data/unified_chat_repository.dart';
 import '../../features/communication/domain/unified_chat_models.dart';
 
@@ -47,6 +48,9 @@ class ChatService {
     String? productCardPrice,
     String? productCardImageUrl,
   }) async {
+    if (!kChatFeatureEnabled) {
+      throw Exception(kChatFeatureUnavailableMessage);
+    }
     final currentUser = _auth.currentUser;
     if (currentUser == null) {
       throw Exception('يرجى تسجيل الدخول أولاً');

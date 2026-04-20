@@ -44,12 +44,25 @@ const List<String> kStoresCategoryFallbackImageUrls = <String>[
   'https://images.unsplash.com/photo-1504148455328-c376907d081c?w=600&q=80',
 ];
 
-/// Store category chips — **backend stores list only**. Fails closed if API unavailable.
+/// Store category chips — **backend stores list only**. Falls back to public list; empty OK.
 Future<FeatureState<List<StoreCategoryEntry>>> fetchStoreCategoriesFromFirestore() async {
-  final stores = await BackendOrdersClient.instance.fetchStores(limit: 200);
-  if (stores == null) {
-    debugPrint('[StoreCategories] stores list null');
-    return FeatureState.failure('Failed to load store categories.');
+  List<Map<String, dynamic>>? stores;
+  try {
+    stores = await BackendOrdersClient.instance.fetchStores(limit: 200);
+  } on Object catch (e) {
+    debugPrint('[StoreCategories] authed /stores failed: $e');
+    stores = null;
+  }
+  if (stores == null || stores.isEmpty) {
+    try {
+      stores = await BackendOrdersClient.instance.fetchStoresPublic(limit: 200);
+    } on Object catch (e) {
+      debugPrint('[StoreCategories] public /stores/public failed: $e');
+      stores = null;
+    }
+  }
+  if (stores == null || stores.isEmpty) {
+    return FeatureState.success(const <StoreCategoryEntry>[]);
   }
   final seen = <String>{};
   final out = <StoreCategoryEntry>[];

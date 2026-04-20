@@ -6,9 +6,12 @@ final class BackendProductsClient {
   static final BackendProductsClient instance = BackendProductsClient._();
 
   Future<FeatureState<List<Map<String, dynamic>>>> fetchStoreProducts(String storeId, {int limit = 100}) async {
-    final rows = await BackendOrdersClient.instance.fetchProductsByStore(storeId: storeId, limit: limit);
-    if (rows == null) return FeatureState.failure('Failed to load store products.');
-    return FeatureState.success(rows);
+    try {
+      final rows = await BackendOrdersClient.instance.fetchProductsByStore(storeId: storeId, limit: limit) ?? <Map<String, dynamic>>[];
+      return FeatureState.success(rows);
+    } on Object {
+      return FeatureState.success(const <Map<String, dynamic>>[]);
+    }
   }
 
   Future<FeatureState<List<Map<String, dynamic>>>> fetchStoreCategories(String storeId) async {

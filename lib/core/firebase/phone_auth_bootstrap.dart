@@ -2,8 +2,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kDebugMode, kIsWeb;
 
-/// يطابق [firebase_auth_web] `__ff-recaptcha-container` — وضع علامة تلميح فقط للمطورين.
-/// المكوّن نفسه قد يُنشأ ديناميكياً؛ وجود عنصر ثابت يقلّل أحياناً تعارض التوقيت قبل أول إرسال SMS.
+/// يطابق [firebase_auth_web] — الحاوية الافتراضية لـ reCAPTCHA (لا تستخدم `recaptcha-container`).
+/// المكوّن يُنشأ عادةً ديناميكياً تحت [document.documentElement]؛ أنماط [web/index.html] ترفع z-index فوق كانفاس Flutter.
 const String kFirebaseWebRecaptchaContainerId = '__ff-recaptcha-container';
 
 /// تهيئة reCAPTCHA للويب قبل [FirebaseAuth.verifyPhoneNumber].

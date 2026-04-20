@@ -74,7 +74,8 @@ ProductCategory _categoryFromBackendRow(Map<String, dynamic> row) {
   );
 }
 
-const String _kBannerPlaceholderImage = 'https://via.placeholder.com/600x200';
+/// PNG from placehold.co — decodes reliably on Flutter Web (via.placeholder often returns HTML).
+const String _kBannerPlaceholderImage = 'https://placehold.co/600x200/e2e8f0/94a3b8/png?text=AmmarJo';
 
 WpHomeBannerSlide _bannerFromBackendRow(Map<String, dynamic> row) {
   final imageUrl = (row['imageUrl'] ?? row['image'])?.toString().trim() ?? '';

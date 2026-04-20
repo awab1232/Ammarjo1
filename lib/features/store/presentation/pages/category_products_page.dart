@@ -6,7 +6,6 @@ import 'package:provider/provider.dart';
 import '../../../../core/contracts/feature_state.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_bottom_sheet.dart';
-import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/home_page_shimmers.dart';
 import '../../domain/models.dart';
 import '../store_controller.dart';
@@ -492,9 +491,13 @@ class _SubcategorySection extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           if (products.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: EmptyStateWidget(type: EmptyStateType.products),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Text(
+                'لا يوجد منتجات',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.tajawal(color: AppColors.textSecondary),
+              ),
             )
           else
             useWebGrid
@@ -619,9 +622,13 @@ class _ParentOnlyBody extends StatelessWidget {
           ),
           const SizedBox(height: 12),
           if (preview.isEmpty)
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: EmptyStateWidget(type: EmptyStateType.products),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: Text(
+                'لا يوجد منتجات',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.tajawal(color: AppColors.textSecondary),
+              ),
             )
           else
             useWebGrid

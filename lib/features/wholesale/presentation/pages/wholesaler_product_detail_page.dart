@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/contracts/feature_state.dart';
+import '../../../../core/config/chat_feature_config.dart';
 import '../../../../core/services/chat_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../communication/presentation/unified_chat_page.dart';
@@ -84,6 +85,12 @@ class _WholesalerProductDetailPageState extends State<WholesalerProductDetailPag
   }
 
   Future<void> _openChat() async {
+    if (!kChatFeatureEnabled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(kChatFeatureUnavailableMessage, style: GoogleFonts.tajawal())),
+      );
+      return;
+    }
     final store = context.read<StoreController>();
     final myEmail = store.profile?.email.trim() ?? '';
     if (myEmail.isEmpty || widget.wholesalerEmail.trim().isEmpty) return;
@@ -144,11 +151,12 @@ class _WholesalerProductDetailPageState extends State<WholesalerProductDetailPag
             child: Text('إضافة إلى سلة الجملة', style: GoogleFonts.tajawal(color: Colors.white)),
           ),
           const SizedBox(height: 8),
-          OutlinedButton.icon(
-            onPressed: _openChat,
-            icon: const Icon(Icons.chat_bubble_outline),
-            label: Text('محادثة', style: GoogleFonts.tajawal()),
-          ),
+          if (kChatFeatureEnabled)
+            OutlinedButton.icon(
+              onPressed: _openChat,
+              icon: const Icon(Icons.chat_bubble_outline),
+              label: Text('محادثة', style: GoogleFonts.tajawal()),
+            ),
         ],
       ),
     );

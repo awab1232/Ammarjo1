@@ -74,11 +74,27 @@ class StoresHomeMarketingSectionTitle extends StatelessWidget {
 class StoresHomeSectionsCardsStrip extends StatelessWidget {
   const StoresHomeSectionsCardsStrip({super.key});
 
+  Future<FeatureState<List<HomeSection>>> _safeHomeSections() async {
+    try {
+      final state = await HomeRepository.instance.getSections();
+      return switch (state) {
+        FeatureSuccess<List<HomeSection>>(:final data) => FeatureState.success(data),
+        _ => FeatureState.success(const <HomeSection>[]),
+      };
+    } on Object {
+      return FeatureState.success(const <HomeSection>[]);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<FeatureState<List<HomeSection>>>(
-      future: HomeRepository.instance.getSections(),
+      future: _safeHomeSections(),
       builder: (context, snap) {
+        if (snap.hasError) {
+          debugPrint('[StoresHomeSectionsCardsStrip] ${snap.error}');
+          return const SizedBox.shrink();
+        }
         if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
           return const HomeHorizontalCardsSkeleton(height: 148, cardWidth: 158, count: 5, spacing: 12);
         }
@@ -224,6 +240,15 @@ class _OfferTile extends StatelessWidget {
 class StoresHomeOffersStrip extends StatelessWidget {
   const StoresHomeOffersStrip({super.key});
 
+  Future<Map<String, dynamic>> _safeHomeCms() async {
+    try {
+      final cms = await BackendOrdersClient.instance.fetchHomeCms();
+      return cms ?? <String, dynamic>{};
+    } on Object {
+      return <String, dynamic>{};
+    }
+  }
+
   static List<Map<String, dynamic>> _parseOffers(Map<String, dynamic>? cms) {
     final raw = cms?['offers'];
     if (raw is! List) return const <Map<String, dynamic>>[];
@@ -237,8 +262,12 @@ class StoresHomeOffersStrip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<Map<String, dynamic>?>(
-      future: BackendOrdersClient.instance.fetchHomeCms(),
+      future: _safeHomeCms(),
       builder: (context, snap) {
+        if (snap.hasError) {
+          debugPrint('[StoresHomeOffersStrip] ${snap.error}');
+          return const SizedBox.shrink();
+        }
         if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
           return const HomeOffersStripSkeleton();
         }
@@ -383,11 +412,24 @@ class StoresHomeMostRequestedStrip extends StatelessWidget {
 class StoresHomeBottomMarketingBanner extends StatelessWidget {
   const StoresHomeBottomMarketingBanner({super.key});
 
+  Future<Map<String, dynamic>> _safeHomeCms() async {
+    try {
+      final cms = await BackendOrdersClient.instance.fetchHomeCms();
+      return cms ?? <String, dynamic>{};
+    } on Object {
+      return <String, dynamic>{};
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<Map<String, dynamic>?>(
-      future: BackendOrdersClient.instance.fetchHomeCms(),
+      future: _safeHomeCms(),
       builder: (context, snap) {
+        if (snap.hasError) {
+          debugPrint('[StoresHomeBottomMarketingBanner] ${snap.error}');
+          return const SizedBox.shrink();
+        }
         if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
           return const HomeBottomBannerSkeleton();
         }

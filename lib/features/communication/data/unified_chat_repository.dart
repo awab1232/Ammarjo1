@@ -6,6 +6,7 @@ import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../../core/config/chat_feature_config.dart';
 import '../../../core/firebase/firebase_chat_auth.dart';
 import '../../../core/firebase/user_notifications_repository.dart';
 import '../../../core/contracts/feature_state.dart';
@@ -172,6 +173,9 @@ class UnifiedChatRepository {
     String? technicianId,
     String? customerId,
   }) async {
+    if (!kChatFeatureEnabled) {
+      throw StateError(kChatFeatureUnavailableMessage);
+    }
     final me = _normEmail(currentUserEmail);
     final peer = _normEmail(peerEmail);
     if (me.isEmpty || peer.isEmpty) throw ArgumentError('بريد الطرفين مطلوب');

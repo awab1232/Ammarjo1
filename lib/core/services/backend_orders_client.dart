@@ -578,6 +578,9 @@ final class BackendOrdersClient {
       final decoded = jsonDecode(res.body);
       if (decoded is Map<String, dynamic>) return decoded;
       if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      if (decoded is List) {
+        return <String, dynamic>{'items': decoded};
+      }
       throw StateError('NULL_RESPONSE');
     } on Object {
       BackendFallbackLogger.logBackendFallbackTriggered(
@@ -624,6 +627,9 @@ final class BackendOrdersClient {
       final decoded = jsonDecode(res.body);
       if (decoded is Map<String, dynamic>) return decoded;
       if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      if (decoded is List) {
+        return <String, dynamic>{'items': decoded};
+      }
       throw StateError('NULL_RESPONSE');
     } on Object {
       BackendFallbackLogger.logBackendFallbackTriggered(
@@ -639,6 +645,83 @@ final class BackendOrdersClient {
     }
   }
 
+  /// Same as [_publicGetJson] but **never throws** — returns `null` on network/HTTP/parse issues.
+  /// Used for home/marketing endpoints so the UI never crashes on empty or odd payloads.
+  Future<Map<String, dynamic>?> _publicGetJsonOrNull(
+    String path, {
+    Map<String, String>? query,
+    Duration timeout = const Duration(seconds: 15),
+    required String flow,
+    bool logApiResponse = false,
+  }) async {
+    final base = BackendOrdersConfig.baseUrl.trim();
+    if (base.isEmpty) {
+      BackendOrdersConfig.warnIfBackendBaseUrlMissing(flow);
+      debugPrint('[BackendOrdersClient] $flow: skipped (no base URL)');
+      return null;
+    }
+    final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}$path').replace(queryParameters: query);
+    try {
+      final res = await http.get(uri).timeout(timeout);
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        debugPrint('[BackendOrdersClient] $flow: HTTP ${res.statusCode}');
+        return null;
+      }
+      final rawBody = res.body.trim();
+      if (rawBody.isEmpty) {
+        debugPrint('[BackendOrdersClient] $flow: empty response body');
+        return null;
+      }
+      if (logApiResponse) {
+        final preview = rawBody.length > 2000 ? '${rawBody.substring(0, 2000)}…(truncated)' : rawBody;
+        debugPrint('[API RESPONSE] $flow GET $path status=${res.statusCode} bytes=${rawBody.length} body=$preview');
+      }
+      final decoded = jsonDecode(rawBody);
+      if (decoded == null) {
+        debugPrint('[BackendOrdersClient] $flow: JSON null');
+        return null;
+      }
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      if (decoded is List) {
+        return <String, dynamic>{'items': decoded};
+      }
+      debugPrint('[BackendOrdersClient] $flow: unexpected JSON root ${decoded.runtimeType}');
+      return null;
+    } on Object catch (e, st) {
+      debugPrint('[BackendOrdersClient] $flow: safe GET failed: $e');
+      if (kDebugMode) {
+        debugPrint('$st');
+      }
+      return null;
+    }
+  }
+
+  List<dynamic> _homeSectionItemsFromEnvelope(Object? json) {
+    if (json == null) return <dynamic>[];
+    if (json is List) return json;
+    if (json is Map) {
+      final m = json is Map<String, dynamic> ? json : Map<String, dynamic>.from(json);
+      final items = m['items'] ?? m['data'];
+      if (items is List) return items;
+    }
+    return <dynamic>[];
+  }
+
+  /// Accepts either a JSON array root or `{"items":[...]}` (and tolerates bad rows).
+  List<dynamic> _storeRowsFromResponseJson(Object? responseJson, String debugTag) {
+    debugPrint('[BackendOrdersClient] $debugTag responseJson runtimeType: ${responseJson.runtimeType}');
+    if (responseJson is List) return responseJson;
+    if (responseJson is Map) {
+      final m = responseJson is Map<String, dynamic>
+          ? responseJson
+          : Map<String, dynamic>.from(responseJson);
+      final items = m['items'] ?? m['data'];
+      if (items is List) return items;
+    }
+    return <dynamic>[];
+  }
+
   Future<JsonList?> fetchStores({
     String? category,
     int limit = 100,
@@ -652,16 +735,19 @@ final class BackendOrdersClient {
       },
       flow: 'stores_list',
     );
-    final items = body?['items'];
-    if (items is! List) throw StateError('NULL_RESPONSE');
+    final rows = _storeRowsFromResponseJson(body, 'fetchStores');
     final out = <Map<String, dynamic>>[];
-    for (final raw in items) {
+    for (final raw in rows) {
       if (raw is! Map) continue;
-      final row = Map<String, dynamic>.from(raw);
-      if (category != null && category.trim().isNotEmpty) {
-        if ((row['category']?.toString() ?? '').trim() != category.trim()) continue;
+      try {
+        final row = Map<String, dynamic>.from(raw);
+        if (category != null && category.trim().isNotEmpty) {
+          if ((row['category']?.toString() ?? '').trim() != category.trim()) continue;
+        }
+        out.add(row);
+      } on Object {
+        continue;
       }
-      out.add(row);
     }
     return out;
   }
@@ -673,37 +759,57 @@ final class BackendOrdersClient {
     String? category,
     int limit = 50,
   }) async {
-    final body = await _publicGetJson(
+    final body = await _publicGetJsonOrNull(
       '/stores/public',
       query: {'limit': '$limit'},
       flow: 'stores_list_public',
+      logApiResponse: true,
     );
-    final items = body?['items'];
-    if (items is! List) throw StateError('NULL_RESPONSE');
+    if (body == null) {
+      debugPrint('[BackendOrdersClient] fetchStoresPublic: no JSON, returning empty list');
+      return <Map<String, dynamic>>[];
+    }
+    final rows = _storeRowsFromResponseJson(body, 'fetchStoresPublic');
     final out = <Map<String, dynamic>>[];
-    for (final raw in items) {
+    for (final raw in rows) {
       if (raw is! Map) continue;
-      final row = Map<String, dynamic>.from(raw);
-      if (category != null && category.trim().isNotEmpty) {
-        if ((row['category']?.toString() ?? '').trim() != category.trim()) continue;
+      try {
+        final row = Map<String, dynamic>.from(raw);
+        if (category != null && category.trim().isNotEmpty) {
+          if ((row['category']?.toString() ?? '').trim() != category.trim()) continue;
+        }
+        out.add(row);
+      } on Object {
+        continue;
       }
-      out.add(row);
     }
     return out;
   }
 
   Future<JsonList?> fetchStoreTypes() async {
     final data = await fetchStoreTypesVersioned();
-    return data?.items;
+    return data.items;
   }
 
-  Future<VersionedJsonList?> fetchStoreTypesVersioned() async {
-    final body = await _publicGetJson('/stores/store-types', flow: 'stores_types_public');
-    final items = body?['data'] ?? body?['items'];
-    if (items is! List) throw StateError('NULL_RESPONSE');
-    final list = items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
-    final version = (body?['version'] as num?)?.toInt() ?? 1;
-    return (items: list, version: version);
+  Future<VersionedJsonList> fetchStoreTypesVersioned() async {
+    try {
+      final body = await _publicGetJsonOrNull('/stores/store-types', flow: 'stores_types_public');
+      if (body == null) {
+        debugPrint('[BackendOrdersClient] store-types: no body');
+        return (items: <Map<String, dynamic>>[], version: 1);
+      }
+      final raw = body['data'] ?? body['items'];
+      final items = raw is List ? raw : <dynamic>[];
+      final list = items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+      final version = (body['version'] as num?)?.toInt() ?? 1;
+      return (items: list, version: version);
+    } on Object catch (e, st) {
+      debugPrint('[BackendOrdersClient] store-types: $e');
+      if (kDebugMode) {
+        debugPrint('$st');
+      }
+      return (items: <Map<String, dynamic>>[], version: 1);
+    }
   }
 
   Future<JsonList?> fetchPendingStores({int limit = 200, int offset = 0}) async {
@@ -760,18 +866,28 @@ final class BackendOrdersClient {
     int limit = 100,
     String? cursor,
   }) async {
-    final body = await _authedGetJson(
-      '/products',
-      query: {
-        'storeId': storeId.trim(),
-        'limit': '$limit',
-        if (cursor != null && cursor.trim().isNotEmpty) 'cursor': cursor.trim(),
-      },
-      flow: 'products_by_store',
-    );
-    final items = body?['items'];
-    if (items is! List) throw StateError('NULL_RESPONSE');
-    return items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+    try {
+      final body = await _authedGetJson(
+        '/products',
+        query: {
+          'storeId': storeId.trim(),
+          'limit': '$limit',
+          if (cursor != null && cursor.trim().isNotEmpty) 'cursor': cursor.trim(),
+        },
+        flow: 'products_by_store',
+      );
+      final Object? responseJson = body;
+      final rows = (responseJson is List)
+          ? responseJson
+          : ((body?['items'] is List) ? (body?['items'] as List) : <dynamic>[]);
+      return rows.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+    } on Object catch (e, st) {
+      debugPrint('[BackendOrdersClient] fetchProductsByStore failed: $e');
+      if (kDebugMode) {
+        debugPrint('$st');
+      }
+      return <Map<String, dynamic>>[];
+    }
   }
 
   Future<Map<String, dynamic>?> upsertAdminProduct({
@@ -837,7 +953,15 @@ final class BackendOrdersClient {
         );
         return null;
       }
-      final decoded = jsonDecode(res.body);
+      final trimmed = res.body.trim();
+      if (trimmed.isEmpty) {
+        debugPrint('[BackendOrdersClient] public_banners: empty body');
+        return null;
+      }
+      final decoded = jsonDecode(trimmed);
+      if (decoded == null) {
+        return null;
+      }
       List<dynamic>? raw;
       if (decoded is List) {
         raw = decoded;
@@ -884,11 +1008,7 @@ final class BackendOrdersClient {
       return _homeCmsInFlight!;
     }
     Future<Map<String, dynamic>?> run() async {
-      try {
-        return await _publicGetJson('/home/cms', flow: 'public_home_cms');
-      } on Object {
-        return null;
-      }
+      return _publicGetJsonOrNull('/home/cms', flow: 'public_home_cms');
     }
 
     if (forceRefresh) {
@@ -1390,37 +1510,38 @@ final class BackendOrdersClient {
 
   Future<({FeatureState<List<HomeSection>> state, int version})> fetchHomeSectionsVersioned() async {
     try {
-      final res = await _publicGetJson('/home/sections', flow: 'home_sections_list');
-      if (res == null) {
+      final res = await _publicGetJsonOrNull('/home/sections', flow: 'home_sections_list');
+      final items = _homeSectionItemsFromEnvelope(res);
+      if (items.isEmpty) {
+        debugPrint('home sections empty');
         return (
-          state: FeatureState.failure<List<HomeSection>>('FAILED_TO_LOAD_HOME_SECTIONS'),
-          version: 1,
-        );
-      }
-      final items = res['data'] ?? res['items'];
-      if (items is! List) {
-        return (
-          state: FeatureState.failure<List<HomeSection>>('FAILED_TO_PARSE_HOME_SECTIONS'),
-          version: 1,
+          state: FeatureState.success(<HomeSection>[]),
+          version: (res?['version'] as num?)?.toInt() ?? 1,
         );
       }
       final out = <HomeSection>[];
       for (final raw in items) {
-        if (raw is! Map) {
-          return (
-            state: FeatureState.failure<List<HomeSection>>('INVALID_HOME_SECTION_PAYLOAD'),
-            version: 1,
-          );
+        if (raw is! Map) continue;
+        try {
+          out.add(HomeSection.fromJson(Map<String, dynamic>.from(raw)));
+        } on Object {
+          continue;
         }
-        out.add(HomeSection.fromJson(Map<String, dynamic>.from(raw)));
+      }
+      if (out.isEmpty) {
+        debugPrint('home sections empty');
       }
       return (
         state: FeatureState.success(out),
-        version: (res['version'] as num?)?.toInt() ?? 1,
+        version: (res?['version'] as num?)?.toInt() ?? 1,
       );
-    } on Object {
+    } on Object catch (e, st) {
+      debugPrint('home sections empty');
+      if (kDebugMode) {
+        debugPrint('$e\n$st');
+      }
       return (
-        state: FeatureState.failure<List<HomeSection>>('FAILED_TO_PARSE_HOME_SECTIONS'),
+        state: FeatureState.success(<HomeSection>[]),
         version: 1,
       );
     }
@@ -1482,16 +1603,25 @@ final class BackendOrdersClient {
   Future<FeatureState<List<StoreModel>>> fetchStoresBySubCategory(String subCategoryId) async {
     final id = subCategoryId.trim();
     if (id.isEmpty) return FeatureState.failure('INVALID_SUB_CATEGORY_ID');
-    final res = await _publicGetJson('/stores/by-subcategory/${Uri.encodeComponent(id)}', flow: 'stores_by_subcategory');
-    if (res == null) return FeatureState.failure('FAILED_TO_LOAD_STORES_BY_SUB_CATEGORY');
-    final items = res['items'];
-    if (items is! List) return FeatureState.failure('FAILED_TO_PARSE_STORES_BY_SUB_CATEGORY');
-    final out = <StoreModel>[];
-    for (final raw in items) {
-      if (raw is! Map) return FeatureState.failure('INVALID_STORE_PAYLOAD');
-      out.add(StoreModel.fromBackendMap(Map<String, dynamic>.from(raw)));
+    try {
+      final res = await _publicGetJson(
+        '/stores/by-subcategory/${Uri.encodeComponent(id)}',
+        flow: 'stores_by_subcategory',
+      );
+      final rows = _storeRowsFromResponseJson(res, 'fetchStoresBySubCategory');
+      final out = <StoreModel>[];
+      for (final raw in rows) {
+        if (raw is! Map) continue;
+        try {
+          out.add(StoreModel.fromBackendMap(Map<String, dynamic>.from(raw)));
+        } on Object {
+          continue;
+        }
+      }
+      return FeatureState.success(out);
+    } on Object {
+      return FeatureState.success(const <StoreModel>[]);
     }
-    return FeatureState.success(out);
   }
 
   Future<FeatureState<List<MarketplaceProduct>>> fetchFilteredProducts({

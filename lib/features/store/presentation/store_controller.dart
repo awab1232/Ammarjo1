@@ -10,7 +10,6 @@ import '../../../core/firebase/account_password_service.dart';
 import '../../../core/firebase/chat_firebase_sync.dart';
 import '../../../core/firebase/phone_auth_service.dart';
 import '../../../core/firebase/users_repository.dart';
-import '../../../core/services/phone_password_auth_service.dart';
 import '../../../core/constants/jordan_regions.dart';
 import '../../../core/utils/jordan_phone.dart';
 import '../../../core/utils/web_image_url.dart';
@@ -420,8 +419,21 @@ class StoreController extends ChangeNotifier {
 
   /// تسجيل دخول برقم الجوال (٩ أرقام) وكلمة المرور — بدون OTP.
   Future<bool> signInWithPhonePassword(String localNineDigits, String password) async {
+    errorMessage = 'تسجيل الدخول برقم الهاتف متوقف مؤقتًا. استخدم البريد الإلكتروني وكلمة المرور.';
+    notifyListeners();
+    return false;
+  }
+
+  /// تسجيل دخول بالبريد وكلمة المرور (مناسب للويب).
+  Future<bool> signInWithEmailPassword(String email, String password) async {
     if (!Firebase.apps.isNotEmpty) {
       errorMessage = 'يتطلب Firebase.';
+      notifyListeners();
+      return false;
+    }
+    final e = email.trim();
+    if (e.isEmpty || password.isEmpty) {
+      errorMessage = 'أدخل البريد الإلكتروني وكلمة المرور.';
       notifyListeners();
       return false;
     }
@@ -429,9 +441,7 @@ class StoreController extends ChangeNotifier {
       isLoading = true;
       errorMessage = null;
       notifyListeners();
-      final un = normalizeJordanPhoneForUsername(localNineDigits);
-      final e164 = '+$un';
-      await PhonePasswordAuthService.signInWithPhonePassword(phone: e164, password: password);
+      await FirebaseAuth.instance.signInWithEmailAndPassword(email: e, password: password);
       await _local.setLocalBypassSession(false);
       await syncLocalProfileWithFirebaseSession();
       if (await user.isUserBannedInFirestore()) {
@@ -441,11 +451,8 @@ class StoreController extends ChangeNotifier {
       }
       await _syncFavoritesAfterAuth();
       return true;
-    } on PhonePasswordAuthException catch (e) {
-      errorMessage = e.messageAr;
-      return false;
-    } on FirebaseAuthException {
-      errorMessage = 'تعذر تسجيل الدخول. تحقق من رقم الهاتف وكلمة المرور.';
+    } on FirebaseAuthException catch (ex) {
+      errorMessage = PhoneAuthService.userFacingMessage(ex);
       return false;
     } on Object {
       errorMessage = 'تعذر تسجيل الدخول حالياً.';
@@ -454,13 +461,6 @@ class StoreController extends ChangeNotifier {
       isLoading = false;
       notifyListeners();
     }
-  }
-
-  /// تسجيل دخول بالبريد وكلمة المرور (مناسب للويب).
-  Future<bool> signInWithEmailPassword(String email, String password) async {
-    errorMessage = 'تم توحيد تسجيل الدخول: استخدم رقم الهاتف وكلمة المرور.';
-    notifyListeners();
-    return false;
   }
 
   /// بعد التحقق بالهاتف (OTP): ربط كلمة المرور بحساب Firebase ثم حفظ الاسم وبريد التواصل في Firestore فقط هنا.
@@ -644,49 +644,11 @@ class StoreController extends ChangeNotifier {
     String? lastName,
     bool isResendSms = false,
   }) async {
-    if (!Firebase.apps.isNotEmpty) {
-      errorMessage = 'يتطلب Firebase.';
-      notifyListeners();
-      return false;
-    }
-    try {
-      isLoading = true;
-      errorMessage = null;
-      final tokenForResend = isResendSms ? phoneResendToken : null;
-      phoneVerificationId = null;
-      phoneResendToken = null;
-      notifyListeners();
-      final e164 = PhoneAuthService.jordanPhoneE164(localNineDigits);
-      final result = await PhoneAuthService.startVerification(
-        e164,
-        forceResendingToken: tokenForResend,
-      );
-      if (result.verificationId == PhoneAuthService.autoVerifiedSentinel) {
-        // التسجيل / نسيان كلمة المرور: لا نكتب الملف المحلي/Firestore حتى يُكمل المسار صراحة.
-        if (isRegistration || forgotPassword) {
-          phoneVerificationId = PhoneAuthService.autoVerifiedSentinel;
-          phoneResendToken = result.resendToken;
-          return true;
-        }
-        return await _finalizePhoneSession(
-          isRegistration: isRegistration,
-          firstName: firstName,
-          lastName: lastName,
-        );
-      }
-      phoneVerificationId = result.verificationId;
-      phoneResendToken = result.resendToken;
-      return true;
-    } on FirebaseAuthException {
-      errorMessage = 'تعذر إرسال رمز التحقق.';
-      return false;
-    } on Object {
-      errorMessage = 'تعذر إرسال رمز التحقق حالياً.';
-      return false;
-    } finally {
-      isLoading = false;
-      notifyListeners();
-    }
+    errorMessage = 'تسجيل الدخول عبر الهاتف متوقف مؤقتًا. استخدم البريد الإلكتروني وكلمة المرور.';
+    phoneVerificationId = null;
+    phoneResendToken = null;
+    notifyListeners();
+    return false;
   }
 
   /// إكمال التسجيل أو الدخول بعد إدخال رمز SMS.
@@ -698,58 +660,11 @@ class StoreController extends ChangeNotifier {
     String? firstName,
     String? lastName,
   }) async {
-    if (!Firebase.apps.isNotEmpty) {
-      errorMessage = 'يتطلب Firebase.';
-      return false;
-    }
-    final vid = phoneVerificationId;
-    if (vid == null || vid.isEmpty) {
-      errorMessage = 'أرسل رمز التحقق أولاً.';
-      return false;
-    }
-    if (vid == PhoneAuthService.autoVerifiedSentinel) {
-      if (skipProfileFinalize) {
-        phoneVerificationId = null;
-        phoneResendToken = null;
-        notifyListeners();
-        return true;
-      }
-      final ok = await _finalizePhoneSession(
-        isRegistration: isRegistration,
-        firstName: firstName,
-        lastName: lastName,
-      );
-      if (ok) {
-        phoneVerificationId = null;
-        phoneResendToken = null;
-      }
-      return ok;
-    }
-    try {
-      isLoading = true;
-      errorMessage = null;
-      notifyListeners();
-      await PhoneAuthService.signInWithSmsCode(verificationId: vid, smsCode: smsCode);
-      phoneVerificationId = null;
-      phoneResendToken = null;
-      if (skipProfileFinalize) {
-        return true;
-      }
-      return await _finalizePhoneSession(
-        isRegistration: isRegistration,
-        firstName: firstName,
-        lastName: lastName,
-      );
-    } on FirebaseAuthException {
-      errorMessage = 'رمز التحقق غير صالح.';
-      return false;
-    } on Object {
-      errorMessage = 'تعذر التحقق من الرمز حالياً.';
-      return false;
-    } finally {
-      isLoading = false;
-      notifyListeners();
-    }
+    errorMessage = 'تسجيل الدخول عبر الهاتف متوقف مؤقتًا. استخدم البريد الإلكتروني وكلمة المرور.';
+    phoneVerificationId = null;
+    phoneResendToken = null;
+    notifyListeners();
+    return false;
   }
 
   Future<bool> _finalizePhoneSession({

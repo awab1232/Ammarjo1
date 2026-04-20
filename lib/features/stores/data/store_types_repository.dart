@@ -17,14 +17,11 @@ class StoreTypesRepository {
   Future<FeatureState<List<StoreTypeModel>>> fetchActiveStoreTypes({bool forceRefresh = false}) async {
     if (!forceRefresh && _cache != null && _isFresh(_cacheAt)) {
       final probe = await BackendOrdersClient.instance.fetchStoreTypesVersioned();
-      if (probe != null && probe.version == _cachedVersion) {
+      if (probe.version == _cachedVersion) {
         return _cache!;
       }
     }
     final payload = await BackendOrdersClient.instance.fetchStoreTypesVersioned();
-    if (payload == null) {
-      return FeatureState.failure('تعذر تحميل أنواع المتاجر');
-    }
     final items = payload.items.map(StoreTypeModel.fromMap).toList();
     final state = FeatureState.success(items);
     _cache = state;

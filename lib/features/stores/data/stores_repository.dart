@@ -82,39 +82,28 @@ class StoresRepository {
     if (cached != null && _isFresh(_storesPageCacheAt[key])) {
       return cached;
     }
-    // Try the authenticated `/stores` endpoint first (returns the caller's own
-    // stores or, for privileged users, all stores). If that fails — e.g. no
-    // signed-in user, expired token, or a 401/403 from the guard — fall back
-    // to the **public** `/stores/public` endpoint which the backend also
-    // fills with Arabic demo data if the DB is empty. This ensures the home
-    // page never renders an empty shell for anonymous or guest users.
-    List<Map<String, dynamic>>? backend;
+    // Home / directory: **public API only** (`GET /stores/public`) — no Firebase, no authed
+    // `/stores` (avoids empty list on Android when user is not signed in).
+    const int publicFetchLimit = 200;
+    List<Map<String, dynamic>> backend;
     try {
-      backend = await BackendOrdersClient.instance.fetchStores(
-        category: category,
-        limit: limit,
-        cursor: startAfter,
-      );
+      backend = await BackendOrdersClient.instance.fetchStoresPublic(
+            category: category,
+            limit: publicFetchLimit,
+          ) ??
+          <Map<String, dynamic>>[];
     } on Object catch (e) {
-      debugPrint('[StoresRepository] authed /stores failed, will try /stores/public: $e');
-      backend = null;
+      debugPrint('[StoresRepository] fetchStoresPublic failed: $e');
+      backend = <Map<String, dynamic>>[];
     }
-    if (backend == null || backend.isEmpty) {
-      try {
-        backend = await BackendOrdersClient.instance.fetchStoresPublic(
-          category: category,
-          limit: limit,
-        );
-      } on Object catch (e) {
-        debugPrint('[StoresRepository] public /stores/public failed: $e');
-        backend = null;
-      }
-    }
-    if (backend == null) {
-      final FeatureState<StoreDirectoryPage> fail = FeatureState.criticalPublicDataFailure(FeatureIds.storeDirectory);
-      _storesPageCache[key] = fail;
-      _storesPageCacheAt[key] = DateTime.now();
-      return fail;
+    if (backend.isEmpty) {
+      debugPrint('[StoresRepository] fetchStoresPublic returned 0 rows (check API / base URL).');
+      // Do not cache empty — allows retry / reload to hit the network again.
+      return FeatureState.success((
+        stores: <StoreModel>[],
+        nextCursor: null,
+        hasMore: false,
+      ));
     }
     var stores = backend.map(StoreModel.fromBackendMap).toList();
     final now = DateTime.now();
@@ -276,9 +265,11 @@ class StoresRepository {
   }
 
   Future<FeatureState<List<StoreShelfProduct>>> fetchStoreShelfProducts(String storeId) async {
-    final items = await BackendOrdersClient.instance.fetchProductsByStore(storeId: storeId, limit: 200);
-    if (items == null) {
-      return FeatureState.criticalPublicDataFailure(FeatureIds.products);
+    List<Map<String, dynamic>> items;
+    try {
+      items = await BackendOrdersClient.instance.fetchProductsByStore(storeId: storeId, limit: 200) ?? <Map<String, dynamic>>[];
+    } on Object {
+      items = <Map<String, dynamic>>[];
     }
     final catRows = await BackendOrdersClient.instance.fetchStoreCategories(storeId);
     final idToName = <String, String>{};

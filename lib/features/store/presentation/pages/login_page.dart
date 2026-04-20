@@ -6,7 +6,6 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_bar_back_button.dart';
 import '../store_controller.dart';
 import 'forgot_password_page.dart';
-import 'phone_otp_login_page.dart';
 import 'register_page.dart';
 
 /// شاشة بوابة تسجيل الدخول — تسجيل الدخول عبر رقم الهاتف + كلمة المرور،
@@ -19,6 +18,16 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
+  final _emailCtrl = TextEditingController();
+  final _passwordCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _emailCtrl.dispose();
+    _passwordCtrl.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final store = context.watch<StoreController>();
@@ -37,7 +46,7 @@ class _LoginPageState extends State<LoginPage> {
               borderRadius: BorderRadius.circular(14),
             ),
             child: Text(
-              'سجّل دخولك برقم الهاتف وكلمة المرور. رمز التحقق OTP يُستخدم عند إنشاء حساب جديد أو عند نسيان كلمة المرور.',
+              'تسجيل الدخول برقم الهاتف متوقف مؤقتًا. استخدم البريد الإلكتروني وكلمة المرور فقط حاليًا.',
               textAlign: TextAlign.right,
               style: GoogleFonts.tajawal(
                 fontSize: 14,
@@ -48,6 +57,35 @@ class _LoginPageState extends State<LoginPage> {
             ),
           ),
           const SizedBox(height: 18),
+          TextField(
+            controller: _emailCtrl,
+            keyboardType: TextInputType.emailAddress,
+            textInputAction: TextInputAction.next,
+            decoration: InputDecoration(
+              labelText: 'البريد الإلكتروني',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+          const SizedBox(height: 12),
+          TextField(
+            controller: _passwordCtrl,
+            obscureText: true,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (_) async {
+              if (store.isLoading) return;
+              final ok = await context.read<StoreController>().signInWithEmailPassword(
+                    _emailCtrl.text.trim(),
+                    _passwordCtrl.text,
+                  );
+              if (!context.mounted) return;
+              if (ok) Navigator.of(context).pop();
+            },
+            decoration: InputDecoration(
+              labelText: 'كلمة المرور',
+              border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+            ),
+          ),
+          const SizedBox(height: 12),
 
           FilledButton.icon(
             style: FilledButton.styleFrom(
@@ -58,14 +96,17 @@ class _LoginPageState extends State<LoginPage> {
             ),
             onPressed: store.isLoading
                 ? null
-                : () {
-                    Navigator.of(context).push<void>(
-                      MaterialPageRoute<void>(builder: (_) => const PhoneOtpLoginPage()),
-                    );
+                : () async {
+                    final ok = await context.read<StoreController>().signInWithEmailPassword(
+                          _emailCtrl.text.trim(),
+                          _passwordCtrl.text,
+                        );
+                    if (!context.mounted) return;
+                    if (ok) Navigator.of(context).pop();
                   },
-            icon: const Icon(Icons.lock_rounded),
+            icon: const Icon(Icons.email_outlined),
             label: Text(
-              'الدخول برقم الهاتف وكلمة المرور',
+              'تسجيل الدخول بالبريد الإلكتروني',
               style: GoogleFonts.tajawal(fontWeight: FontWeight.w700, fontSize: 15),
             ),
           ),

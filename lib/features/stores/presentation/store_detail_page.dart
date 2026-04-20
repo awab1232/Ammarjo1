@@ -16,6 +16,7 @@ import '../../../core/widgets/app_bar_back_button.dart';
 import '../../../core/widgets/full_screen_image_viewer.dart';
 import '../../../core/seo/seo_routes.dart';
 import '../../../core/seo/seo_service.dart';
+import '../../../core/config/chat_feature_config.dart';
 import '../../communication/presentation/unified_chat_page.dart';
 import '../../reviews/data/reviews_repository.dart';
 import '../../reviews/domain/review_model.dart';
@@ -88,6 +89,12 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
   }
 
   Future<void> _openChat(BuildContext context) async {
+    if (!kChatFeatureEnabled) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(kChatFeatureUnavailableMessage, style: GoogleFonts.tajawal())),
+      );
+      return;
+    }
     if (!Firebase.apps.isNotEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('Firebase غير جاهز', style: GoogleFonts.tajawal())),
@@ -412,29 +419,30 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
               ),
             ),
           ),
-          SliverToBoxAdapter(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: SizedBox(
-                width: double.infinity,
-                child: ElevatedButton.icon(
-                  icon: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white),
-                  label: Text(
-                    _isOwnStore() ? 'هذا متجرك — لا يمكن مراسلته من هنا' : 'تواصل مع المتجر',
-                    style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.w700),
+          if (kChatFeatureEnabled)
+            SliverToBoxAdapter(
+              child: Padding(
+                padding: const EdgeInsets.all(16),
+                child: SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    icon: const Icon(Icons.chat_bubble_outline_rounded, color: Colors.white),
+                    label: Text(
+                      _isOwnStore() ? 'هذا متجرك — لا يمكن مراسلته من هنا' : 'تواصل مع المتجر',
+                      style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.w700),
+                    ),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFFFF6B00),
+                      foregroundColor: Colors.white,
+                      minimumSize: const Size(double.infinity, 48),
+                      padding: const EdgeInsets.symmetric(vertical: 14),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                    onPressed: _isOwnStore() ? null : () => _openChat(context),
                   ),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFFF6B00),
-                    foregroundColor: Colors.white,
-                    minimumSize: const Size(double.infinity, 48),
-                    padding: const EdgeInsets.symmetric(vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  ),
-                  onPressed: _isOwnStore() ? null : () => _openChat(context),
                 ),
               ),
             ),
-          ),
           if (store.description.isNotEmpty)
             SliverToBoxAdapter(
               child: Padding(
@@ -579,7 +587,7 @@ class _StoreProductsByCategorySection extends StatelessWidget {
             padding: const EdgeInsets.all(24),
             child: Center(
               child: Text(
-                'لا منتجات مضافة بعد.',
+                'لا يوجد منتجات',
                 textAlign: TextAlign.center,
                 style: GoogleFonts.tajawal(color: AppColors.textSecondary),
               ),
