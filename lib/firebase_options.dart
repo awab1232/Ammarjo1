@@ -47,14 +47,19 @@ class DefaultFirebaseOptions {
     storageBucket: 'ammarjo-app.firebasestorage.app',
   );
 
-  /// iOS — حدّث بعد إضافة تطبيق iOS في Console و`flutterfire configure`.
+  /// iOS — يفضّل تمرير القيم عبر dart-define لكل بيئة:
+  /// `FIREBASE_IOS_API_KEY`, `FIREBASE_IOS_APP_ID`, `FIREBASE_IOS_BUNDLE_ID`.
+  /// لا نحتفظ placeholder ثابت هنا حتى لا يُنشر إعداد غير صحيح.
   static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: String.fromEnvironment('FIREBASE_IOS_API_KEY'),
-    appId: '1:238624284053:ios:placeholder_add_ios_app_in_console',
+    apiKey: String.fromEnvironment('FIREBASE_IOS_API_KEY', defaultValue: ''),
+    appId: String.fromEnvironment('FIREBASE_IOS_APP_ID', defaultValue: ''),
     messagingSenderId: '238624284053',
     projectId: 'ammarjo-app',
     storageBucket: 'ammarjo-app.firebasestorage.app',
-    iosBundleId: 'com.ammarjo.store',
+    iosBundleId: String.fromEnvironment(
+      'FIREBASE_IOS_BUNDLE_ID',
+      defaultValue: 'com.ammarjo.store',
+    ),
   );
 
   /// **Web** — من `firebaseConfig` في Firebase Console (تطبيق الويب).

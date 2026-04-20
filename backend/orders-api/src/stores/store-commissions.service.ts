@@ -82,7 +82,7 @@ export class StoreCommissionsService {
   ): Promise<number> {
     await this.ensureCommissionSchema(client);
     let rate = COMMISSION_RATE;
-    const settingsQ = await client.query(`SELECT payload FROM admin_settings WHERE key = 'platform' LIMIT 1`);
+    const settingsQ = await client.query(`SELECT payload FROM admin_settings WHERE id = 1 LIMIT 1`);
     const payload = (settingsQ.rows[0] as Record<string, unknown> | undefined)?.payload;
     const settings =
       payload && typeof payload === 'object' ? (payload as Record<string, unknown>) : ({} as Record<string, unknown>);

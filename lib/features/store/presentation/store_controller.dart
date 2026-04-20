@@ -10,6 +10,7 @@ import '../../../core/firebase/account_password_service.dart';
 import '../../../core/firebase/chat_firebase_sync.dart';
 import '../../../core/firebase/phone_auth_service.dart';
 import '../../../core/firebase/users_repository.dart';
+import '../../../core/services/phone_password_auth_service.dart';
 import '../../../core/constants/jordan_regions.dart';
 import '../../../core/utils/jordan_phone.dart';
 import '../../../core/utils/web_image_url.dart';
@@ -429,8 +430,8 @@ class StoreController extends ChangeNotifier {
       errorMessage = null;
       notifyListeners();
       final un = normalizeJordanPhoneForUsername(localNineDigits);
-      final email = syntheticEmailForPhone(un);
-      await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
+      final e164 = '+$un';
+      await PhonePasswordAuthService.signInWithPhonePassword(phone: e164, password: password);
       await _local.setLocalBypassSession(false);
       await syncLocalProfileWithFirebaseSession();
       if (await user.isUserBannedInFirestore()) {
@@ -440,8 +441,11 @@ class StoreController extends ChangeNotifier {
       }
       await _syncFavoritesAfterAuth();
       return true;
+    } on PhonePasswordAuthException catch (e) {
+      errorMessage = e.messageAr;
+      return false;
     } on FirebaseAuthException {
-      errorMessage = 'رقم الجوال أو كلمة المرور غير صحيحة.';
+      errorMessage = 'تعذر تسجيل الدخول. تحقق من رقم الهاتف وكلمة المرور.';
       return false;
     } on Object {
       errorMessage = 'تعذر تسجيل الدخول حالياً.';
@@ -454,38 +458,9 @@ class StoreController extends ChangeNotifier {
 
   /// تسجيل دخول بالبريد وكلمة المرور (مناسب للويب).
   Future<bool> signInWithEmailPassword(String email, String password) async {
-    if (!Firebase.apps.isNotEmpty) {
-      errorMessage = 'يتطلب Firebase.';
-      notifyListeners();
-      return false;
-    }
-    try {
-      isLoading = true;
-      errorMessage = null;
-      notifyListeners();
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email.trim(),
-        password: password,
-      );
-      await _local.setLocalBypassSession(false);
-      await syncLocalProfileWithFirebaseSession();
-      if (await user.isUserBannedInFirestore()) {
-        errorMessage = 'تم حظر حسابك. تواصل مع الدعم.';
-        await logout();
-        return false;
-      }
-      await _syncFavoritesAfterAuth();
-      return true;
-    } on FirebaseAuthException {
-      errorMessage = 'تعذر تسجيل الدخول. تحقق من البريد وكلمة المرور.';
-      return false;
-    } on Object {
-      errorMessage = 'تعذر تسجيل الدخول حالياً.';
-      return false;
-    } finally {
-      isLoading = false;
-      notifyListeners();
-    }
+    errorMessage = 'تم توحيد تسجيل الدخول: استخدم رقم الهاتف وكلمة المرور.';
+    notifyListeners();
+    return false;
   }
 
   /// بعد التحقق بالهاتف (OTP): ربط كلمة المرور بحساب Firebase ثم حفظ الاسم وبريد التواصل في Firestore فقط هنا.
@@ -826,6 +801,7 @@ class StoreController extends ChangeNotifier {
   void clearPhoneVerificationState() {
     phoneVerificationId = null;
     phoneResendToken = null;
+    PhoneAuthService.resetWebPendingVerification();
     notifyListeners();
   }
 

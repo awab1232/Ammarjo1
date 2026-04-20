@@ -4,12 +4,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
 
 import '../../../core/services/backend_orders_client.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../store/presentation/pages/login_page.dart';
-import '../../store/presentation/store_controller.dart';
 import '../data/driver_workbench_models.dart';
 import 'driver_register_page.dart';
 import '../widgets/driver_order_card.dart';
@@ -23,9 +21,6 @@ class DriverDashboardPage extends StatefulWidget {
 }
 
 class _DriverDashboardPageState extends State<DriverDashboardPage> {
-  final _emailCtrl = TextEditingController();
-  final _pwCtrl = TextEditingController();
-
   DriverWorkbenchData? _data;
   String? _error;
   /// إذا كان هناك مستخدم مسجّل قبل أول تحميل، نعرض مؤشراً فوراً لتفادي وميض واجهة فارغة.
@@ -58,8 +53,6 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
   void dispose() {
     _authSub?.cancel();
     _stopTimers();
-    _emailCtrl.dispose();
-    _pwCtrl.dispose();
     super.dispose();
   }
 
@@ -183,17 +176,6 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
     }
   }
 
-  Future<void> _signInEmail(BuildContext context) async {
-    final store = context.read<StoreController>();
-    final ok = await store.signInWithEmailPassword(_emailCtrl.text, _pwCtrl.text);
-    if (!mounted) return;
-    if (!ok && store.errorMessage != null) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(store.errorMessage!, style: GoogleFonts.tajawal())),
-      );
-    }
-  }
-
   String _statusLabel(String code) {
     switch (code.toLowerCase()) {
       case 'online':
@@ -228,54 +210,25 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
   }
 
   Widget _buildLogin(BuildContext context) {
-    final store = context.watch<StoreController>();
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
         Text(
-          'سجّل الدخول بحساب السائق (نفس Firebase للتطبيق).',
+          'تسجيل الدخول للسائق تم توحيده عبر رقم الهاتف وكلمة المرور.',
           textAlign: TextAlign.right,
           style: GoogleFonts.tajawal(fontSize: 15, height: 1.5, fontWeight: FontWeight.w600),
         ),
-        const SizedBox(height: 20),
-        TextField(
-          controller: _emailCtrl,
-          keyboardType: TextInputType.emailAddress,
-          textAlign: TextAlign.right,
-          decoration: InputDecoration(
-            labelText: 'البريد الإلكتروني',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        ),
-        const SizedBox(height: 12),
-        TextField(
-          controller: _pwCtrl,
-          obscureText: true,
-          textAlign: TextAlign.right,
-          decoration: InputDecoration(
-            labelText: 'كلمة المرور',
-            border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
-          ),
-        ),
         const SizedBox(height: 16),
         FilledButton(
-          onPressed: store.isLoading ? null : () => _signInEmail(context),
+          onPressed: () {
+            Navigator.of(context).push<void>(MaterialPageRoute<void>(builder: (_) => const LoginPage()));
+          },
           style: FilledButton.styleFrom(
             backgroundColor: AppColors.orange,
             padding: const EdgeInsets.symmetric(vertical: 14),
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
           ),
-          child: store.isLoading
-              ? const SizedBox(height: 22, width: 22, child: CircularProgressIndicator(strokeWidth: 2))
-              : Text('دخول', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
-        ),
-        TextButton(
-          onPressed: store.isLoading
-              ? null
-              : () {
-                  Navigator.of(context).push<void>(MaterialPageRoute<void>(builder: (_) => const LoginPage()));
-                },
-          child: Text('الدخول برقم الهاتف وكلمة المرور', style: GoogleFonts.tajawal(color: AppColors.orange)),
+          child: Text('الانتقال لصفحة تسجيل الدخول', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
         ),
       ],
     );

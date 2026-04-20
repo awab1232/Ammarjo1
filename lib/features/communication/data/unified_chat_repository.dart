@@ -222,20 +222,23 @@ class UnifiedChatRepository {
       peer: peerPhone.trim(),
     };
     final conversationType = _conversationType(kind);
-    final resolvedStoreId = storeId;
-    if (resolvedStoreId == null || resolvedStoreId.trim().isEmpty) {
+    final requiresStoreId =
+        kind == UnifiedChatKind.storeCustomer || kind == UnifiedChatKind.homeStoreCustomer;
+    final requiresTechnicianId = kind == UnifiedChatKind.technicianCustomer;
+    final resolvedStoreId = (storeId ?? '').trim();
+    final resolvedTechnicianId = (technicianId ?? '').trim();
+    if (requiresStoreId && resolvedStoreId.isEmpty) {
       throw StateError('INVALID_ID');
     }
-    final resolvedTechnicianId = technicianId;
-    if (resolvedTechnicianId == null || resolvedTechnicianId.trim().isEmpty) {
+    if (requiresTechnicianId && resolvedTechnicianId.isEmpty) {
       throw StateError('INVALID_ID');
     }
     final resolvedCustomerId = customerId != null && customerId.trim().isNotEmpty ? customerId : buyerUid;
     if (resolvedCustomerId.trim().isEmpty) {
       throw StateError('INVALID_ID');
     }
-    final normalizedStoreId = resolvedStoreId.trim();
-    final normalizedTechnicianId = resolvedTechnicianId.trim();
+    final normalizedStoreId = resolvedStoreId;
+    final normalizedTechnicianId = resolvedTechnicianId;
     final normalizedCustomerId = resolvedCustomerId.trim();
 
     await _db.runTransaction((tx) async {
