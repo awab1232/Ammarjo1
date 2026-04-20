@@ -81,39 +81,6 @@ export class ProductsController {
 export class ProductsMutateController {
   constructor(private readonly products: ProductsService) {}
 
-  @Get()
-  @RequirePermissions('orders.read')
-  listPublic(
-    @Query('subCategoryId') subCategoryId?: string,
-    @Query('storeId') storeId?: string,
-    @Query('sectionId') sectionId?: string,
-    @Query('search') search?: string,
-    @Query('minPrice') minPrice?: string,
-    @Query('maxPrice') maxPrice?: string,
-    @Query('limit') limit?: string,
-    @Query('offset') offset?: string,
-  ) {
-    if (subCategoryId || storeId || sectionId || search || minPrice || maxPrice) {
-      return this.products.filterProducts({
-        subCategoryId,
-        storeId,
-        sectionId,
-        search,
-        minPrice: minPrice != null ? Number(minPrice) : undefined,
-        maxPrice: maxPrice != null ? Number(maxPrice) : undefined,
-        limit: limit != null ? Number(limit) : undefined,
-        offset: offset != null ? Number(offset) : undefined,
-      });
-    }
-    return this.products.listPublic(200).then((data) => ({ items: data.items, total: data.items.length }));
-  }
-
-  @Get(':id')
-  @RequirePermissions('orders.read')
-  getById(@Param('id') id: string) {
-    return this.products.getPublicById(id);
-  }
-
   @Patch(':id')
   @RequirePermissions('products.manage')
   patch(
@@ -174,8 +141,8 @@ export class ProductsMutateController {
 export class ProductsFilterPublicController {
   constructor(private readonly products: ProductsService) {}
 
-  @Get('filter')
-  filter(
+  @Get()
+  async listPublic(
     @Query('subCategoryId') subCategoryId?: string,
     @Query('storeId') storeId?: string,
     @Query('sectionId') sectionId?: string,
@@ -185,15 +152,61 @@ export class ProductsFilterPublicController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
-    return this.products.filterProducts({
-      subCategoryId,
-      storeId,
-      sectionId,
-      search,
-      minPrice: minPrice != null ? Number(minPrice) : undefined,
-      maxPrice: maxPrice != null ? Number(maxPrice) : undefined,
-      limit: limit != null ? Number(limit) : undefined,
-      offset: offset != null ? Number(offset) : undefined,
-    });
+    try {
+      if (subCategoryId || storeId || sectionId || search || minPrice || maxPrice || limit || offset) {
+        const out = await this.products.filterProducts({
+          subCategoryId,
+          storeId,
+          sectionId,
+          search,
+          minPrice: minPrice != null ? Number(minPrice) : undefined,
+          maxPrice: maxPrice != null ? Number(maxPrice) : undefined,
+          limit: limit != null ? Number(limit) : undefined,
+          offset: offset != null ? Number(offset) : undefined,
+        });
+        return Array.isArray(out.items) ? out.items : [];
+      }
+      const data = await this.products.listPublic(200);
+      return Array.isArray(data.items) ? data.items : [];
+    } catch {
+      return [];
+    }
+  }
+
+  @Get(':id')
+  async getById(@Param('id') id: string) {
+    try {
+      return await this.products.getPublicById(id);
+    } catch {
+      return [];
+    }
+  }
+
+  @Get('filter')
+  async filter(
+    @Query('subCategoryId') subCategoryId?: string,
+    @Query('storeId') storeId?: string,
+    @Query('sectionId') sectionId?: string,
+    @Query('search') search?: string,
+    @Query('minPrice') minPrice?: string,
+    @Query('maxPrice') maxPrice?: string,
+    @Query('limit') limit?: string,
+    @Query('offset') offset?: string,
+  ) {
+    try {
+      const out = await this.products.filterProducts({
+        subCategoryId,
+        storeId,
+        sectionId,
+        search,
+        minPrice: minPrice != null ? Number(minPrice) : undefined,
+        maxPrice: maxPrice != null ? Number(maxPrice) : undefined,
+        limit: limit != null ? Number(limit) : undefined,
+        offset: offset != null ? Number(offset) : undefined,
+      });
+      return { items: Array.isArray(out.items) ? out.items : [], total: Number(out.total) || 0 };
+    } catch {
+      return { items: [], total: 0 };
+    }
   }
 }
