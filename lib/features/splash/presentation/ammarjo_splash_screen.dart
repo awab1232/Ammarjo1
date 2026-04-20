@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'package:ammar_store/core/routing/role_home_resolver.dart';
-import 'package:ammar_store/features/store/presentation/pages/main_navigation_page.dart';
+import 'package:ammar_store/features/store/presentation/pages/login_page.dart';
 
 const Color _kSplashDark = Color(0xFF1A1A2E);
 const Color _kSplashOrange = Color(0xFFFF6B00);
@@ -137,7 +137,7 @@ class _AmmarJoSplashScreenState extends State<AmmarJoSplashScreen> with TickerPr
       return;
     }
     final user = FirebaseAuth.instance.currentUser;
-    final Widget home = user != null ? await resolveHomeForSignedInUser(user) : const MainNavigationPage();
+    final Widget home = user != null ? await resolveHomeForSignedInUser(user) : const LoginPage();
     if (!mounted) return;
     Navigator.of(context).pushReplacement<void, void>(
       PageRouteBuilder<void>(

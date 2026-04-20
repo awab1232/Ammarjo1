@@ -30,6 +30,33 @@ final class BackendUserClient {
     return null;
   }
 
+  Future<bool> postUserRegistration({
+    required String firebaseUid,
+    required String email,
+  }) async {
+    final uid = firebaseUid.trim();
+    final em = email.trim();
+    if (uid.isEmpty || em.isEmpty) return false;
+    final req = await _request('/users');
+    if (req == null) return false;
+    try {
+      final res = await http.post(
+        req.$1,
+        headers: <String, String>{
+          ...req.$2,
+          'Content-Type': 'application/json',
+        },
+        body: jsonEncode(<String, dynamic>{
+          'firebase_uid': uid,
+          'email': em,
+        }),
+      );
+      return res.statusCode >= 200 && res.statusCode < 300;
+    } on Object {
+      return false;
+    }
+  }
+
   Future<bool> patchUser(String uid, Map<String, dynamic> fields) async {
     final id = uid.trim();
     if (id.isEmpty || fields.isEmpty) return false;

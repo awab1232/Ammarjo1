@@ -10,6 +10,7 @@ import '../../../core/firebase/account_password_service.dart';
 import '../../../core/firebase/chat_firebase_sync.dart';
 import '../../../core/firebase/phone_auth_service.dart';
 import '../../../core/firebase/users_repository.dart';
+import '../../../core/services/backend_user_client.dart';
 import '../../../core/constants/jordan_regions.dart';
 import '../../../core/utils/jordan_phone.dart';
 import '../../../core/utils/web_image_url.dart';
@@ -442,6 +443,13 @@ class StoreController extends ChangeNotifier {
       errorMessage = null;
       notifyListeners();
       await FirebaseAuth.instance.signInWithEmailAndPassword(email: e, password: password);
+      final u = FirebaseAuth.instance.currentUser;
+      if (u != null && u.email != null && u.email!.trim().isNotEmpty) {
+        await BackendUserClient.instance.postUserRegistration(
+          firebaseUid: u.uid,
+          email: u.email!.trim(),
+        );
+      }
       await _local.setLocalBypassSession(false);
       await syncLocalProfileWithFirebaseSession();
       if (await user.isUserBannedInFirestore()) {

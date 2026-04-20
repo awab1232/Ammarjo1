@@ -8,8 +8,7 @@ import '../store_controller.dart';
 import 'forgot_password_page.dart';
 import 'register_page.dart';
 
-/// شاشة بوابة تسجيل الدخول — تسجيل الدخول عبر رقم الهاتف + كلمة المرور،
-/// ورمز OTP عند إنشاء حساب جديد أو عند استعادة كلمة المرور.
+/// شاشة بوابة تسجيل الدخول بالبريد الإلكتروني وكلمة المرور فقط.
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
 
@@ -46,7 +45,7 @@ class _LoginPageState extends State<LoginPage> {
               borderRadius: BorderRadius.circular(14),
             ),
             child: Text(
-              'تسجيل الدخول برقم الهاتف متوقف مؤقتًا. استخدم البريد الإلكتروني وكلمة المرور فقط حاليًا.',
+              'استخدم البريد الإلكتروني وكلمة المرور لتسجيل الدخول.',
               textAlign: TextAlign.right,
               style: GoogleFonts.tajawal(
                 fontSize: 14,
@@ -106,7 +105,7 @@ class _LoginPageState extends State<LoginPage> {
                   },
             icon: const Icon(Icons.email_outlined),
             label: Text(
-              'تسجيل الدخول بالبريد الإلكتروني',
+              'تسجيل دخول',
               style: GoogleFonts.tajawal(fontWeight: FontWeight.w700, fontSize: 15),
             ),
           ),
@@ -136,7 +135,7 @@ class _LoginPageState extends State<LoginPage> {
                     );
                   },
             child: Text(
-              'ليس لديك حساب؟ إنشاء حساب جديد',
+              'ليس لديك حساب؟ تسجيل حساب',
               textAlign: TextAlign.center,
               style: GoogleFonts.tajawal(color: AppColors.orange, fontWeight: FontWeight.w600),
             ),
