@@ -83,7 +83,8 @@ Future<void> main() async {
   final tracesSampleRate = resolvedEnv == 'production' ? 0.1 : 1.0;
   Future<void> runner() async {
     FlutterError.onError = (details) {
-      FlutterError.dumpErrorToConsole(details);
+      FlutterError.presentError(details);
+      debugPrint('FLUTTER ERROR: ${details.exception}');
       unawaited(
         sentryCaptureExceptionSafe(
           details.exception,
@@ -95,6 +96,7 @@ Future<void> main() async {
       WidgetsFlutterBinding.ensureInitialized();
       await _appMain();
     }, (error, stack) async {
+      debugPrint('UNCAUGHT ERROR: $error');
       await sentryCaptureExceptionSafe(error, stackTrace: stack);
     });
   }

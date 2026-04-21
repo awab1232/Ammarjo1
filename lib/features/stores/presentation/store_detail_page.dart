@@ -583,6 +583,13 @@ class _StoreProductsByCategorySection extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
+              child: Text(
+                'PRODUCTS: ${allProducts.length}',
+                style: GoogleFonts.tajawal(color: AppColors.textSecondary, fontSize: 12),
+              ),
+            ),
             for (final catName in catNames) _CategoryProductRow(store: store, categoryName: catName, products: allProducts),
           ],
         );

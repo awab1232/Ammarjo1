@@ -2,7 +2,6 @@
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:shimmer/shimmer.dart';
 
 import '../theme/app_colors.dart';
 
@@ -20,13 +19,15 @@ String experimentalRetryUrlStripQueryAndAltMedia(String originalUrl) {
   return '$base?alt=media';
 }
 
+bool isFirebaseUrl(String url) {
+  final lower = url.trim().toLowerCase();
+  return lower.contains('firebasestorage') || lower.contains('googleapis');
+}
+
 /// Second-phase `?alt=media` retry is only valid for Firebase/GCS URLs — never for normal CDNs (breaks e.g. picsum).
 bool urlSupportsFirebaseStyleAltMediaRetry(String raw) {
   final lower = raw.trim().toLowerCase();
-  return lower.contains('firebasestorage.googleapis.com') ||
-      lower.contains('storage.googleapis.com') ||
-      lower.contains('firebasestorage.app') ||
-      lower.contains('googleapis.com/v0/b/');
+  return isFirebaseUrl(lower) || lower.contains('storage.googleapis.com');
 }
 
 /// صورة شبكة مع تخزين مؤقت؛ [BoxFit.contain] وافتراضياً وأيقونة ورشة/مستودع عند الفشل أو الغياب.
@@ -99,6 +100,32 @@ class AmmarCachedImage extends StatelessWidget {
   }
 }
 
+Widget safeImage(
+  String? url, {
+  BoxFit fit = BoxFit.cover,
+  double? width,
+  double? height,
+  bool productTileStyle = false,
+  bool useShimmerPlaceholder = false,
+}) {
+  final safeUrl = (url ?? '').trim();
+  if (safeUrl.isEmpty) {
+    return Container(height: 180, color: Colors.grey.shade200);
+  }
+  try {
+    return AmmarCachedImage(
+      imageUrl: safeUrl,
+      fit: fit,
+      width: width,
+      height: height,
+      productTileStyle: productTileStyle,
+      useShimmerPlaceholder: useShimmerPlaceholder,
+    );
+  } on Object {
+    return Container(height: 180, color: Colors.grey.shade200);
+  }
+}
+
 class _AmmarCachedImageImpl extends StatefulWidget {
   const _AmmarCachedImageImpl({
     required this.imageUrl,
@@ -152,67 +179,7 @@ class _AmmarCachedImageImplState extends State<_AmmarCachedImageImpl> {
   }
 
   Widget _buildFinalErrorUi(BuildContext context) {
-    final bg = widget.productTileStyle ? Colors.grey[200]! : const Color(0xFFF0F1F4);
-    return ColoredBox(
-      color: bg,
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.broken_image_outlined, color: Colors.grey[600], size: widget.productTileStyle ? 32 : 40),
-              const SizedBox(height: 6),
-              Text(
-                'فشل تحميل الصورة',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: Colors.grey[700],
-                  fontSize: widget.productTileStyle ? 11 : 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _loadingPlaceholder(BuildContext context) {
-    if (widget.productTileStyle) {
-      return ColoredBox(
-        color: Colors.grey[200]!,
-        child: const Center(
-          child: SizedBox(
-            width: 28,
-            height: 28,
-            child: CircularProgressIndicator(strokeWidth: 2, color: Color(0xFFFF6B00)),
-          ),
-        ),
-      );
-    }
-    if (widget.useShimmerPlaceholder) {
-      return Shimmer.fromColors(
-        baseColor: const Color(0xFFE6E8EC),
-        highlightColor: const Color(0xFFF2F4F7),
-        period: const Duration(milliseconds: 1100),
-        child: ColoredBox(
-          color: const Color(0xFFE6E8EC),
-          child: SizedBox(width: widget.width, height: widget.height),
-        ),
-      );
-    }
-    return ColoredBox(
-      color: const Color(0xFFF0F1F4),
-      child: Center(
-        child: SizedBox(
-          width: 28,
-          height: 28,
-          child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.orange.withValues(alpha: 0.5)),
-        ),
-      ),
-    );
+    return Container(color: Colors.grey.shade200);
   }
 
   @override
@@ -224,12 +191,11 @@ class _AmmarCachedImageImplState extends State<_AmmarCachedImageImpl> {
 
     final effectiveUrl = _effectiveUrlForPhase(raw);
 
-    // Avoid `Cache-Control: no-cache` on banners/tiles — it forces revalidation and flaky reloads.
+    // Avoid forced revalidation headers for normal image flows.
     final headers = widget.httpHeaders ??
         (widget.productTileStyle
             ? const <String, String>{
                 'Accept': 'image/*',
-                'Cache-Control': 'no-cache',
               }
             : null);
 
@@ -242,15 +208,18 @@ class _AmmarCachedImageImplState extends State<_AmmarCachedImageImpl> {
       fit: widget.fit,
       fadeInDuration: const Duration(milliseconds: 220),
       fadeOutDuration: const Duration(milliseconds: 120),
-      placeholder: (context, _) => _loadingPlaceholder(context),
-      errorWidget: (context, failedUrl, error) {
+      placeholder: (_, _) => Container(
+        height: 180,
+        color: Colors.grey.shade100,
+      ),
+      errorWidget: (_, failedUrl, error) {
         _logLoadFailure(failedUrl, error, null);
 
         if (_loadPhase == 0) {
           final firstTry = AmmarCachedImage.fixUrl(raw);
           final secondTry = experimentalRetryUrlStripQueryAndAltMedia(raw);
           // إذا كانت المحاولة الثانية مطابقة للأولى لا فائدة من إعادة الطلب (تفادٍ لحلقة لا نهائية).
-          if (secondTry != firstTry && urlSupportsFirebaseStyleAltMediaRetry(raw)) {
+          if (secondTry != firstTry && isFirebaseUrl(raw) && urlSupportsFirebaseStyleAltMediaRetry(raw)) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
                 setState(() => _loadPhase = 1);
@@ -282,7 +251,10 @@ class _AmmarCachedImageImplState extends State<_AmmarCachedImageImpl> {
                 );
         }
 
-        return _buildFinalErrorUi(context);
+        return Container(
+          height: 180,
+          color: Colors.grey.shade200,
+        );
       },
     );
   }

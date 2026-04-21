@@ -868,6 +868,11 @@ final class BackendOrdersClient {
   }) async {
     try {
       // Public GET only — storefront must work without Firebase login.
+      debugPrint('STORE ID: $storeId');
+      debugPrint('FETCHING PRODUCTS...');
+      final url = '/products?storeId=${Uri.encodeQueryComponent(storeId.trim())}&limit=$limit'
+          '${(cursor != null && cursor.trim().isNotEmpty) ? '&cursor=${Uri.encodeQueryComponent(cursor.trim())}' : ''}';
+      debugPrint('FETCH PRODUCTS URL: $url');
       final dynamic json = await _publicGetJsonOrNull(
         '/products',
         query: {
@@ -878,6 +883,8 @@ final class BackendOrdersClient {
         flow: 'products_by_store_public',
         logApiResponse: kDebugMode,
       );
+      debugPrint('RAW JSON: $json');
+      debugPrint('RAW PRODUCTS JSON TYPE: ${json.runtimeType}');
       debugPrint('[BackendOrdersClient] products_by_store_public storeId=${storeId.trim()} limit=$limit');
       if (json == null) {
         debugPrint(
@@ -893,7 +900,7 @@ final class BackendOrdersClient {
       if (rows.isEmpty) {
         debugPrint('NO PRODUCTS FROM API');
       }
-      debugPrint('PRODUCTS COUNT: ${rows.length}');
+      debugPrint('PRODUCT COUNT: ${rows.length}');
       return rows.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
     } on Object catch (e, st) {
       debugPrint('[BackendOrdersClient] fetchProductsByStore failed: $e');

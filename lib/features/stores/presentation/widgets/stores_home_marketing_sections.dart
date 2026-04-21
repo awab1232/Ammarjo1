@@ -92,12 +92,16 @@ class StoresHomeSectionsCardsStrip extends StatelessWidget {
       future: _safeHomeSections(),
       builder: (context, snap) {
         if (snap.hasError) {
-          debugPrint('[StoresHomeSectionsCardsStrip] ${snap.error}');
+          debugPrint('HOME ERROR: ${snap.error}');
           return const SizedBox.shrink();
         }
         if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
           return const HomeHorizontalCardsSkeleton(height: 148, cardWidth: 158, count: 5, spacing: 12);
         }
+        if (!snap.hasData) {
+          return const SizedBox.shrink();
+        }
+        debugPrint('HOME DATA LOADED');
         final state = snap.data;
         final sections = switch (state) {
           FeatureSuccess<List<HomeSection>>(:final data) => data,
@@ -265,12 +269,16 @@ class StoresHomeOffersStrip extends StatelessWidget {
       future: _safeHomeCms(),
       builder: (context, snap) {
         if (snap.hasError) {
-          debugPrint('[StoresHomeOffersStrip] ${snap.error}');
+          debugPrint('HOME ERROR: ${snap.error}');
           return const SizedBox.shrink();
         }
         if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
           return const HomeOffersStripSkeleton();
         }
+        if (!snap.hasData) {
+          return const SizedBox.shrink();
+        }
+        debugPrint('HOME DATA LOADED');
         final offers = _parseOffers(snap.data);
         if (offers.isEmpty) {
           return const SizedBox.shrink();
@@ -367,6 +375,14 @@ class StoresHomeMostRequestedStrip extends StatelessWidget {
         if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
           return const HomeStoreChipsSkeleton(count: 6);
         }
+        if (snap.hasError) {
+          debugPrint('HOME ERROR: ${snap.error}');
+          return const SizedBox.shrink();
+        }
+        if (!snap.hasData) {
+          return const SizedBox.shrink();
+        }
+        debugPrint('HOME DATA LOADED');
         final state = snap.data;
         final all = switch (state) {
           FeatureSuccess<List<StoreModel>>(:final data) => List<StoreModel>.from(data),
@@ -426,12 +442,16 @@ class StoresHomeBottomMarketingBanner extends StatelessWidget {
       future: _safeHomeCms(),
       builder: (context, snap) {
         if (snap.hasError) {
-          debugPrint('[StoresHomeBottomMarketingBanner] ${snap.error}');
+          debugPrint('HOME ERROR: ${snap.error}');
           return const SizedBox.shrink();
         }
         if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
           return const HomeBottomBannerSkeleton();
         }
+        if (!snap.hasData) {
+          return const SizedBox.shrink();
+        }
+        debugPrint('HOME DATA LOADED');
         final cms = snap.data;
         final bottom = cms?['bottomBanner'];
         if (bottom is! Map) return const SizedBox.shrink();

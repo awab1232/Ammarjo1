@@ -85,6 +85,17 @@ class _StoresHomePageState extends State<StoresHomePage> {
 
   bool get _hasSearchQuery => _searchController.text.trim().isNotEmpty;
 
+  Widget safeHome(Widget child) {
+    try {
+      return child;
+    } on Object catch (e) {
+      debugPrint('HOME BUILD CRASH: $e');
+      return const Scaffold(
+        body: Center(child: Text('حدث خطأ في العرض')),
+      );
+    }
+  }
+
   void _refreshCategories() => setState(() => _categoriesRetryKey++);
 
   /// Single scroll surface (ListView) — avoids nested sliver / scroll overlap on Android.
@@ -108,38 +119,14 @@ class _StoresHomePageState extends State<StoresHomePage> {
           );
         }
         if (storeSnap.hasError) {
-          return ListView(
-            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-            padding: const EdgeInsets.all(24),
-            children: [
-              Text('تعذر تحميل المتاجر', textAlign: TextAlign.center, style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
-              const SizedBox(height: 8),
-              Text(
-                '${storeSnap.error}',
-                textAlign: TextAlign.center,
-                style: GoogleFonts.tajawal(fontSize: 12, color: AppColors.textSecondary),
-              ),
-              const SizedBox(height: 16),
-              Center(
-                child: FilledButton(
-                  onPressed: () => setState(() => _storesReloadNonce++),
-                  style: FilledButton.styleFrom(backgroundColor: AppColors.primaryOrange),
-                  child: Text('إعادة المحاولة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
-                ),
-              ),
-            ],
-          );
+          debugPrint('HOME ERROR: ${storeSnap.error}');
+          return const SizedBox.shrink();
         }
-        final st = storeSnap.data;
-        if (st == null) {
-          return ListView(
-            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-            padding: const EdgeInsets.all(24),
-            children: [
-              Center(child: Text('لا توجد بيانات', style: GoogleFonts.tajawal())),
-            ],
-          );
+        if (!storeSnap.hasData) {
+          return const SizedBox.shrink();
         }
+        debugPrint('HOME DATA LOADED');
+        final st = storeSnap.data!;
         final bottomPad = MediaQuery.paddingOf(context).bottom + 24;
         return ListView(
           padding: EdgeInsets.only(bottom: bottomPad),
@@ -230,18 +217,13 @@ class _StoresHomePageState extends State<StoresHomePage> {
                   stream: watchActiveStoreCategoriesWithFallback(),
                   builder: (context, catSnap) {
                     if (catSnap.hasError) {
-                      debugPrint('Store categories (builder) error: ${catSnap.error}');
-                      return Column(
-                        crossAxisAlignment: CrossAxisAlignment.end,
-                        children: [
-                          Text('التصنيفات غير متاحة', style: GoogleFonts.tajawal(color: AppColors.textSecondary)),
-                          TextButton(
-                            onPressed: _refreshCategories,
-                            child: Text('إعادة المحاولة', style: GoogleFonts.tajawal(color: AppColors.primaryOrange)),
-                          ),
-                        ],
-                      );
+                      debugPrint('HOME ERROR: ${catSnap.error}');
+                      return const SizedBox.shrink();
                     }
+                    if (!catSnap.hasData) {
+                      return const SizedBox.shrink();
+                    }
+                    debugPrint('HOME DATA LOADED');
                     final cats = switch (catSnap.data) {
                       FeatureSuccess(:final data) => data,
                       _ => const <StoreCategoryEntry>[],
@@ -545,9 +527,14 @@ class _StoresHomePageState extends State<StoresHomePage> {
             ],
           );
         }
+        if (snap.hasError) {
+          debugPrint('HOME ERROR: ${snap.error}');
+          return const SizedBox.shrink();
+        }
         if (!snap.hasData) {
           return const SizedBox.shrink();
         }
+        debugPrint('HOME DATA LOADED');
         return buildFeatureStateUi<List<StoreModel>>(
           context: context,
           state: snap.data!,
@@ -614,7 +601,7 @@ class _StoresHomePageState extends State<StoresHomePage> {
     }
     final storeListFuture = _storesFetchMemo!;
 
-    return Scaffold(
+    return safeHome(Scaffold(
       backgroundColor: AppColors.background,
       extendBody: false,
       appBar: AppBar(
@@ -645,7 +632,7 @@ class _StoresHomePageState extends State<StoresHomePage> {
       ),
       floatingActionButton: buildTenderFab(context),
       floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
-    );
+    ));
   }
 }
 
@@ -887,6 +874,78 @@ class _StoresHomePageBannerCarouselState extends State<_StoresHomePageBannerCaro
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
+  Widget safeBanner(List<WpHomeBannerSlide> banners, PageController pc) {
+    try {
+      debugPrint('BANNERS COUNT: ${banners.length}');
+      if (banners.isEmpty) return const SizedBox.shrink();
+      return Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          SizedBox(
+            height: 196,
+            child: PageView.builder(
+              controller: pc,
+              itemCount: banners.length,
+              physics: const BouncingScrollPhysics(),
+              onPageChanged: (i) => setState(() => _bannerIndex = i),
+              itemBuilder: (context, i) {
+                final slide = banners[i];
+                final url = webSafeImageUrl(slide.imageUrl);
+                if (url.isEmpty) return const SizedBox.shrink();
+                final link = slide.linkUrl?.trim();
+                final hasLink = link != null && link.isNotEmpty;
+                final image = safeImage(
+                  url,
+                  width: double.infinity,
+                  height: 196,
+                  fit: BoxFit.cover,
+                  useShimmerPlaceholder: true,
+                );
+                return Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                  child: ClipRRect(
+                    borderRadius: BorderRadius.circular(16),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: hasLink ? () => _openSlideLink(link) : null,
+                        child: image,
+                      ),
+                    ),
+                  ),
+                );
+              },
+            ),
+          ),
+          if (banners.length > 1)
+            Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: List<Widget>.generate(banners.length, (i) {
+                  final active = i == _bannerIndex;
+                  return AnimatedContainer(
+                    duration: const Duration(milliseconds: 220),
+                    curve: Curves.easeOutCubic,
+                    margin: const EdgeInsets.symmetric(horizontal: 3),
+                    width: active ? 20 : 7,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(999),
+                      color: active ? AppColors.primaryOrange : AppColors.border.withValues(alpha: 0.85),
+                    ),
+                  );
+                }),
+              ),
+            ),
+        ],
+      );
+    } on Object catch (e) {
+      debugPrint('BANNER ERROR: $e');
+      return const SizedBox.shrink();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     _ensurePageController();
@@ -901,48 +960,13 @@ class _StoresHomePageBannerCarouselState extends State<_StoresHomePageBannerCaro
             return const HomeBannerSkeleton();
           }
           if (snap.hasError) {
-            debugPrint('[StoresHomePageBannerCarousel] ${snap.error}');
-            return buildFeatureStateUi<List<WpHomeBannerSlide>>(
-              context: context,
-              state: FeatureState.success(const <WpHomeBannerSlide>[
-                WpHomeBannerSlide(
-                  imageUrl: 'https://placehold.co/600x200/e2e8f0/94a3b8/png?text=AmmarJo',
-                  title: 'عرض خاص',
-                  linkUrl: null,
-                ),
-              ]),
-              onRetry: null,
-              dataBuilder: (ctx, slides) {
-                if (pc == null) return const HomeBannerSkeleton();
-                final slide = slides.first;
-                final url = webSafeImageUrl(slide.imageUrl);
-                return Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    SizedBox(
-                      height: 196,
-                      child: Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-                        child: ClipRRect(
-                          borderRadius: BorderRadius.circular(16),
-                          child: AmmarCachedImage(
-                            imageUrl: url,
-                            width: double.infinity,
-                            height: 196,
-                            fit: BoxFit.cover,
-                            useShimmerPlaceholder: true,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                );
-              },
-            );
+            debugPrint('HOME ERROR: ${snap.error}');
+            return const SizedBox.shrink();
           }
           if (!snap.hasData) {
-            return _StoresHomeBannerUnavailable(onRetry: _reloadBanners);
+            return const SizedBox.shrink();
           }
+          debugPrint('HOME DATA LOADED');
           return buildFeatureStateUi<List<WpHomeBannerSlide>>(
             context: context,
             state: snap.data!,
@@ -960,69 +984,7 @@ class _StoresHomePageBannerCarouselState extends State<_StoresHomePageBannerCaro
               if (pc == null) {
                 return const HomeBannerSkeleton();
               }
-              return Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  SizedBox(
-                    height: 196,
-                    child: PageView.builder(
-                      controller: pc,
-                      itemCount: slides.length,
-                      physics: const BouncingScrollPhysics(),
-                      onPageChanged: (i) => setState(() => _bannerIndex = i),
-                      itemBuilder: (context, i) {
-                        final slide = slides[i];
-                        final url = webSafeImageUrl(slide.imageUrl);
-                        final link = slide.linkUrl?.trim();
-                        final hasLink = link != null && link.isNotEmpty;
-                        final image = url.isEmpty
-                            ? _StoresHomeBannerUnavailable(onRetry: _reloadBanners, compact: true)
-                            : AmmarCachedImage(
-                                imageUrl: url,
-                                width: double.infinity,
-                                height: 196,
-                                fit: BoxFit.cover,
-                                useShimmerPlaceholder: true,
-                              );
-                        return Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-                          child: ClipRRect(
-                            borderRadius: BorderRadius.circular(16),
-                            child: Material(
-                              color: Colors.transparent,
-                              child: InkWell(
-                                onTap: hasLink ? () => _openSlideLink(link) : null,
-                                child: image,
-                              ),
-                            ),
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  if (slides.length > 1)
-                    Padding(
-                      padding: const EdgeInsets.only(bottom: 4),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: List<Widget>.generate(slides.length, (i) {
-                          final active = i == _bannerIndex;
-                          return AnimatedContainer(
-                            duration: const Duration(milliseconds: 220),
-                            curve: Curves.easeOutCubic,
-                            margin: const EdgeInsets.symmetric(horizontal: 3),
-                            width: active ? 20 : 7,
-                            height: 6,
-                            decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(999),
-                              color: active ? AppColors.primaryOrange : AppColors.border.withValues(alpha: 0.85),
-                            ),
-                          );
-                        }),
-                      ),
-                    ),
-                ],
-              );
+              return safeBanner(slides, pc);
             },
           );
         },
