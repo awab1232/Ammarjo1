@@ -159,8 +159,8 @@ class CatalogController extends ChangeNotifier {
                 description: r['description']?.toString() ?? (throw StateError('NULL_RESPONSE')),
                 price: r['price']?.toString() ?? '0',
                 images: <String>[
-                  if ((r['imageUrl']?.toString() ?? (throw StateError('NULL_RESPONSE'))).isNotEmpty)
-                    r['imageUrl'].toString(),
+                  if (((r['imageUrl'] ?? r['image'])?.toString().trim() ?? '').isNotEmpty)
+                    (r['imageUrl'] ?? r['image']).toString(),
                 ],
                 categoryIds: const <int>[],
               ))
@@ -200,8 +200,8 @@ class CatalogController extends ChangeNotifier {
                 description: r['description']?.toString() ?? (throw StateError('NULL_RESPONSE')),
                 price: r['price']?.toString() ?? '0',
                 images: <String>[
-                  if ((r['imageUrl']?.toString() ?? (throw StateError('NULL_RESPONSE'))).isNotEmpty)
-                    r['imageUrl'].toString(),
+                  if (((r['imageUrl'] ?? r['image'])?.toString().trim() ?? '').isNotEmpty)
+                    (r['imageUrl'] ?? r['image']).toString(),
                 ],
                 categoryIds: const <int>[],
               ))

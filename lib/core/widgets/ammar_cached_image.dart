@@ -20,6 +20,15 @@ String experimentalRetryUrlStripQueryAndAltMedia(String originalUrl) {
   return '$base?alt=media';
 }
 
+/// Second-phase `?alt=media` retry is only valid for Firebase/GCS URLs — never for normal CDNs (breaks e.g. picsum).
+bool urlSupportsFirebaseStyleAltMediaRetry(String raw) {
+  final lower = raw.trim().toLowerCase();
+  return lower.contains('firebasestorage.googleapis.com') ||
+      lower.contains('storage.googleapis.com') ||
+      lower.contains('firebasestorage.app') ||
+      lower.contains('googleapis.com/v0/b/');
+}
+
 /// صورة شبكة مع تخزين مؤقت؛ [BoxFit.contain] وافتراضياً وأيقونة ورشة/مستودع عند الفشل أو الغياب.
 ///
 /// [productTileStyle]: رؤوس طلبات وتلميح أخطاء مناسب لصور منتجات Firebase/الشبكة.
@@ -215,15 +224,14 @@ class _AmmarCachedImageImplState extends State<_AmmarCachedImageImpl> {
 
     final effectiveUrl = _effectiveUrlForPhase(raw);
 
+    // Avoid `Cache-Control: no-cache` on banners/tiles — it forces revalidation and flaky reloads.
     final headers = widget.httpHeaders ??
         (widget.productTileStyle
             ? const <String, String>{
                 'Accept': 'image/*',
                 'Cache-Control': 'no-cache',
               }
-            : const <String, String>{
-                'Cache-Control': 'no-cache',
-              });
+            : null);
 
     return CachedNetworkImage(
       key: ValueKey<String>('ammar-img-$raw-$_loadPhase'),
@@ -242,7 +250,7 @@ class _AmmarCachedImageImplState extends State<_AmmarCachedImageImpl> {
           final firstTry = AmmarCachedImage.fixUrl(raw);
           final secondTry = experimentalRetryUrlStripQueryAndAltMedia(raw);
           // إذا كانت المحاولة الثانية مطابقة للأولى لا فائدة من إعادة الطلب (تفادٍ لحلقة لا نهائية).
-          if (secondTry != firstTry) {
+          if (secondTry != firstTry && urlSupportsFirebaseStyleAltMediaRetry(raw)) {
             WidgetsBinding.instance.addPostFrameCallback((_) {
               if (mounted) {
                 setState(() => _loadPhase = 1);

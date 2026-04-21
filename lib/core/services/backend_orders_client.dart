@@ -867,19 +867,28 @@ final class BackendOrdersClient {
     String? cursor,
   }) async {
     try {
-      final body = await _authedGetJson(
+      // Public GET only — storefront must work without Firebase login.
+      final dynamic json = await _publicGetJsonOrNull(
         '/products',
         query: {
           'storeId': storeId.trim(),
           'limit': '$limit',
           if (cursor != null && cursor.trim().isNotEmpty) 'cursor': cursor.trim(),
         },
-        flow: 'products_by_store',
+        flow: 'products_by_store_public',
+        logApiResponse: kDebugMode,
       );
-      final Object? responseJson = body;
-      final rows = (responseJson is List)
-          ? responseJson
-          : ((body?['items'] is List) ? (body?['items'] as List) : <dynamic>[]);
+      if (json == null) {
+        debugPrint(
+          '[BackendOrdersClient] fetchProductsByStore: null response storeId=$storeId',
+        );
+        return <Map<String, dynamic>>[];
+      }
+      final List<dynamic> rows = json is List
+          ? json
+          : (json is Map && json['items'] is List
+              ? json['items'] as List<dynamic>
+              : (json is Map && json['data'] is List ? json['data'] as List<dynamic> : <dynamic>[]));
       return rows.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
     } on Object catch (e, st) {
       debugPrint('[BackendOrdersClient] fetchProductsByStore failed: $e');
@@ -917,14 +926,17 @@ final class BackendOrdersClient {
   }
 
   Future<JsonList?> fetchPublicProducts({int limit = 400}) async {
-    final body = await _authedGetJson(
+    final body = await _publicGetJsonOrNull(
       '/products',
       query: {'limit': '$limit'},
       flow: 'products_public_list',
     );
-    final items = body?['items'];
-    if (items is! List) throw StateError('NULL_RESPONSE');
-    return items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+    if (body == null) {
+      debugPrint('[BackendOrdersClient] fetchPublicProducts: null body');
+      return <Map<String, dynamic>>[];
+    }
+    final rows = _storeRowsFromResponseJson(body, 'fetchPublicProducts');
+    return rows.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
   }
 
   /// `GET /banners` may return a JSON array or `{ "items": [...] }` (legacy).

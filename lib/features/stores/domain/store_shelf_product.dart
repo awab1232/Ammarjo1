@@ -32,8 +32,9 @@ class StoreShelfProduct {
     String shelfCategory = 'عام',
   }) {
     final urls = <String>[];
-    if ((row['imageUrl']?.toString() ?? '').isNotEmpty) {
-      urls.add(row['imageUrl'].toString());
+    final primaryImage = (row['imageUrl'] ?? row['image'] ?? '').toString().trim();
+    if (primaryImage.isNotEmpty) {
+      urls.add(primaryImage);
     }
     final images = row['images'];
     if (images is List) {
@@ -50,7 +51,6 @@ class StoreShelfProduct {
         : (row['price'] is num
             ? (row['price'] as num).toString()
             : row['price']?.toString() ?? '0');
-    final stock = (row['stock'] as num?)?.toInt() ?? 0;
     return StoreShelfProduct(
       id: row['id']?.toString() ?? '',
       storeId: storeId,
@@ -59,7 +59,7 @@ class StoreShelfProduct {
       priceDisplay: priceStr,
       shelfCategory: shelfCategory,
       imageUrls: urls,
-      isAvailable: stock > 0,
+      isAvailable: true,
     );
   }
 
@@ -70,7 +70,7 @@ class StoreShelfProduct {
       description: description,
       price: priceDisplay,
       images: imageUrls,
-      categoryIds: const [],
+      categoryIds: const <int>[],
     );
   }
 }

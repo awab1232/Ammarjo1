@@ -59,15 +59,22 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
       FeatureCriticalPublicDataFailure() => const <StoreShelfProduct>[],
       FeatureFailure() => const <StoreShelfProduct>[],
     };
-    final available = products.where((p) => p.isAvailable).toList();
     final namesFromApi = cats.map((c) => c['name']?.toString().trim() ?? '').where((s) => s.isNotEmpty).toList();
     final List<String> names;
     if (namesFromApi.isNotEmpty) {
       names = namesFromApi;
     } else {
-      names = {for (final p in available) p.shelfCategory.trim()}.where((s) => s.isNotEmpty).toList()..sort();
+      final fromProducts = {for (final p in products) p.shelfCategory.trim()}.where((s) => s.isNotEmpty).toList()
+        ..sort();
+      if (fromProducts.isNotEmpty) {
+        names = fromProducts;
+      } else if (products.isNotEmpty) {
+        names = <String>['الكل'];
+      } else {
+        names = <String>[];
+      }
     }
-    return (categoryNames: names, products: available);
+    return (categoryNames: names, products: products);
   }
 
   @override
@@ -458,14 +465,7 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
               future: _catalogFuture,
               builder: (context, snap) {
                 if (snap.hasError) {
-                  return Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                    child: Text(
-                      'الخدمة غير متاحة مؤقتاً. حاول لاحقاً.',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.tajawal(color: AppColors.textSecondary),
-                    ),
-                  );
+                  return const SizedBox.shrink();
                 }
                 if (!snap.hasData) return const SizedBox.shrink();
                 final names = snap.data!.categoryNames;
@@ -548,47 +548,33 @@ class _StoreProductsByCategorySection extends StatelessWidget {
     return FutureBuilder<({List<String> categoryNames, List<StoreShelfProduct> products})>(
       future: catalogFuture,
       builder: (context, snap) {
-        if (snap.hasError) {
-          return Padding(
-            padding: const EdgeInsets.all(24),
-            child: Center(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    'تعذّر تحميل منتجات المتجر. تحقق من الاتصال ثم أعد المحاولة.',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.tajawal(color: AppColors.textSecondary, height: 1.4),
-                  ),
-                  const SizedBox(height: 14),
-                  FilledButton(
-                    onPressed: onRetryCatalog,
-                    style: FilledButton.styleFrom(backgroundColor: AppColors.primaryOrange),
-                    child: Text('إعادة المحاولة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
-                  ),
-                ],
-              ),
-            ),
-          );
-        }
         if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
           return const StoreDetailCatalogShimmer();
         }
-        final data = snap.data;
+        final data = snap.hasError ? null : snap.data;
         if (data == null) {
-          return const SizedBox.shrink();
-        }
-        final available = data.products;
-        final catNames = data.categoryNames;
-
-        if (catNames.isEmpty) {
           return Padding(
             padding: const EdgeInsets.all(24),
             child: Center(
               child: Text(
-                'لا يوجد منتجات',
+                'لا يوجد منتجات حالياً',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.tajawal(color: AppColors.textSecondary),
+                style: GoogleFonts.tajawal(color: AppColors.textSecondary, height: 1.4),
+              ),
+            ),
+          );
+        }
+        final allProducts = data.products;
+        final catNames = data.categoryNames;
+
+        if (allProducts.isEmpty || catNames.isEmpty) {
+          return Padding(
+            padding: const EdgeInsets.all(24),
+            child: Center(
+              child: Text(
+                'لا يوجد منتجات حالياً',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.tajawal(color: AppColors.textSecondary, height: 1.4),
               ),
             ),
           );
@@ -597,7 +583,7 @@ class _StoreProductsByCategorySection extends StatelessWidget {
         return Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            for (final catName in catNames) _CategoryProductRow(store: store, categoryName: catName, products: available),
+            for (final catName in catNames) _CategoryProductRow(store: store, categoryName: catName, products: allProducts),
           ],
         );
       },
@@ -619,7 +605,9 @@ class _CategoryProductRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cat = categoryName.trim();
-    final inCat = products.where((p) => p.shelfCategory.trim() == cat).take(10).toList();
+    final inCat = cat == 'الكل'
+        ? products.take(10).toList()
+        : products.where((p) => p.shelfCategory.trim() == cat).take(10).toList();
     if (inCat.isEmpty) return const SizedBox.shrink();
 
     return Column(

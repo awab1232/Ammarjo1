@@ -50,8 +50,8 @@ Product _productFromBackendRow(Map<String, dynamic> row) {
         ? (row['price']?.toString() ?? (throw StateError('NULL_RESPONSE')))
         : firstPrice,
     images: <String>[
-      if ((row['imageUrl']?.toString() ?? (throw StateError('NULL_RESPONSE'))).isNotEmpty)
-        row['imageUrl'].toString(),
+      if (((row['imageUrl'] ?? row['image'])?.toString().trim() ?? '').isNotEmpty)
+        (row['imageUrl'] ?? row['image']).toString(),
     ],
     categoryIds: const <int>[],
     categoryField: row['categoryId']?.toString(),
