@@ -11,6 +11,7 @@ class StoreShelfProduct {
     required this.shelfCategory,
     required this.imageUrls,
     this.isAvailable = true,
+    this.isPurchasable = true,
   });
 
   final String id;
@@ -22,6 +23,7 @@ class StoreShelfProduct {
   final String shelfCategory;
   final List<String> imageUrls;
   final bool isAvailable;
+  final bool isPurchasable;
 
   /// معرّف مستقر للسلة يعتمد على المتجر + وثيقة المنتج.
   int get cartProductId => Object.hash(storeId, id).abs();
@@ -32,7 +34,7 @@ class StoreShelfProduct {
     String shelfCategory = 'عام',
   }) {
     final urls = <String>[];
-    final primaryImage = (row['imageUrl'] ?? row['image'] ?? '').toString().trim();
+    final primaryImage = (row['image'] ?? row['imageUrl'] ?? '').toString().trim();
     if (primaryImage.isNotEmpty) {
       urls.add(primaryImage);
     }
@@ -51,6 +53,7 @@ class StoreShelfProduct {
         : (row['price'] is num
             ? (row['price'] as num).toString()
             : row['price']?.toString() ?? '0');
+    final stock = (row['stock'] ?? 0);
     return StoreShelfProduct(
       id: row['id']?.toString() ?? '',
       storeId: storeId,
@@ -60,6 +63,7 @@ class StoreShelfProduct {
       shelfCategory: shelfCategory,
       imageUrls: urls,
       isAvailable: true,
+      isPurchasable: (stock is num ? stock.toInt() : int.tryParse(stock.toString()) ?? 0) > 0,
     );
   }
 

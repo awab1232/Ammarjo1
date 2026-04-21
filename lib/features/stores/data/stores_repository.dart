@@ -265,6 +265,7 @@ class StoresRepository {
   }
 
   Future<FeatureState<List<StoreShelfProduct>>> fetchStoreShelfProducts(String storeId) async {
+    debugPrint('[StoresRepository] fetchStoreShelfProducts storeId=${storeId.trim()}');
     List<Map<String, dynamic>> items;
     try {
       items = await BackendOrdersClient.instance.fetchProductsByStore(storeId: storeId, limit: 200) ?? <Map<String, dynamic>>[];

@@ -664,6 +664,7 @@ class _HorizontalStoreProductTile extends StatelessWidget {
   Widget build(BuildContext context) {
     final storeController = context.read<StoreController>();
     final img = webSafeFirstProductImage(product.imageUrls);
+    final canBuy = product.isPurchasable;
 
     return GestureDetector(
       onTap: () {
@@ -686,21 +687,40 @@ class _HorizontalStoreProductTile extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
-              child: img.isNotEmpty
-                  ? AmmarCachedImage(
-                      imageUrl: img,
-                      height: 120,
-                      width: double.infinity,
-                      fit: BoxFit.cover,
-                      productTileStyle: true,
-                    )
-                  : Container(
-                      height: 120,
-                      color: Colors.grey.shade200,
-                      child: Icon(Icons.inventory_2_outlined, color: Colors.grey.shade500),
+            Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(12)),
+                  child: img.isNotEmpty
+                      ? AmmarCachedImage(
+                          imageUrl: img,
+                          height: 120,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          productTileStyle: true,
+                        )
+                      : Container(
+                          height: 120,
+                          color: Colors.grey.shade200,
+                          child: Icon(Icons.inventory_2_outlined, color: Colors.grey.shade500),
+                        ),
+                ),
+                if (!canBuy)
+                  Positioned.fill(
+                    child: Container(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'غير متوفر',
+                        style: GoogleFonts.tajawal(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 12,
+                        ),
+                      ),
                     ),
+                  ),
+              ],
             ),
             Padding(
               padding: const EdgeInsets.all(8),
@@ -733,7 +753,7 @@ class _HorizontalStoreProductTile extends StatelessWidget {
                         padding: EdgeInsets.zero,
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                       ),
-                      onPressed: () async {
+                      onPressed: canBuy ? () async {
                         await storeController.addToCart(
                           product.toCartProduct(),
                           storeId: store.id,
@@ -748,7 +768,7 @@ class _HorizontalStoreProductTile extends StatelessWidget {
                             ),
                           );
                         }
-                      },
+                      } : null,
                       child: Text('أضف للسلة', style: GoogleFonts.tajawal(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
                     ),
                   ),

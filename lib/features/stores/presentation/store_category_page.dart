@@ -84,6 +84,9 @@ class _StoreCategoryPageState extends State<StoreCategoryPage> {
               ],
             );
           }
+          if (snap.hasError) {
+            return const SizedBox.shrink();
+          }
           if (!snap.hasData) {
             return const SizedBox.shrink();
           }
@@ -151,6 +154,7 @@ class _CategoryProductCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final storeController = context.read<StoreController>();
+    final canBuy = product.isPurchasable;
     return Card(
       elevation: 0,
       shape: RoundedRectangleBorder(
@@ -161,19 +165,38 @@ class _CategoryProductCard extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Expanded(
-            child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
-              child: imageUrl.isEmpty
-                  ? ColoredBox(
-                      color: AppColors.lightOrange,
-                      child: Icon(Icons.image_outlined, color: AppColors.primaryOrange.withValues(alpha: 0.5)),
-                    )
-                  : AmmarCachedImage(
-                      imageUrl: imageUrl,
-                      fit: BoxFit.cover,
-                      productTileStyle: true,
-                      useShimmerPlaceholder: true,
+            child: Stack(
+              children: [
+                ClipRRect(
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+                  child: imageUrl.isEmpty
+                      ? ColoredBox(
+                          color: AppColors.lightOrange,
+                          child: Icon(Icons.image_outlined, color: AppColors.primaryOrange.withValues(alpha: 0.5)),
+                        )
+                      : AmmarCachedImage(
+                          imageUrl: imageUrl,
+                          fit: BoxFit.cover,
+                          productTileStyle: true,
+                          useShimmerPlaceholder: true,
+                        ),
+                ),
+                if (!canBuy)
+                  Positioned.fill(
+                    child: Container(
+                      color: Colors.black.withValues(alpha: 0.35),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'غير متوفر',
+                        style: GoogleFonts.tajawal(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                          fontSize: 13,
+                        ),
+                      ),
                     ),
+                  ),
+              ],
             ),
           ),
           Padding(
@@ -202,7 +225,7 @@ class _CategoryProductCard extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     minimumSize: const Size(double.infinity, 36),
                   ),
-                  onPressed: () async {
+                  onPressed: canBuy ? () async {
                     final cartProduct = product.toCartProduct();
                     await storeController.addToCart(
                       cartProduct,
@@ -214,7 +237,7 @@ class _CategoryProductCard extends StatelessWidget {
                         SnackBar(content: Text('أُضيف إلى السلة', style: GoogleFonts.tajawal())),
                       );
                     }
-                  },
+                  } : null,
                   child: Text('أضف للسلة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700, fontSize: 12)),
                 ),
                 TextButton(

@@ -878,6 +878,7 @@ final class BackendOrdersClient {
         flow: 'products_by_store_public',
         logApiResponse: kDebugMode,
       );
+      debugPrint('[BackendOrdersClient] products_by_store_public storeId=${storeId.trim()} limit=$limit');
       if (json == null) {
         debugPrint(
           '[BackendOrdersClient] fetchProductsByStore: null response storeId=$storeId',
@@ -889,6 +890,10 @@ final class BackendOrdersClient {
           : (json is Map && json['items'] is List
               ? json['items'] as List<dynamic>
               : (json is Map && json['data'] is List ? json['data'] as List<dynamic> : <dynamic>[]));
+      if (rows.isEmpty) {
+        debugPrint('NO PRODUCTS FROM API');
+      }
+      debugPrint('PRODUCTS COUNT: ${rows.length}');
       return rows.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
     } on Object catch (e, st) {
       debugPrint('[BackendOrdersClient] fetchProductsByStore failed: $e');
