@@ -12,7 +12,10 @@ abstract final class FcmBootstrap {
     }
     if (Firebase.apps.isEmpty) return;
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    if (user == null) {
+      debugPrint('[FCM] WARNING: user is null, skip FCM bootstrap');
+      return;
+    }
 
     final messaging = FirebaseMessaging.instance;
     try {
@@ -23,15 +26,19 @@ abstract final class FcmBootstrap {
         sound: true,
       );
       if (settings.authorizationStatus == AuthorizationStatus.denied) {
+        debugPrint('[FCM] permission denied');
         return;
       }
       final token = await messaging.getToken();
+      debugPrint('FCM TOKEN: $token');
       await _saveToken(user.uid, token);
       FirebaseMessaging.instance.onTokenRefresh.listen((t) {
+        debugPrint('FCM TOKEN: $t');
         final u = FirebaseAuth.instance.currentUser?.uid;
         if (u != null) _saveToken(u, t);
       });
     } on Object catch (e, st) {
+      debugPrint('FIREBASE ERROR: $e');
       if (kDebugMode) {
         debugPrint('FcmBootstrap: unexpected error\n$e\n$st');
       }

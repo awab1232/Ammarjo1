@@ -850,15 +850,25 @@ final class BackendOrdersClient {
   }
 
   Future<JsonList?> fetchStoreCategories(String storeId) async {
-    final body = await _authedGetJson('/stores/${Uri.encodeComponent(storeId.trim())}/categories', flow: 'store_categories');
-    if (body == null) return const <Map<String, dynamic>>[];
-    if (body['items'] is List) {
-      return (body['items'] as List)
-          .whereType<Map>()
-          .map((e) => Map<String, dynamic>.from(e))
-          .toList();
+    try {
+      final body = await _authedGetJson('/stores/${Uri.encodeComponent(storeId.trim())}/categories', flow: 'store_categories');
+      final items = body?['items'];
+      if (items is List) {
+        if (items.isEmpty) {
+          debugPrint('EMPTY RESPONSE');
+        }
+        return items
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
+      }
+      debugPrint('EMPTY RESPONSE');
+      return const <Map<String, dynamic>>[];
+    } on Object catch (e) {
+      debugPrint('[BackendOrdersClient] store_categories failed: $e');
+      debugPrint('EMPTY RESPONSE');
+      return const <Map<String, dynamic>>[];
     }
-    return const <Map<String, dynamic>>[];
   }
 
   Future<JsonList?> fetchProductsByStore({

@@ -59,6 +59,7 @@ Future<String> chatWithStoreAssistant({
 
   try {
     if (useGeminiHttpDueToRuntimeKey) {
+      debugPrint('AI REQUEST SENT');
       final viaHttp = await generateGeminiViaHttp(prompt: prompt.toString());
       final tHttp = viaHttp.trim();
       if (tHttp.isEmpty) {
@@ -67,6 +68,7 @@ Future<String> chatWithStoreAssistant({
       return tHttp;
     }
     final model = createGeminiGenerativeModel();
+    debugPrint('AI REQUEST SENT');
     final response = await model.generateContent([Content.text(prompt.toString())]);
     final t = response.text?.trim();
     if (t == null || t.isEmpty) {
@@ -74,6 +76,7 @@ Future<String> chatWithStoreAssistant({
     }
     return t;
   } on Object catch (e, st) {
+    debugPrint('FIREBASE ERROR: $e');
     if (kDebugMode) {
       debugPrint('[Gemini] chatWithStoreAssistant failed: $e');
       debugPrint('$st');

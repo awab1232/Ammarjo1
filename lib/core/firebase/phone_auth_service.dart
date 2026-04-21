@@ -1,7 +1,7 @@
 ﻿import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 
 import 'phone_auth_bootstrap.dart';
 import '../utils/jordan_phone.dart';
@@ -9,6 +9,8 @@ import '../utils/jordan_phone.dart';
 /// مصادقة الهاتف عبر [FirebaseAuth.verifyPhoneNumber] (OTP).
 abstract final class PhoneAuthService {
   static const String autoVerifiedSentinel = '__firebase_phone_auto__';
+  static const String webConfirmationSentinel = '__firebase_web_confirmation__';
+  static ConfirmationResult? _webConfirmationResult;
 
   static String jordanPhoneE164(String localNineDigits) {
     final u = normalizeJordanPhoneForUsername(localNineDigits);
@@ -92,11 +94,17 @@ abstract final class PhoneAuthService {
 
     final auth = FirebaseAuth.instance;
     await auth.setLanguageCode('ar');
+    debugPrint('PHONE AUTH START');
 
     if (kIsWeb) {
       try {
         await ensurePhoneAuthEnvironmentReadyWithRetry();
-      } on Object {
+        final confirmation = await auth.signInWithPhoneNumber(trimmed);
+        _webConfirmationResult = confirmation;
+        debugPrint('OTP SENT');
+        return (verificationId: webConfirmationSentinel, resendToken: null);
+      } on Object catch (e) {
+        debugPrint('PHONE AUTH ERROR: $e');
         throw FirebaseAuthException(
           code: 'recaptcha-config-failed',
           message: 'فشل تهيئة reCAPTCHA للويب.',
@@ -122,12 +130,31 @@ abstract final class PhoneAuthService {
   static Future<UserCredential> signInWithSmsCode({
     required String verificationId,
     required String smsCode,
-  }) {
+  }) async {
+    if (kIsWeb) {
+      try {
+        final confirmation = _webConfirmationResult;
+        if (confirmation == null) {
+          throw FirebaseAuthException(
+            code: 'session-expired',
+            message: 'انتهت جلسة التحقق. أعد إرسال الرمز.',
+          );
+        }
+        final cred = await confirmation.confirm(smsCode.trim());
+        debugPrint('USER UID: ${cred.user?.uid}');
+        return cred;
+      } on Object catch (e) {
+        debugPrint('PHONE AUTH ERROR: $e');
+        rethrow;
+      }
+    }
     final cred = PhoneAuthProvider.credential(
       verificationId: verificationId,
       smsCode: smsCode.trim(),
     );
-    return FirebaseAuth.instance.signInWithCredential(cred);
+    final out = await FirebaseAuth.instance.signInWithCredential(cred);
+    debugPrint('USER UID: ${out.user?.uid}');
+    return out;
   }
 
   static String userFacingMessage(FirebaseAuthException e) {

@@ -13,7 +13,6 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/seo/seo_routes.dart';
 import '../../../core/seo/seo_service.dart';
 import '../../../core/utils/web_image_url.dart';
-import '../../../core/widgets/ammar_cached_image.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/home_page_shimmers.dart';
 import '../../../core/widgets/premium_categories_strip.dart';
@@ -79,6 +78,7 @@ class _StoresHomePageState extends State<StoresHomePage> {
   /// Stable future for [FutureBuilder] so each rebuild does not restart requests.
   String _storesFetchKey = '';
   Future<FeatureState<List<StoreModel>>>? _storesFetchMemo;
+  late Stream<FeatureState<List<StoreCategoryEntry>>> _categoriesStream;
 
   /// Incremented to invalidate [StoresRepository.fetchApprovedStores] (retry / pull).
   int _storesReloadNonce = 0;
@@ -96,7 +96,12 @@ class _StoresHomePageState extends State<StoresHomePage> {
     }
   }
 
-  void _refreshCategories() => setState(() => _categoriesRetryKey++);
+  void _refreshCategories() {
+    setState(() {
+      _categoriesRetryKey++;
+      _categoriesStream = watchActiveStoreCategoriesWithFallback().asBroadcastStream();
+    });
+  }
 
   /// Single scroll surface (ListView) — avoids nested sliver / scroll overlap on Android.
   Widget _buildHomeStoreDirectoryList(
@@ -214,7 +219,7 @@ class _StoresHomePageState extends State<StoresHomePage> {
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: StreamBuilder<FeatureState<List<StoreCategoryEntry>>>(
                   key: ValueKey<int>(_categoriesRetryKey),
-                  stream: watchActiveStoreCategoriesWithFallback(),
+                  stream: _categoriesStream,
                   builder: (context, catSnap) {
                     if (catSnap.hasError) {
                       debugPrint('HOME ERROR: ${catSnap.error}');
@@ -446,6 +451,7 @@ class _StoresHomePageState extends State<StoresHomePage> {
   @override
   void initState() {
     super.initState();
+    _categoriesStream = watchActiveStoreCategoriesWithFallback().asBroadcastStream();
     _loadStoreTypes();
   }
 
@@ -894,12 +900,22 @@ class _StoresHomePageBannerCarouselState extends State<_StoresHomePageBannerCaro
                 if (url.isEmpty) return const SizedBox.shrink();
                 final link = slide.linkUrl?.trim();
                 final hasLink = link != null && link.isNotEmpty;
-                final image = safeImage(
+                final image = Image.network(
                   url,
-                  width: double.infinity,
-                  height: 196,
                   fit: BoxFit.cover,
-                  useShimmerPlaceholder: true,
+                  errorBuilder: (_, __, ___) {
+                    return Container(
+                      color: Colors.grey.shade200,
+                      height: 180,
+                    );
+                  },
+                  loadingBuilder: (context, child, progress) {
+                    if (progress == null) return child;
+                    return Container(
+                      color: Colors.grey.shade100,
+                      height: 180,
+                    );
+                  },
                 );
                 return Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),

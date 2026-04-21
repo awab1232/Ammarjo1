@@ -55,7 +55,7 @@ bool _looksLikeGoogleBrowserApiKey(String raw) {
   return t.length >= 35 && t.startsWith('AIza');
 }
 
-/// يحدد المفتاح الفعّال: define → بيئة العملية → [kGeminiFallbackApiKey].
+/// يحدد المفتاح الفعّال: define → بيئة العملية.
 ///
 /// ملاحظة: مفتاح `Firebase.app().options.apiKey` غالباً مفتاح Firebase/Web وليس
 /// مفتاح Gemini المفعّل على Generative Language API، لذلك لا نعتمده تلقائياً هنا.
@@ -66,9 +66,6 @@ String _computeEffectiveGeminiKey() {
     if (candidate.isNotEmpty && _looksLikeGoogleBrowserApiKey(candidate)) {
       return candidate;
     }
-  }
-  if (kGeminiFallbackApiKey.trim().isNotEmpty) {
-    return kGeminiFallbackApiKey.trim();
   }
   return '';
 }

@@ -183,8 +183,11 @@ class UnifiedChatRepository {
 
     final authUser = FirebaseAuth.instance.currentUser;
     if (authUser == null || authUser.uid.isEmpty) {
+      debugPrint('[UnifiedChatRepository] WARNING: auth user missing before ensureChat');
       throw StateError('لا توجد جلسة Firebase صالحة');
     }
+    debugPrint('CHAT INIT');
+    debugPrint('[UnifiedChatRepository] chat collection path: $_col');
 
     final fbUser = await FirebaseChatAuth.ensureFirebaseUserForUnifiedChat(currentUserEmail);
     if (fbUser == null) throw StateError('تعذر تسجيل الدخول إلى Firebase');
@@ -367,6 +370,7 @@ class UnifiedChatRepository {
     if (t.isEmpty) return;
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw StateError('غير مسجّل في Firebase');
+    debugPrint('CHAT INIT');
 
     final ref = _db.collection(_col).doc(chatId);
     final chatSnap = await ref.get();

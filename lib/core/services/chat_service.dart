@@ -51,8 +51,10 @@ class ChatService {
     if (!kChatFeatureEnabled) {
       throw Exception(kChatFeatureUnavailableMessage);
     }
+    debugPrint('CHAT INIT');
     final currentUser = _auth.currentUser;
     if (currentUser == null) {
+      debugPrint('[ChatService] WARNING: FirebaseAuth.instance.currentUser is null');
       throw Exception('يرجى تسجيل الدخول أولاً');
     }
     if (currentUser.uid.isEmpty) {

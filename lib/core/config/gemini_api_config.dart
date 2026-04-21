@@ -1,7 +1,8 @@
-/// مفتاح Google AI (Gemini) — المصدر الوحيد للقيمة الاحتياطية (لا تكرّرها في ملفات أخرى).
+/// إعداد مفتاح Google AI (Gemini).
 ///
-/// الأولوية في التطبيق: `--dart-define=GEMINI_API_KEY` → متغير بيئة العملية → مفتاح Firebase في `google-services` → [kGeminiFallbackApiKey].
+/// الأولوية في التطبيق: `--dart-define=GEMINI_API_KEY` → متغير بيئة العملية.
+/// لا نستخدم مفتاح fallback ثابت داخل الكود لتفادي مفاتيح مسرّبة.
 const String kGeminiApiKeyFromConfig = String.fromEnvironment('GEMINI_API_KEY');
 
-/// يُستخدم عندما تكون القيم الأخرى فارغة أو غير صالحة كمفتاح واجهة Google (انظر [refreshGeminiApiKeyAtStartup]).
-const String kGeminiFallbackApiKey = 'AIzaSyAoidnJwqUtFe6TAQoodkUJPwuhEUhgJDI';
+/// معطّل عمداً. استخدم `--dart-define=GEMINI_API_KEY` أو متغير البيئة.
+const String kGeminiFallbackApiKey = '';

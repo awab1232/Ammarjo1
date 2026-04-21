@@ -1,5 +1,6 @@
 import '../../../features/store/domain/models.dart';
 import '../../../features/store/domain/wp_home_banner.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import '../../contracts/feature_contract_registry.dart';
 import '../../contracts/feature_state.dart';
 import '../../contracts/feature_unit.dart';
@@ -7,54 +8,58 @@ import '../../data/models/paginated_response.dart';
 import '../../services/backend_orders_client.dart';
 import '../../services/product_service.dart';
 
+Map<String, dynamic> safeRow(dynamic row) {
+  if (row is Map<String, dynamic>) return row;
+  if (row is Map) return Map<String, dynamic>.from(row);
+  return <String, dynamic>{};
+}
+
 Product _productFromSearchHit(Map<String, dynamic> hit) {
+  final data = safeRow(hit);
   final priceRaw = hit['price_numeric'];
   final priceText = priceRaw == null ? '0' : priceRaw.toString();
-  final stockStatus = (hit['stockStatus']?.toString().trim().toLowerCase() ??
-      (throw StateError('NULL_RESPONSE')));
+  final stockStatus = data['stockStatus']?.toString().trim().toLowerCase() ?? 'instock';
+  final idText = data['productId']?.toString() ?? data['objectID']?.toString() ?? '';
+  final image = (data['imageUrl'] ?? data['image'])?.toString() ?? '';
   return Product(
-    id: (hit['productId']?.toString() ??
-            hit['objectID']?.toString() ??
-            (throw StateError('NULL_RESPONSE')))
-        .hashCode
-        .abs(),
-    name: hit['name']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-    description: hit['description']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+    id: idText.isEmpty ? 0 : idText.hashCode.abs(),
+    name: data['name']?.toString() ?? '',
+    description: data['description']?.toString() ?? '',
     price: priceText,
     images: <String>[
-      if ((hit['imageUrl']?.toString() ?? (throw StateError('NULL_RESPONSE'))).isNotEmpty)
-        hit['imageUrl'].toString(),
+      if (image.trim().isNotEmpty) image,
     ],
     categoryIds: const <int>[],
-    categoryField: hit['storeId']?.toString(),
+    categoryField: data['storeId']?.toString(),
     stock: stockStatus == 'outofstock' ? 0 : 1,
     stockStatus: stockStatus,
   );
 }
 
 Product _productFromBackendRow(Map<String, dynamic> row) {
-  final prices = (row['quantityPrices'] as List?) ?? (throw StateError('NULL_RESPONSE'));
+  final data = safeRow(row);
+  final prices = (data['quantityPrices'] as List?) ?? const <dynamic>[];
   final firstPrice = prices.isNotEmpty && prices.first is Map
-      ? ((prices.first as Map)['price']?.toString() ?? (throw StateError('NULL_RESPONSE')))
+      ? ((prices.first as Map)['price']?.toString() ?? '')
       : '';
-  final stock = (row['stock'] as num?)?.toInt() ?? (throw StateError('INVALID_NUMERIC_DATA'));
-  final legacy = (row['productCode']?.toString() ?? (throw StateError('NULL_RESPONSE'))).trim();
+  final stock = (data['stock'] as num?)?.toInt() ?? 0;
+  final legacy = (data['productCode']?.toString() ?? '').trim();
   final idHash = legacy.isNotEmpty
       ? legacy.hashCode.abs()
-      : (row['id']?.toString() ?? (throw StateError('NULL_RESPONSE'))).hashCode.abs();
+      : (data['id']?.toString() ?? '').hashCode.abs();
+  final image = (data['image'] ?? data['imageUrl'])?.toString() ?? '';
   return Product(
     id: idHash,
-    name: row['name']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-    description: row['description']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+    name: data['name']?.toString() ?? '',
+    description: data['description']?.toString() ?? '',
     price: firstPrice.isEmpty
-        ? (row['price']?.toString() ?? (throw StateError('NULL_RESPONSE')))
+        ? (data['price']?.toString() ?? '0')
         : firstPrice,
     images: <String>[
-      if (((row['imageUrl'] ?? row['image'])?.toString().trim() ?? '').isNotEmpty)
-        (row['imageUrl'] ?? row['image']).toString(),
+      if (image.trim().isNotEmpty) image,
     ],
     categoryIds: const <int>[],
-    categoryField: row['categoryId']?.toString(),
+    categoryField: data['categoryId']?.toString(),
     stock: stock,
     stockStatus: stock > 0 ? 'instock' : 'outofstock',
   );
@@ -153,18 +158,17 @@ class BackendProductRepository implements ProductRepository {
     final out = <ProductCategory>[];
     final seen = <String>{};
     for (final s in stores) {
-      final sid = s['id']?.toString() ?? (throw StateError('NULL_RESPONSE'));
+      final sid = s['id']?.toString() ?? '';
       if (sid.isEmpty) continue;
       final rows = await BackendOrdersClient.instance.fetchStoreCategories(sid);
       if (rows == null) {
         return FeatureState.criticalPublicDataFailure(FeatureIds.storeCategories);
       }
       for (final row in rows) {
-        final key = row['id']?.toString() ??
-            row['name']?.toString() ??
-            (throw StateError('NULL_RESPONSE'));
+        final data = safeRow(row);
+        final key = data['id']?.toString() ?? data['name']?.toString() ?? '';
         if (key.isEmpty || !seen.add(key)) continue;
-        out.add(_categoryFromBackendRow(row));
+        out.add(_categoryFromBackendRow(data));
       }
     }
     return FeatureState.success(out);
@@ -177,16 +181,17 @@ class BackendProductRepository implements ProductRepository {
       return FeatureState.criticalPublicDataFailure(FeatureIds.products);
     }
     for (final s in stores) {
-      final sid = s['id']?.toString() ?? (throw StateError('NULL_RESPONSE'));
+      final sid = s['id']?.toString() ?? '';
       if (sid.isEmpty) continue;
       final rows = await BackendOrdersClient.instance.fetchProductsByStore(storeId: sid, limit: 200);
       if (rows == null) {
         return FeatureState.criticalPublicDataFailure(FeatureIds.products);
       }
       for (final row in rows) {
-        final legacyId = (row['productCode']?.toString() ?? (throw StateError('NULL_RESPONSE'))).trim();
+        final data = safeRow(row);
+        final legacyId = (data['productCode']?.toString() ?? '').trim();
         if (legacyId == '$wooId') {
-          return FeatureState.success(_productFromBackendRow(row));
+          return FeatureState.success(_productFromBackendRow(data));
         }
       }
     }
@@ -271,7 +276,18 @@ class BackendProductRepository implements ProductRepository {
     if (hits == null) {
       return FeatureState.criticalPublicDataFailure(FeatureIds.productCatalogSearch);
     }
-    final products = hits.map(_productFromSearchHit).toList();
+    final products = hits
+        .map((row) {
+          try {
+            return _productFromSearchHit(safeRow(row));
+          } on Object catch (e) {
+            debugPrint('PRODUCT PARSE ERROR: $e');
+            return null;
+          }
+        })
+        .whereType<Product>()
+        .toList();
+    debugPrint('PRODUCTS COUNT: ${products.length}');
     return FeatureState.success(
       PaginatedResponse<Product>(
         data: products,
@@ -300,7 +316,18 @@ class BackendProductRepository implements ProductRepository {
     if (hits == null) {
       return FeatureState.criticalPublicDataFailure(FeatureIds.products);
     }
-    final products = hits.map(_productFromSearchHit).toList();
+    final products = hits
+        .map((row) {
+          try {
+            return _productFromSearchHit(safeRow(row));
+          } on Object catch (e) {
+            debugPrint('PRODUCT PARSE ERROR: $e');
+            return null;
+          }
+        })
+        .whereType<Product>()
+        .toList();
+    debugPrint('PRODUCTS COUNT: ${products.length}');
     return FeatureState.success(
       PaginatedResponse<Product>(
         data: products,
@@ -323,7 +350,18 @@ class BackendProductRepository implements ProductRepository {
     if (hits == null) {
       return FeatureState.criticalPublicDataFailure(FeatureIds.products);
     }
-    final products = hits.map(_productFromSearchHit).toList();
+    final products = hits
+        .map((row) {
+          try {
+            return _productFromSearchHit(safeRow(row));
+          } on Object catch (e) {
+            debugPrint('PRODUCT PARSE ERROR: $e');
+            return null;
+          }
+        })
+        .whereType<Product>()
+        .toList();
+    debugPrint('PRODUCTS COUNT: ${products.length}');
     return FeatureState.success(
       PaginatedResponse<Product>(
         data: products,
@@ -391,8 +429,9 @@ class BackendProductRepository implements ProductRepository {
     }
     String? backendId;
     for (final row in all) {
-    final code = (row['productCode']?.toString() ?? (throw StateError('NULL_RESPONSE'))).trim();
-      final id = (row['id']?.toString() ?? (throw StateError('NULL_RESPONSE'))).trim();
+      final data = safeRow(row);
+      final code = (data['productCode']?.toString() ?? '').trim();
+      final id = (data['id']?.toString() ?? '').trim();
       if (code == '$wooId' && id.isNotEmpty) {
         backendId = id;
         break;

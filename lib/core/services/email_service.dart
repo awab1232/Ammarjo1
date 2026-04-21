@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:cloud_functions/cloud_functions.dart';
 
 class EmailService {
@@ -12,13 +13,19 @@ class EmailService {
     required String body,
     String? htmlBody,
   }) async {
-    final callable = _functions.httpsCallable('sendEmail');
-    await callable.call(<String, dynamic>{
-      'to': to.trim(),
-      'subject': subject.trim(),
-      'body': body,
-      if (htmlBody != null && htmlBody.trim().isNotEmpty) 'htmlBody': htmlBody,
-    });
+    try {
+      final callable = _functions.httpsCallable('sendEmail');
+      await callable.call(<String, dynamic>{
+        'to': to.trim(),
+        'subject': subject.trim(),
+        'body': body,
+        if (htmlBody != null && htmlBody.trim().isNotEmpty) 'htmlBody': htmlBody,
+      });
+    } on Object catch (e, st) {
+      debugPrint('FIREBASE ERROR: $e');
+      debugPrint('[EmailService] sendEmail failed\n$st');
+      rethrow;
+    }
   }
 
   Future<void> sendOrderConfirmation(String email, String orderId, double total) {

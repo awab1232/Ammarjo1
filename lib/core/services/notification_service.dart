@@ -18,8 +18,9 @@ abstract final class NotificationService {
         'body': body,
         'notificationData': _stringifyData(data),
       });
-    } on Object {
-      debugPrint('NotificationService.sendPushToUser error: unexpected error\n$StackTrace.current');
+    } on Object catch (e, st) {
+      debugPrint('FIREBASE ERROR: $e');
+      debugPrint('NotificationService.sendPushToUser error: unexpected error\n$st');
     }
   }
 
