@@ -24,9 +24,16 @@ class PhonePasswordAuthService {
     required String phone,
     required String password,
   }) async {
-    final normalized = normalizeJordanPhoneForUsername(phone);
-    final email = syntheticEmailForPhone(normalized);
-    debugPrint('[AUTH-AUDIT] login synthetic email: $email');
+    final String email;
+    try {
+      email = phoneToEmail(phone);
+    } on FormatException {
+      throw const PhonePasswordAuthException(
+        'invalid_phone',
+        'رقم الهاتف غير صالح',
+      );
+    }
+    debugPrint('[AUTH-AUDIT] login phoneToEmail (internal, not shown in UI): $email');
     UserCredential credential;
     try {
       credential = await FirebaseAuth.instance.signInWithEmailAndPassword(

@@ -178,6 +178,9 @@ class _RegisterPageState extends State<RegisterPage> {
       });
       return;
     }
+    if (mounted) {
+      setState(() => _submitting = false);
+    }
     final uid = user.uid;
     final fn = _firstName.text.trim();
     final ln = _lastName.text.trim();
@@ -211,38 +214,66 @@ class _RegisterPageState extends State<RegisterPage> {
         message: 'مستخدم جديد: $fullName — $phone',
         type: 'new_user',
       );
-    } on Object {
-      // Non-fatal: profile save failed but Firebase auth succeeded — continue
+    } on Object catch (e, st) {
+      // Non-fatal: profile/notify failed but Firebase auth succeeded — continue (no user-facing error here).
+      // ignore: avoid_print
+      print('ERROR TRIGGER LOCATION: register_page.dart setInitialRegistrationDocument or addNotification: $e');
+      debugPrint('$st');
     }
 
     // Link an email/password credential to the OTP-authenticated Firebase user
-    // so next logins can use phone+password via synthetic email.
+    // so next logins can use phone+password via the same [phoneToEmail] as [PhonePasswordAuthService].
     String? postCreateWarning;
     try {
-      final localDigits = _phoneLocal.text.trim();
-      final syntheticEmail = syntheticEmailForPhone('962$localDigits');
-      debugPrint('[AUTH-AUDIT] signup synthetic email for link=${syntheticEmail.trim()}');
+      final localDigits = _phoneLocal.text.replaceAll(RegExp(r'\D'), '');
+      // نفس شكل [PhoneOtpLoginPage]: +962 + 9 أرقام — لا نعرض «البريد» في الواجهة.
+      final syntheticEmail = phoneToEmail('+962$localDigits');
+      debugPrint('[AUTH-AUDIT] signup link uses phoneToEmail (internal only): $syntheticEmail');
       final credential = EmailAuthProvider.credential(
         email: syntheticEmail,
         password: _password.text,
       );
       await user.linkWithCredential(credential);
       debugPrint('[AUTH-AUDIT] linkWithCredential success uid=${user.uid} email=${user.email}');
+    } on FormatException catch (e, st) {
+      // ignore: avoid_print
+      print('ERROR TRIGGER LOCATION: register_page phoneToEmail before link: $e');
+      debugPrint('$st');
+      postCreateWarning = 'تعذر تجهيز ربط تسجيل الدخول بكلمة المرور. تحقق من رقم الجوال.';
     } on FirebaseAuthException catch (e) {
       debugPrint('[AUTH-AUDIT] linkWithCredential failed code=${e.code} message=${e.message}');
-      if (e.code != 'provider-already-linked' && e.code != 'email-already-in-use') {
+      final c = e.code;
+      if (c == 'provider-already-linked' || c == 'auth/provider-already-linked') {
+        // مرتبط مسبقاً — تسجيل الدخول لاحقاً بـ phone+password يجب أن ينجح
+        debugPrint('[AUTH-AUDIT] linkWithCredential: provider already linked (ok)');
+      } else if (c == 'email-already-in-use' || c == 'auth/email-already-in-use' ||
+          c == 'credential-already-in-use' || c == 'auth/credential-already-in-use') {
+        postCreateWarning =
+            'هذا الرقم مرتبط بحساب آخر أو بكلمة مرور سابقة. جرّب تسجيل الدخول أو استعادة كلمة المرور.';
+      } else {
         postCreateWarning = 'تم إنشاء الحساب، لكن تعذر تفعيل تسجيل الدخول بكلمة المرور.';
       }
-    } on Object {
-      debugPrint('[AUTH-AUDIT] linkWithCredential failed unexpected');
+    } on Object catch (e, st) {
+      // ignore: avoid_print
+      print('ERROR TRIGGER LOCATION: register_page.dart linkWithCredential (non-FirebaseAuth): $e');
+      debugPrint('$st');
       postCreateWarning = 'تم إنشاء الحساب، لكن تعذر تفعيل تسجيل الدخول بكلمة المرور.';
     }
 
     try {
       await FirebaseBackendSessionService.syncWithBackend(firebaseUser: user);
-    } on Object {
+    } on FirebaseBackendSessionException catch (e, st) {
+      // Only the explicit backend rejection path — not arbitrary throws (avoids false warnings after good login).
+      // ignore: avoid_print
+      print('ERROR TRIGGER LOCATION: register_page.dart syncWithBackend (session rejected): $e');
+      debugPrint('$st');
       postCreateWarning =
           'تم إنشاء الحساب، لكن تعذر إكمال ربط الجلسة مع الخادم الآن. حاول تسجيل الدخول مرة أخرى.';
+    } on Object catch (e, st) {
+      // Transient/unknown errors: main.dart may have synced; do not show a false "session failed" bar.
+      // ignore: avoid_print
+      print('ERROR TRIGGER LOCATION: register_page.dart syncWithBackend (unexpected, no UI snack): $e');
+      debugPrint('$st');
     }
 
     if (!mounted) return;

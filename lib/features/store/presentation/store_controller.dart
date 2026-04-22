@@ -448,8 +448,7 @@ class StoreController extends ChangeNotifier {
       isLoading = true;
       errorMessage = null;
       notifyListeners();
-      final un = normalizeJordanPhoneForUsername(localNineDigits);
-      final email = syntheticEmailForPhone(un);
+      final email = phoneToEmail(localNineDigits);
       final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
       await FirebaseAuthHeaderProvider.requireIdToken(
         reason: 'store_controller_signin_phone_password',
@@ -465,6 +464,9 @@ class StoreController extends ChangeNotifier {
       }
       await _syncFavoritesAfterAuth();
       return true;
+    } on FormatException {
+      errorMessage = 'رقم الجوال غير صالح.';
+      return false;
     } on FirebaseAuthException {
       errorMessage = 'رقم الجوال أو كلمة المرور غير صحيحة.';
       return false;
@@ -550,7 +552,7 @@ class StoreController extends ChangeNotifier {
       errorMessage = 'رقم الهاتف غير متاح من الجلسة.';
       return false;
     }
-    final email = syntheticEmailForPhone(uname);
+    final email = phoneToEmail(uname);
     final phoneLocal = uname.startsWith('962') && uname.length >= 12 ? uname.substring(3) : '';
     final displayName = '$fn $ln'.trim();
     try {

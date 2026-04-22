@@ -1,5 +1,6 @@
 ﻿import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
@@ -255,15 +256,20 @@ class _TechnicianUserRatingRow extends StatelessWidget {
             ),
           );
         case FeatureFailure(:final message):
+          // ignore: avoid_print
+          print('ERROR TRIGGER LOCATION: technician_detail_page _TechnicianUserRatingRow FeatureFailure: $message');
           final msg = message.trim().isNotEmpty ? message.trim() : 'تعذر حفظ التقييم.';
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(msg, style: GoogleFonts.tajawal())),
           );
         default:
-          debugPrint('_TechnicianUserRatingRow._submit: unexpected state (no user error): $state');
+          // ignore: avoid_print
+          print('ERROR TRIGGER LOCATION: technician_detail_page _TechnicianUserRatingRow unexpected state: $state');
       }
     } on Object catch (e, st) {
-      debugPrint('_TechnicianUserRatingRow._submit failed: $e\n$st');
+      // ignore: avoid_print
+      print('ERROR TRIGGER LOCATION: technician_detail_page _TechnicianUserRatingRow exception: $e');
+      debugPrint('$st');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('تعذر حفظ التقييم.', style: GoogleFonts.tajawal())),
