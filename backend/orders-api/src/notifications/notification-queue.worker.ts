@@ -47,6 +47,9 @@ export class NotificationQueueWorker implements OnModuleInit, OnModuleDestroy {
           this.logger.warn(JSON.stringify({ kind: 'notification_queue_deliver_failed', queueId: row.id, error: msg }));
         });
       }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      this.logger.warn(JSON.stringify({ kind: 'notification_queue_tick_failed', error: msg }));
     } finally {
       this.running = false;
     }

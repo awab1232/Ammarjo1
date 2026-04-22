@@ -16,8 +16,70 @@ export type QueueRow = {
 @Injectable()
 export class NotificationQueueService {
   private readonly logger = new Logger(NotificationQueueService.name);
+  private schemaEnsured = false;
+  private schemaEnsureInFlight: Promise<void> | null = null;
 
   constructor(private readonly pg: OrdersPgService) {}
+
+  private async ensureSchema(): Promise<void> {
+    if (this.schemaEnsured) return;
+    if (this.schemaEnsureInFlight) return this.schemaEnsureInFlight;
+    this.schemaEnsureInFlight = this.pg
+      .withWriteClient(async (c) => {
+        await c.query(`
+          DO $$
+          BEGIN
+            IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'notification_queue_status') THEN
+              CREATE TYPE notification_queue_status AS ENUM ('pending', 'sent', 'failed');
+            END IF;
+          END$$;
+        `);
+        await c.query(`
+          CREATE TABLE IF NOT EXISTS notifications_queue (
+            id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+            user_id TEXT NOT NULL,
+            title TEXT NOT NULL,
+            body TEXT NOT NULL,
+            data JSONB,
+            status notification_queue_status NOT NULL DEFAULT 'pending',
+            retry_count INT NOT NULL DEFAULT 0,
+            max_retries INT NOT NULL DEFAULT 3,
+            event_id TEXT,
+            inbox_notification_id UUID,
+            last_attempt_at TIMESTAMPTZ,
+            last_error TEXT,
+            created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+            updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+          );
+        `);
+        await c.query(`
+          CREATE INDEX IF NOT EXISTS idx_notifications_queue_status_created
+          ON notifications_queue (status, created_at ASC);
+        `);
+        await c.query(`
+          CREATE INDEX IF NOT EXISTS idx_notifications_queue_user_status
+          ON notifications_queue (user_id, status);
+        `);
+        await c.query(`
+          CREATE UNIQUE INDEX IF NOT EXISTS uq_notifications_queue_user_event_id
+          ON notifications_queue (user_id, event_id)
+          WHERE event_id IS NOT NULL;
+        `);
+        return true;
+      })
+      .then(() => {
+        this.schemaEnsured = true;
+      })
+      .catch((e) => {
+        const reason = e instanceof Error ? e.message : String(e);
+        this.logger.warn(`notifications_queue schema ensure failed: ${reason}`);
+        throw e;
+      })
+      .finally(() => {
+        this.schemaEnsureInFlight = null;
+      });
+    return this.schemaEnsureInFlight;
+  }
 
   async enqueue(params: {
     userId: string;
@@ -25,6 +87,7 @@ export class NotificationQueueService {
     eventId?: string;
     inboxNotificationId?: string;
   }): Promise<{ queued: boolean; queueId?: string; skippedReason?: string }> {
+    await this.ensureSchema();
     const userId = params.userId.trim();
     const title = params.payload.title.trim();
     const body = params.payload.body.trim();
@@ -65,6 +128,7 @@ export class NotificationQueueService {
   }
 
   async reservePending(limit: number): Promise<QueueRow[]> {
+    await this.ensureSchema();
     const lim = Math.max(1, Math.min(limit, 100));
     const rows =
       (await this.pg.withWriteClient(async (c) => {
@@ -101,6 +165,7 @@ export class NotificationQueueService {
   }
 
   async markSent(id: string): Promise<void> {
+    await this.ensureSchema();
     await this.pg.withWriteClient(async (c) => {
       await c.query(
         `UPDATE notifications_queue
@@ -116,6 +181,7 @@ export class NotificationQueueService {
   }
 
   async markAttemptFailed(id: string, errorMessage: string): Promise<void> {
+    await this.ensureSchema();
     const message = errorMessage.trim().slice(0, 400) || 'unknown_error';
     await this.pg.withWriteClient(async (c) => {
       await c.query(
