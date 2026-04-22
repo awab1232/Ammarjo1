@@ -57,7 +57,15 @@ class CartController extends ChangeNotifier {
     }
     final localSpecial = localRaw.where((e) => e.isTender || e.isWholesale).toList();
     if (_useServerCartLines) {
-      final rows = await BackendOrdersClient.instance.fetchCart();
+      JsonList? rows;
+      try {
+        rows = await BackendOrdersClient.instance.fetchCart();
+      } on Object catch (e) {
+        if (kDebugMode) {
+          debugPrint('CartController.loadPersistedCart server fetch failed: $e');
+        }
+        rows = const <Map<String, dynamic>>[];
+      }
       final server = rows == null
           ? <CartItem>[]
           : rows.map(CartItem.fromBackendCartRow).toList();
@@ -100,16 +108,24 @@ class CartController extends ChangeNotifier {
     if (_useServerCartLines && product.id > 0) {
       final price = (selectedVariant?.price ?? product.price).trim();
       final img = product.images.isNotEmpty ? product.images.first : '';
-      final ok = await BackendOrdersClient.instance.postCartItem(
-        productId: product.id,
-        variantId: selectedVariant?.id,
-        quantity: 1,
-        priceSnapshot: price,
-        productName: product.name,
-        imageUrl: img,
-        storeId: storeId,
-        storeName: storeName,
-      );
+      bool ok;
+      try {
+        ok = await BackendOrdersClient.instance.postCartItem(
+          productId: product.id,
+          variantId: selectedVariant?.id,
+          quantity: 1,
+          priceSnapshot: price,
+          productName: product.name,
+          imageUrl: img,
+          storeId: storeId,
+          storeName: storeName,
+        );
+      } on Object catch (e) {
+        if (kDebugMode) {
+          debugPrint('CartController.addToCart server add failed: $e');
+        }
+        ok = false;
+      }
       if (!ok) {
         errorMessage = 'تعذّر تحديث السلة.';
       } else {
@@ -149,16 +165,24 @@ class CartController extends ChangeNotifier {
   Future<void> addCartItem(CartItem item) async {
     if (_useServerCartLines && item.product.id > 0 && !item.isTender && !item.isWholesale) {
       final price = (item.selectedVariant?.price ?? item.product.price).trim();
-      final ok = await BackendOrdersClient.instance.postCartItem(
-        productId: item.product.id,
-        variantId: item.selectedVariant?.id,
-        quantity: item.quantity,
-        priceSnapshot: price,
-        productName: item.product.name,
-        imageUrl: item.imageUrl,
-        storeId: item.storeId,
-        storeName: item.storeName,
-      );
+      bool ok;
+      try {
+        ok = await BackendOrdersClient.instance.postCartItem(
+          productId: item.product.id,
+          variantId: item.selectedVariant?.id,
+          quantity: item.quantity,
+          priceSnapshot: price,
+          productName: item.product.name,
+          imageUrl: item.imageUrl,
+          storeId: item.storeId,
+          storeName: item.storeName,
+        );
+      } on Object catch (e) {
+        if (kDebugMode) {
+          debugPrint('CartController.addCartItem server add failed: $e');
+        }
+        ok = false;
+      }
       if (!ok) {
         errorMessage = 'تعذّر تحديث السلة.';
       } else {

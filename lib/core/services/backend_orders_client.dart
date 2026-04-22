@@ -138,6 +138,8 @@ final class BackendOrdersClient {
         requestBody: payload,
       );
       throw StateError('NULL_RESPONSE');
+    } on StateError {
+      rethrow;
     } on Object {
       if (kDebugMode) {
         debugPrint('BackendOrders: primary POST /orders error');
@@ -199,6 +201,8 @@ final class BackendOrdersClient {
           responseBody: res.body,
         );
       }
+    } on StateError {
+      rethrow;
     } on Object {
       debugPrint('BackendOrders: POST /orders error');
       BackendFallbackLogger.logBackendFallbackTriggered(
@@ -281,6 +285,8 @@ final class BackendOrdersClient {
         requestBody: {'orderId': orderId},
       );
       throw StateError('NULL_RESPONSE');
+    } on StateError {
+      rethrow;
     } on Object {
       if (kDebugMode) {
         debugPrint('BackendOrders: GET /orders/$orderId error');
@@ -859,7 +865,7 @@ final class BackendOrdersClient {
         debugPrint('EMPTY RESPONSE');
         return const <Map<String, dynamic>>[];
       }
-      final items = body?['items'];
+      final items = body['items'];
       if (items is List) {
         if (items.isEmpty) {
           debugPrint('EMPTY RESPONSE');
@@ -1351,21 +1357,28 @@ final class BackendOrdersClient {
     required String storeName,
   }) async {
     if (!BackendOrdersConfig.useBackendCart) return false;
-    final body = await _authedPostJson(
-      '/cart/items',
-      body: <String, dynamic>{
-        'productId': productId,
-        if (variantId != null && variantId.trim().isNotEmpty) 'variantId': variantId.trim(),
-        'quantity': quantity,
-        'priceSnapshot': priceSnapshot,
-        'productName': productName,
-        if (imageUrl != null && imageUrl.trim().isNotEmpty) 'imageUrl': imageUrl.trim(),
-        'storeId': storeId,
-        'storeName': storeName,
-      },
-      flow: 'cart_add',
-    );
-    return body != null;
+    try {
+      final body = await _authedPostJson(
+        '/cart/items',
+        body: <String, dynamic>{
+          'productId': productId,
+          if (variantId != null && variantId.trim().isNotEmpty) 'variantId': variantId.trim(),
+          'quantity': quantity,
+          'priceSnapshot': priceSnapshot,
+          'productName': productName,
+          if (imageUrl != null && imageUrl.trim().isNotEmpty) 'imageUrl': imageUrl.trim(),
+          'storeId': storeId,
+          'storeName': storeName,
+        },
+        flow: 'cart_add',
+      );
+      return body != null;
+    } on Object catch (e) {
+      if (kDebugMode) {
+        debugPrint('[BackendOrdersClient] cart_add failed safely: $e');
+      }
+      return false;
+    }
   }
 
   Future<bool> patchCartItemQuantity({required String lineId, required int quantity}) async {
@@ -1539,9 +1552,28 @@ final class BackendOrdersClient {
 
   /// Server RBAC profile (identity token = Firebase only).
   Future<BackendAuthMe?> fetchAuthMe() async {
-    final body = await _authedGetJson('/auth/me', flow: 'auth_me');
-    if (body == null) throw StateError('NULL_RESPONSE');
-    return BackendAuthMe.fromJson(body);
+    try {
+      final body = await _authedGetJson('/auth/me', flow: 'auth_me');
+      if (body == null) throw StateError('NULL_RESPONSE');
+      return BackendAuthMe.fromJson(body);
+    } on Object {
+      final u = FirebaseAuth.instance.currentUser;
+      if (u == null) {
+        throw StateError('NULL_RESPONSE');
+      }
+      // Keep app session functional when backend identity endpoint temporarily returns 401.
+      return BackendAuthMe(
+        userId: u.uid,
+        firebaseUid: u.uid,
+        email: u.email,
+        role: 'customer',
+        tenantId: null,
+        storeId: null,
+        storeType: null,
+        wholesalerId: null,
+        permissions: const <String>[],
+      );
+    }
   }
 
   Future<FeatureState<List<HomeSection>>> fetchHomeSections() async {

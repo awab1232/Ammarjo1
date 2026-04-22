@@ -28,6 +28,20 @@ final class BackendNotificationsClient {
     return _internalPost('/internal/notifications', payload);
   }
 
+  Future<bool> registerDeviceToken(String token) async {
+    final t = token.trim();
+    if (t.isEmpty) return false;
+    final req = await _request('/notifications/register-device');
+    if (req == null) return false;
+    final headers = <String, String>{...req.$2, 'Content-Type': 'application/json'};
+    final res = await http.post(
+      req.$1,
+      headers: headers,
+      body: jsonEncode(<String, dynamic>{'token': t}),
+    );
+    return res.statusCode >= 200 && res.statusCode < 300;
+  }
+
   Future<Map<String, dynamic>?> _authedGet(String path, {Map<String, String>? query}) async {
     final req = await _request(path, query: query);
     if (req == null) throw StateError('NULL_RESPONSE');

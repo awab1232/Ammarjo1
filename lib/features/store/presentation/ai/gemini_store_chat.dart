@@ -75,11 +75,10 @@ Future<String> chatWithStoreAssistant({
       return 'لم أتمكن من إنشاء رد. حاول صياغة السؤال بطريقة أخرى.';
     }
     return t;
-  } on Object catch (e, st) {
+  } on Object catch (e) {
     debugPrint('FIREBASE ERROR: $e');
     if (kDebugMode) {
       debugPrint('[Gemini] chatWithStoreAssistant failed: $e');
-      debugPrint('$st');
     }
     try {
       if (kDebugMode) {
@@ -89,10 +88,9 @@ Future<String> chatWithStoreAssistant({
       if (fallback.trim().isNotEmpty) {
         return fallback.trim();
       }
-    } on Object catch (e2, st2) {
+    } on Object catch (e2) {
       if (kDebugMode) {
         debugPrint('[Gemini] HTTP fallback failed: $e2');
-        debugPrint('$st2');
       }
     }
     return 'تعذر الاتصال بالمساعد. تأكد من الإنترنت وصحة مفتاح Gemini ثم حاول مجدداً.';

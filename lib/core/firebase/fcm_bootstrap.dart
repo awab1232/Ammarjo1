@@ -2,7 +2,7 @@
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
-import '../services/backend_user_client.dart';
+import '../services/backend_notifications_client.dart';
 
 /// تهيئة FCM وحفظ رمز الجهاز تحت `users/{uid}` لمزامنة الإشعارات.
 abstract final class FcmBootstrap {
@@ -31,11 +31,12 @@ abstract final class FcmBootstrap {
       }
       final token = await messaging.getToken();
       debugPrint('FCM TOKEN: $token');
-      await _saveToken(user.uid, token);
+      await _saveToken(token);
       FirebaseMessaging.instance.onTokenRefresh.listen((t) {
         debugPrint('FCM TOKEN: $t');
-        final u = FirebaseAuth.instance.currentUser?.uid;
-        if (u != null) _saveToken(u, t);
+        if (FirebaseAuth.instance.currentUser != null) {
+          _saveToken(t);
+        }
       });
     } on Object catch (e, st) {
       debugPrint('FIREBASE ERROR: $e');
@@ -45,12 +46,12 @@ abstract final class FcmBootstrap {
     }
   }
 
-  static Future<void> _saveToken(String uid, String? token) async {
+  static Future<void> _saveToken(String? token) async {
     if (token == null || token.isEmpty) return;
-    await BackendUserClient.instance.patchUser(uid, <String, dynamic>{
-      'fcmToken': token,
-      'fcmTokenUpdatedAt': DateTime.now().toUtc().toIso8601String(),
-    });
+    final ok = await BackendNotificationsClient.instance.registerDeviceToken(token);
+    if (!ok && kDebugMode) {
+      debugPrint('[FCM] register-device failed');
+    }
   }
 }
 

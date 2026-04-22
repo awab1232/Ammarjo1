@@ -5,4 +5,4 @@
 const String kGeminiApiKeyFromConfig = String.fromEnvironment('GEMINI_API_KEY');
 
 /// مفتاح fallback داخل التطبيق.
-const String kGeminiFallbackApiKey = 'AIzaSyDvcgiTyyoGfo7r1YHLOzKgQIxwONlgd2A';
+const String kGeminiFallbackApiKey = 'AIzaSyCT-jXvdpRFLfrECbnNiTEOBMnZDeO3oHE';
