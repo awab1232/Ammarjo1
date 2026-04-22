@@ -7,6 +7,7 @@ export type InboxRow = {
   title: string;
   body: string;
   type: string;
+  eventId: string | null;
   read: boolean;
   referenceId: string | null;
   createdAt: string;
@@ -48,6 +49,7 @@ export class NotificationInboxService {
       title: String(row.title ?? ''),
       body: String(row.body ?? ''),
       type: String(row.type ?? 'general'),
+      eventId: row.event_id != null ? String(row.event_id) : null,
       read: row.read === true,
       referenceId: row.reference_id != null ? String(row.reference_id) : null,
       createdAt: new Date(String(row.created_at)).toISOString(),
@@ -67,7 +69,7 @@ export class NotificationInboxService {
       const c = await client.query(`SELECT COUNT(*)::int AS n FROM user_notifications WHERE user_id = $1`, [uid]);
       const total = Number(c.rows[0]?.['n'] ?? 0);
       const q = await client.query(
-        `SELECT id, user_id, title, body, type, read, reference_id, created_at
+        `SELECT id, user_id, title, body, type, event_id, read, reference_id, created_at
          FROM user_notifications
          WHERE user_id = $1
          ORDER BY created_at DESC
@@ -98,28 +100,77 @@ export class NotificationInboxService {
     title: string;
     body: string;
     type: string;
+    eventId?: string | null;
     referenceId?: string | null;
     metadata?: Record<string, unknown> | null;
-  }): Promise<{ id: string }> {
+  }): Promise<{ id: string; deduplicated: boolean }> {
     const uid = input.userId.trim();
     if (!uid) throw new ServiceUnavailableException('target user required');
+    const eventId = input.eventId?.trim() || null;
     return this.withClient(async (client) => {
       const ins = await client.query(
-        `INSERT INTO user_notifications (user_id, title, body, type, reference_id, metadata)
-         VALUES ($1, $2, $3, $4, $5, $6::jsonb)
+        `INSERT INTO user_notifications (user_id, title, body, type, event_id, reference_id, metadata)
+         VALUES ($1, $2, $3, $4, $5, $6, $7::jsonb)
+         ON CONFLICT (user_id, event_id) WHERE event_id IS NOT NULL
+         DO NOTHING
          RETURNING id`,
         [
           uid,
           input.title,
           input.body,
           input.type,
+          eventId,
           input.referenceId ?? null,
           JSON.stringify(input.metadata ?? {}),
         ],
       );
       const row = ins.rows[0];
-      if (!row) throw new ServiceUnavailableException('notification insert failed');
-      return { id: String(row['id']) };
+      if (row) {
+        return { id: String(row['id']), deduplicated: false };
+      }
+      if (eventId != null) {
+        const existing = await client.query<{ id: string }>(
+          `SELECT id FROM user_notifications WHERE user_id = $1 AND event_id = $2 LIMIT 1`,
+          [uid, eventId],
+        );
+        const existingId = existing.rows[0]?.id;
+        if (existingId) {
+          return { id: String(existingId), deduplicated: true };
+        }
+      }
+      throw new ServiceUnavailableException('notification insert failed');
+    });
+  }
+
+  async listSince(userId: string, sinceIso: string, limit = 50): Promise<InboxRow[]> {
+    const uid = userId.trim();
+    const lim = Math.min(Math.max(1, limit), 100);
+    if (!uid) return [];
+    const since = new Date(sinceIso);
+    if (Number.isNaN(since.getTime())) return [];
+    return this.withClient(async (client) => {
+      const q = await client.query(
+        `SELECT id, user_id, title, body, type, event_id, read, reference_id, created_at
+         FROM user_notifications
+         WHERE user_id = $1 AND created_at > $2::timestamptz
+         ORDER BY created_at DESC
+         LIMIT $3`,
+        [uid, since.toISOString(), lim],
+      );
+      const rows = q.rows as Record<string, unknown>[];
+      return rows.map((r) => this.mapRow(r));
+    });
+  }
+
+  async unreadCount(userId: string): Promise<number> {
+    const uid = userId.trim();
+    if (!uid) return 0;
+    return this.withClient(async (client) => {
+      const q = await client.query<{ n: number }>(
+        `SELECT COUNT(*)::int AS n FROM user_notifications WHERE user_id = $1 AND read = false`,
+        [uid],
+      );
+      return Number(q.rows[0]?.n ?? 0);
     });
   }
 }

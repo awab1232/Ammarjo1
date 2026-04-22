@@ -43,6 +43,11 @@ abstract final class UserNotificationsRepository {
       'isRead': false,
       'createdAt': DateTime.now().toUtc().toIso8601String(),
     };
+    final eventId = payload['eventId']?.toString().trim() ?? payload['event_id']?.toString().trim() ?? '';
+    if (eventId.isNotEmpty) {
+      payload['eventId'] = eventId;
+      payload['event_id'] = eventId;
+    }
     await BackendNotificationsClient.instance.sendInternal(payload);
     await sendPush();
   }

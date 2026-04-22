@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/firebase/chat_firebase_sync.dart';
+import '../../../../core/firebase/local_chat_notification_service.dart';
 import '../../../../core/widgets/keep_alive_tab.dart';
 import '../../../../core/widgets/ai_assistant_fab.dart';
 import '../../../../core/navigation/app_navigator.dart';
@@ -176,6 +177,7 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
   int get _shellIndexMax => _pages.length - 1;
 
   List<BottomNavigationBarItem> _bottomNavItems(int cartCount) {
+    final unread = LocalChatNotificationService.unreadBadgeCount.value;
     return [
       const BottomNavigationBarItem(
         icon: Icon(Icons.home_rounded),
@@ -193,8 +195,12 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
         ),
         label: 'السلة',
       ),
-      const BottomNavigationBarItem(
-        icon: Icon(Icons.person_outline),
+      BottomNavigationBarItem(
+        icon: Badge(
+          isLabelVisible: unread > 0,
+          label: Text(unread > 99 ? '99+' : '$unread'),
+          child: const Icon(Icons.person_outline),
+        ),
         label: 'حسابي',
       ),
     ];
@@ -279,18 +285,21 @@ class _MainNavigationPageState extends State<MainNavigationPage> {
         onPressed: _openAiAssistant,
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
-      bottomNavigationBar: kIsWeb
-          ? _webBottomNavigationBar(cartCount)
-          : BottomNavigationBar(
-              type: BottomNavigationBarType.fixed,
-              currentIndex: safeIndex,
-              onTap: (i) => setState(() => _index = i.clamp(0, _shellIndexMax)),
-              selectedItemColor: const Color(0xFFFF6B00),
-              unselectedItemColor: Colors.grey,
-              backgroundColor: Colors.white,
-              elevation: 8,
-              items: _bottomNavItems(cartCount),
-            ),
+      bottomNavigationBar: ListenableBuilder(
+        listenable: LocalChatNotificationService.unreadBadgeCount,
+        builder: (context, _) => kIsWeb
+            ? _webBottomNavigationBar(cartCount)
+            : BottomNavigationBar(
+                type: BottomNavigationBarType.fixed,
+                currentIndex: safeIndex,
+                onTap: (i) => setState(() => _index = i.clamp(0, _shellIndexMax)),
+                selectedItemColor: const Color(0xFFFF6B00),
+                unselectedItemColor: Colors.grey,
+                backgroundColor: Colors.white,
+                elevation: 8,
+                items: _bottomNavItems(cartCount),
+              ),
+      ),
     );
   }
 }

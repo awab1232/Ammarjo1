@@ -5,7 +5,7 @@ import { ApiPolicyGuard } from '../gateway/api-policy.guard';
 import { RbacGuard } from '../identity/rbac.guard';
 import { RequirePermissions } from '../identity/require-permissions.decorator';
 import { TenantContextGuard } from '../identity/tenant-context.guard';
-import { IsNotEmpty, IsString } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { NotificationInboxService } from './notification-inbox.service';
 import { NotificationsService } from './notifications.service';
 
@@ -13,6 +13,10 @@ class RegisterDeviceTokenDto {
   @IsString()
   @IsNotEmpty()
   token!: string;
+
+  @IsString()
+  @IsOptional()
+  platform?: string;
 }
 
 @Controller('notifications')
@@ -26,8 +30,8 @@ export class NotificationsController {
 
   @Post('register-device')
   @RequirePermissions('orders.write')
-  registerDevice(@Req() req: RequestWithFirebase, @Body() body: RegisterDeviceTokenDto) {
-    this.notifications.registerDeviceToken(req.firebaseUid!, body.token);
+  async registerDevice(@Req() req: RequestWithFirebase, @Body() body: RegisterDeviceTokenDto) {
+    await this.notifications.registerDeviceToken(req.firebaseUid!, body.token, body.platform);
     return { ok: true };
   }
 
@@ -47,6 +51,22 @@ export class NotificationsController {
   @RequirePermissions('orders.write')
   markRead(@Req() req: RequestWithFirebase, @Param('id') id: string) {
     return this.inbox.markRead(req.firebaseUid!, id);
+  }
+
+  @Get('updates')
+  @RequirePermissions('orders.read')
+  async updates(
+    @Req() req: RequestWithFirebase,
+    @Query('since') since?: string,
+    @Query('limit') limitRaw?: string,
+  ) {
+    const limit = limitRaw != null && limitRaw.trim() !== '' ? Number.parseInt(limitRaw, 10) : 20;
+    const unread = await this.inbox.unreadCount(req.firebaseUid!);
+    if (since == null || since.trim().length === 0) {
+      return { unread, items: [] };
+    }
+    const items = await this.inbox.listSince(req.firebaseUid!, since, Number.isFinite(limit) ? limit : 20);
+    return { unread, items };
   }
 }
 

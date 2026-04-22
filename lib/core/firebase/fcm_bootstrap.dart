@@ -7,9 +7,6 @@ import '../services/backend_notifications_client.dart';
 /// تهيئة FCM وحفظ رمز الجهاز تحت `users/{uid}` لمزامنة الإشعارات.
 abstract final class FcmBootstrap {
   static Future<void> registerIfSignedIn() async {
-    if (kIsWeb) {
-      return;
-    }
     if (Firebase.apps.isEmpty) return;
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) {

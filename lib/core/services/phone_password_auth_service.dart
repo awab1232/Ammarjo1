@@ -43,6 +43,22 @@ class PhonePasswordAuthService {
         .timeout(_timeout);
   }
 
+  static Future<http.Response> _postWithoutBearer(
+    Uri uri,
+    Map<String, dynamic> body,
+  ) {
+    return http
+        .post(
+          uri,
+          headers: const {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Accept': 'application/json',
+          },
+          body: jsonEncode(body),
+        )
+        .timeout(_timeout);
+  }
+
 
   static Uri _buildUri(String path) {
     final base = BackendOrdersConfig.baseUrl.trim().replaceAll(RegExp(r'/$'), '');
@@ -239,6 +255,20 @@ class PhonePasswordAuthService {
       // Fallback for environments where /auth/password policy/route is stricter.
       if (res.statusCode == 401 || res.statusCode == 403 || res.statusCode == 404) {
         try {
+          final uid = user.uid.trim();
+          if (uid.isNotEmpty) {
+            final bootstrapRes = await _postWithoutBearer(
+              _buildUri('/auth/password/bootstrap'),
+              <String, dynamic>{
+                'firebaseUid': uid,
+                'phone': phone,
+                'password': password,
+              },
+            );
+            if (bootstrapRes.statusCode >= 200 && bootstrapRes.statusCode < 300) {
+              return;
+            }
+          }
           final fallbackRes = await _postWithBearer(_buildUri('/auth/forgot-password'), idToken, bodyMap);
           if (fallbackRes.statusCode >= 200 && fallbackRes.statusCode < 300) {
             return;

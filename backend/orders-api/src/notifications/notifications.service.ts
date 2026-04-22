@@ -7,27 +7,25 @@ import type {
   ServiceAssignedNotificationInput,
   ServiceCompletedNotificationInput,
 } from './notifications.types';
-import { FcmClientService } from './fcm-client.service';
+import { NotificationDevicesService } from './notification-devices.service';
+import { NotificationQueueService } from './notification-queue.service';
+import { NotificationInboxService } from './notification-inbox.service';
 
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
-  private readonly deviceTokensByUser = new Map<string, Set<string>>();
   private readonly notificationsEnabled = (process.env.NOTIFICATIONS_ENABLED ?? 'false').trim().toLowerCase() === 'true';
 
   constructor(
-    private readonly fcm: FcmClientService,
     private readonly users: UsersService,
+    private readonly devices: NotificationDevicesService,
+    private readonly queue: NotificationQueueService,
+    private readonly inbox: NotificationInboxService,
   ) {}
 
-  registerDeviceToken(userId: string, token: string): void {
+  async registerDeviceToken(userId: string, token: string, platform?: string): Promise<void> {
     if (!this.notificationsEnabled) return;
-    const uid = userId.trim();
-    const t = token.trim();
-    if (!uid || !t) return;
-    const bucket = this.deviceTokensByUser.get(uid) ?? new Set<string>();
-    bucket.add(t);
-    this.deviceTokensByUser.set(uid, bucket);
+    await this.devices.registerDeviceToken({ userId, token, platform });
   }
 
   notifyNewMessage(input: NewMessageNotificationInput): void {
@@ -42,7 +40,7 @@ export class NotificationsService {
         senderId: input.senderId ?? '',
       },
     };
-    this.dispatchToUser(targetUserId, payload, 'notification_new_message');
+    void this.dispatchToUser(targetUserId, payload, 'notification_new_message');
   }
 
   notifyServiceAssigned(input: ServiceAssignedNotificationInput): void {
@@ -54,7 +52,7 @@ export class NotificationsService {
         requestId: input.requestId,
       },
     };
-    this.dispatchToUser(input.technicianId, payload, 'notification_service_assigned');
+    void this.dispatchToUser(input.technicianId, payload, 'notification_service_assigned');
   }
 
   notifyServiceCompleted(input: ServiceCompletedNotificationInput): void {
@@ -66,7 +64,7 @@ export class NotificationsService {
         requestId: input.requestId,
       },
     };
-    this.dispatchToUser(input.customerId, payload, 'notification_service_completed');
+    void this.dispatchToUser(input.customerId, payload, 'notification_service_completed');
   }
 
   /** Delivery — notify driver (Firebase UID = registered driver auth_uid). */
@@ -81,7 +79,7 @@ export class NotificationsService {
         orderId: String(orderId),
       },
     };
-    this.dispatchToUser(uid, payload, 'delivery_order_assigned_driver');
+    void this.dispatchToUser(uid, payload, 'delivery_order_assigned_driver');
   }
 
   /** Customer — order accepted by driver. */
@@ -96,7 +94,7 @@ export class NotificationsService {
         orderId: String(orderId),
       },
     };
-    this.dispatchToUser(uid, payload, 'delivery_order_accepted_customer');
+    void this.dispatchToUser(uid, payload, 'delivery_order_accepted_customer');
   }
 
   notifyCustomerDriverEnRoute(customerFirebaseUid: string, orderId: string): void {
@@ -110,7 +108,7 @@ export class NotificationsService {
         orderId: String(orderId),
       },
     };
-    this.dispatchToUser(uid, payload, 'delivery_on_the_way_customer');
+    void this.dispatchToUser(uid, payload, 'delivery_on_the_way_customer');
   }
 
   notifyCustomerNoDriverFound(customerFirebaseUid: string, orderId: string): void {
@@ -124,7 +122,7 @@ export class NotificationsService {
         orderId: String(orderId),
       },
     };
-    this.dispatchToUser(uid, payload, 'delivery_no_driver_customer');
+    void this.dispatchToUser(uid, payload, 'delivery_no_driver_customer');
   }
 
   /** Best-effort alert to admin dashboards (FCM + structured log). */
@@ -150,7 +148,7 @@ export class NotificationsService {
             reason: String(reason),
           },
         };
-        this.dispatchToUser(adminUid, payload, 'delivery_no_drivers_admin_fcm');
+        void this.dispatchToUser(adminUid, payload, 'delivery_no_drivers_admin_fcm');
       }
     });
   }
@@ -166,7 +164,7 @@ export class NotificationsService {
         orderId: String(orderId),
       },
     };
-    this.dispatchToUser(uid, payload, 'delivery_delivered_customer');
+    void this.dispatchToUser(uid, payload, 'delivery_delivered_customer');
   }
 
   notifyRatingReceived(input: RatingReceivedNotificationInput): void {
@@ -181,26 +179,54 @@ export class NotificationsService {
         targetType: input.targetType,
       },
     };
-    this.dispatchToUser(targetUserId, payload, 'notification_rating_received');
+    void this.dispatchToUser(targetUserId, payload, 'notification_rating_received');
   }
 
-  private dispatchToUser(userId: string, payload: NotificationPayload, kind: string): void {
+  private async dispatchToUser(userId: string, payload: NotificationPayload, kind: string): Promise<void> {
     if (!this.notificationsEnabled) {
       this.logger.debug(JSON.stringify({ kind: 'notifications_disabled_noop', userId }));
       return;
     }
-    setImmediate(() => {
-      const tokens = [...(this.deviceTokensByUser.get(userId)?.values() ?? [])];
-      if (process.env.DEBUG_EVENTS?.trim() === '1') {
-        this.logger.debug(JSON.stringify({ kind: `${kind}_debug`, userId, payload, tokensCount: tokens.length }));
-      }
-      if (tokens.length === 0) return;
-      if (tokens.length === 1) {
-        void this.fcm.sendToUser(userId, tokens[0], payload);
-      } else {
-        void this.fcm.sendToMultiple([userId], tokens, payload);
-      }
+    const eventId = this.buildEventId(kind, userId, payload);
+    const inbox = await this.inbox.insertRecord({
+      userId,
+      title: payload.title,
+      body: payload.body,
+      type: payload.data?.['type'] || kind,
+      eventId,
+      metadata: payload.data != null ? payload.data : {},
     });
+    const queued = await this.queue.enqueue({
+      userId,
+      payload: {
+        ...payload,
+        data: {
+          ...(payload.data ?? {}),
+          event_id: eventId,
+        },
+      },
+      eventId,
+      inboxNotificationId: inbox.id,
+    });
+    this.logger.log(
+      JSON.stringify({
+        kind: 'notification_enqueued',
+        userId,
+        eventId,
+        queue: queued,
+      }),
+    );
+  }
+
+  private buildEventId(kind: string, userId: string, payload: NotificationPayload): string {
+    const type = payload.data?.['type'] ?? kind;
+    const reference =
+      payload.data?.['orderId'] ??
+      payload.data?.['requestId'] ??
+      payload.data?.['conversationId'] ??
+      payload.data?.['targetId'] ??
+      payload.body;
+    return `${type}:${userId}:${reference}`.slice(0, 240);
   }
 }
 

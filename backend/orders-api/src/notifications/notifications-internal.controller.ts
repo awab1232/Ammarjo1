@@ -29,6 +29,10 @@ class InternalNotificationRecordDto {
   referenceId?: string;
 
   @IsOptional()
+  @IsString()
+  eventId?: string;
+
+  @IsOptional()
   @IsObject()
   metadata?: Record<string, unknown>;
 }
@@ -55,6 +59,10 @@ class InternalNotificationByEmailDto {
   referenceId?: string;
 
   @IsOptional()
+  @IsString()
+  eventId?: string;
+
+  @IsOptional()
   @IsObject()
   metadata?: Record<string, unknown>;
 }
@@ -75,6 +83,10 @@ class InternalBroadcastAdminsDto {
   @IsOptional()
   @IsString()
   referenceId?: string;
+
+  @IsOptional()
+  @IsString()
+  eventId?: string;
 
   @IsOptional()
   @IsObject()
@@ -98,6 +110,7 @@ export class NotificationsInternalController {
       title: body.title,
       body: body.body,
       type: body.type,
+      eventId: body.eventId,
       referenceId: body.referenceId,
       metadata: body.metadata,
     });
@@ -113,6 +126,7 @@ export class NotificationsInternalController {
         title: body.title,
         body: body.body,
         type: body.type,
+        eventId: body.eventId != null ? `${body.eventId}:${uid}` : undefined,
         referenceId: body.referenceId,
         metadata: body.metadata,
       });
@@ -132,6 +146,7 @@ export class NotificationsInternalController {
       title: body.title,
       body: body.body,
       type: body.type,
+      eventId: body.eventId,
       referenceId: body.referenceId,
       metadata: body.metadata,
     });

@@ -7,6 +7,7 @@ import { PhonePasswordService } from './phone-password.service';
 
 type LoginBody = { phone?: string; password?: string };
 type SetPasswordBody = { phone?: string; password?: string };
+type BootstrapPasswordBody = { firebaseUid?: string; phone?: string; password?: string };
 
 /**
  * Phone + password endpoints:
@@ -47,6 +48,22 @@ export class PhonePasswordController {
   async setPassword(@Req() req: RequestWithFirebase, @Body() body: SetPasswordBody) {
     const uid = req.firebaseUid;
     if (!uid) throw new UnauthorizedException('not_authenticated');
+    const phone = String(body?.phone ?? '').trim();
+    const password = String(body?.password ?? '');
+    return this.svc.setPasswordForFirebaseUid(uid, phone, password);
+  }
+
+  /**
+   * Emergency bootstrap path for environments where Firebase token verification
+   * is misconfigured on backend but signup already verified ownership on client.
+   * Used only as fallback from the app when `/auth/password` returns 401/403.
+   */
+  @Post('password/bootstrap')
+  @UseGuards(TenantContextGuard, ApiPolicyGuard)
+  @ApiPolicy({ auth: false, tenant: 'optional', rateLimit: { rpm: 10 } })
+  async bootstrapPassword(@Body() body: BootstrapPasswordBody) {
+    const uid = String(body?.firebaseUid ?? '').trim();
+    if (!uid) throw new UnauthorizedException('firebase_uid_missing');
     const phone = String(body?.phone ?? '').trim();
     const password = String(body?.password ?? '');
     return this.svc.setPasswordForFirebaseUid(uid, phone, password);

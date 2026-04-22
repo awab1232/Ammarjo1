@@ -4,11 +4,29 @@ import { FcmClientService } from './fcm-client.service';
 import { NotificationInboxService } from './notification-inbox.service';
 import { NotificationsController } from './notifications.controller';
 import { NotificationsInternalController } from './notifications-internal.controller';
+import { NotificationDevicesService } from './notification-devices.service';
+import { NotificationQueueService } from './notification-queue.service';
+import { NotificationQueueWorker } from './notification-queue.worker';
+import { OrdersModule } from '../orders/orders.module';
 
 @Module({
+  imports: [OrdersModule],
   controllers: [NotificationsController, NotificationsInternalController],
-  providers: [NotificationsService, FcmClientService, NotificationInboxService],
-  exports: [NotificationsService, FcmClientService, NotificationInboxService],
+  providers: [
+    NotificationsService,
+    FcmClientService,
+    NotificationInboxService,
+    NotificationDevicesService,
+    NotificationQueueService,
+    NotificationQueueWorker,
+  ],
+  exports: [
+    NotificationsService,
+    FcmClientService,
+    NotificationInboxService,
+    NotificationDevicesService,
+    NotificationQueueService,
+  ],
 })
 export class NotificationsModule {}
 

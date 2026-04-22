@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/backend_orders_config.dart';
@@ -34,12 +35,32 @@ final class BackendNotificationsClient {
     final req = await _request('/notifications/register-device');
     if (req == null) return false;
     final headers = <String, String>{...req.$2, 'Content-Type': 'application/json'};
+    final platform = _platformLabel();
     final res = await http.post(
       req.$1,
       headers: headers,
-      body: jsonEncode(<String, dynamic>{'token': t}),
+      body: jsonEncode(<String, dynamic>{'token': t, 'platform': platform}),
     );
     return res.statusCode >= 200 && res.statusCode < 300;
+  }
+
+  Future<FeatureState<Map<String, dynamic>>> fetchUpdates({
+    required DateTime since,
+    int limit = 20,
+  }) async {
+    try {
+      final body = await _authedGet(
+        '/notifications/updates',
+        query: <String, String>{
+          'since': since.toUtc().toIso8601String(),
+          'limit': '$limit',
+        },
+      );
+      if (body == null) return FeatureState.failure('NULL_RESPONSE');
+      return FeatureState.success(body);
+    } on Object {
+      return FeatureState.failure('NULL_RESPONSE');
+    }
   }
 
   Future<Map<String, dynamic>?> _authedGet(String path, {Map<String, String>? query}) async {
@@ -51,6 +72,18 @@ final class BackendNotificationsClient {
     if (decoded is Map<String, dynamic>) return decoded;
     if (decoded is Map) return Map<String, dynamic>.from(decoded);
     throw StateError('NULL_RESPONSE');
+  }
+
+  String _platformLabel() {
+    if (kIsWeb) return 'web';
+    switch (defaultTargetPlatform) {
+      case TargetPlatform.android:
+        return 'android';
+      case TargetPlatform.iOS:
+        return 'ios';
+      default:
+        return defaultTargetPlatform.name.toLowerCase();
+    }
   }
 
   Future<Map<String, dynamic>?> _authedPatch(String path, Map<String, dynamic> body) async {
