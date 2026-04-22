@@ -36,6 +36,7 @@ import 'core/firebase/app_check_bootstrap.dart';
 import 'core/firebase/fcm_bootstrap.dart';
 import 'core/firebase/local_chat_notification_service.dart';
 import 'core/services/gemini_ai_service.dart';
+import 'core/services/firebase_backend_session_service.dart';
 import 'core/navigation/app_navigator.dart';
 import 'core/seo/seo_indexing_hooks.dart';
 import 'core/seo/organic_traffic_system.dart';
@@ -203,13 +204,20 @@ Future<void> _appMain() async {
     FirebaseAuth.instance.authStateChanges().listen((User? u) async {
       final c = BackendIdentityController.instance;
       if (u != null) {
+        try {
+          await FirebaseBackendSessionService.syncWithBackend(firebaseUser: u);
+        } on Object {
+          // Best effort: keep Firebase session alive even if backend sync is temporarily down.
+        }
         await c.refresh();
       } else {
+        await FirebaseBackendSessionService.clear().onError((_, _) => null);
         c.clear();
       }
     });
     final cur = FirebaseAuth.instance.currentUser;
     if (cur != null) {
+      unawaited(FirebaseBackendSessionService.restoreAndSyncIfNeeded());
       unawaited(BackendIdentityController.instance.refresh());
     }
   }

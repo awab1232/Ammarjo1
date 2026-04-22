@@ -11,7 +11,7 @@ import '../../../../core/routing/role_home_resolver.dart';
 import '../../../../core/data/repositories/user_repository.dart';
 import '../../../../core/constants/jordan_cities.dart';
 import '../../../../core/firebase/phone_auth_service.dart';
-import '../../../../core/services/phone_password_auth_service.dart';
+import '../../../../core/services/firebase_backend_session_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/jordan_phone.dart';
 import '../../../../core/widgets/app_bar_back_button.dart';
@@ -215,18 +215,34 @@ class _RegisterPageState extends State<RegisterPage> {
       // Non-fatal: profile save failed but Firebase auth succeeded — continue
     }
 
-    // Attach phone + bcrypt(password) to the backend user row so future logins
-    // can use phone + password (OTP is only used here to verify ownership).
+    // Link an email/password credential to the OTP-authenticated Firebase user
+    // so next logins can use phone+password via synthetic email.
     String? postCreateWarning;
     try {
-      await PhonePasswordAuthService.setPasswordForCurrentUser(
-        phone: phone,
+      final localDigits = _phoneLocal.text.trim();
+      final syntheticEmail = syntheticEmailForPhone('962$localDigits');
+      debugPrint('[AUTH-AUDIT] signup synthetic email for link=${syntheticEmail.trim()}');
+      final credential = EmailAuthProvider.credential(
+        email: syntheticEmail,
         password: _password.text,
       );
-    } on PhonePasswordAuthException catch (e) {
-      postCreateWarning = 'تم إنشاء الحساب، لكن تعذر حفظ كلمة المرور الآن: ${e.messageAr}';
+      await user.linkWithCredential(credential);
+      debugPrint('[AUTH-AUDIT] linkWithCredential success uid=${user.uid} email=${user.email}');
+    } on FirebaseAuthException catch (e) {
+      debugPrint('[AUTH-AUDIT] linkWithCredential failed code=${e.code} message=${e.message}');
+      if (e.code != 'provider-already-linked' && e.code != 'email-already-in-use') {
+        postCreateWarning = 'تم إنشاء الحساب، لكن تعذر تفعيل تسجيل الدخول بكلمة المرور.';
+      }
     } on Object {
-      postCreateWarning = 'تم إنشاء الحساب، لكن تعذر حفظ كلمة المرور الآن. يمكنك المتابعة وإعادة تعيينها لاحقاً.';
+      debugPrint('[AUTH-AUDIT] linkWithCredential failed unexpected');
+      postCreateWarning = 'تم إنشاء الحساب، لكن تعذر تفعيل تسجيل الدخول بكلمة المرور.';
+    }
+
+    try {
+      await FirebaseBackendSessionService.syncWithBackend(firebaseUser: user);
+    } on Object {
+      postCreateWarning =
+          'تم إنشاء الحساب، لكن تعذر إكمال ربط الجلسة مع الخادم الآن. حاول تسجيل الدخول مرة أخرى.';
     }
 
     if (!mounted) return;

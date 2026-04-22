@@ -10,6 +10,7 @@ import {
   type GlobalCountryCode,
 } from '../architecture/global-region-context.service';
 import { getFirebaseAuth } from '../auth/firebase-admin';
+import { verifyBackendSessionToken } from '../auth/session-token.util';
 import type { RequestWithFirebase } from '../auth/firebase-auth.guard';
 import { UsersService } from '../users/users.service';
 import { buildTenantSnapshotFromRequest } from './build-tenant-snapshot';
@@ -85,7 +86,10 @@ export class TenantContextGuard implements CanActivate {
       req.firebaseUid = decoded.uid;
       req.firebaseDecoded = decoded;
     } catch {
-      /* leave unauthenticated */
+      const backendSession = verifyBackendSessionToken(token);
+      if (backendSession != null) {
+        req.firebaseUid = backendSession.uid;
+      }
     }
   }
 }

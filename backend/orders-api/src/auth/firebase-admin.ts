@@ -6,15 +6,24 @@ const logger = new Logger('FirebaseAdmin');
 
 export function getFirebaseApp(): admin.app.App {
   if (app) return app;
-  const projectId = process.env.FIREBASE_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT;
-  if (!projectId) {
-    throw new Error('Firebase Admin init failed: FIREBASE_PROJECT_ID/GOOGLE_CLOUD_PROJECT is missing');
+  const base64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64?.trim();
+  if (!base64) {
+    throw new Error('Firebase Admin init failed: Missing FIREBASE_SERVICE_ACCOUNT_BASE64');
+  }
+  let serviceAccount: Record<string, unknown>;
+  try {
+    serviceAccount = JSON.parse(Buffer.from(base64, 'base64').toString('utf8'));
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    throw new Error(`Firebase Admin init failed: invalid FIREBASE_SERVICE_ACCOUNT_BASE64 (${message})`);
   }
   try {
     if (admin.apps.length === 0) {
       app = admin.initializeApp({
-        projectId,
+        credential: admin.credential.cert(serviceAccount),
       });
+      console.log('[FIREBASE] Initialized with project:', serviceAccount.project_id);
+      console.log('[FIREBASE] Project ID:', serviceAccount.project_id);
     } else {
       app = admin.app();
     }

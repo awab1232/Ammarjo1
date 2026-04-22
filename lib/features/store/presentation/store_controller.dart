@@ -10,6 +10,7 @@ import '../../../core/firebase/account_password_service.dart';
 import '../../../core/firebase/chat_firebase_sync.dart';
 import '../../../core/firebase/phone_auth_service.dart';
 import '../../../core/firebase/users_repository.dart';
+import '../../../core/services/firebase_backend_session_service.dart';
 import '../../../core/utils/jordan_phone.dart';
 import '../../../core/utils/web_image_url.dart';
 import '../../../core/config/shipping_policy.dart';
@@ -430,6 +431,7 @@ class StoreController extends ChangeNotifier {
       final un = normalizeJordanPhoneForUsername(localNineDigits);
       final email = syntheticEmailForPhone(un);
       await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
+      await FirebaseBackendSessionService.syncWithBackend();
       await _local.setLocalBypassSession(false);
       await syncLocalProfileWithFirebaseSession();
       if (await user.isUserBannedInFirestore()) {
@@ -466,6 +468,7 @@ class StoreController extends ChangeNotifier {
         email: email.trim(),
         password: password,
       );
+      await FirebaseBackendSessionService.syncWithBackend();
       await _local.setLocalBypassSession(false);
       await syncLocalProfileWithFirebaseSession();
       if (await user.isUserBannedInFirestore()) {

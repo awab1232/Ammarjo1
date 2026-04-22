@@ -47,6 +47,7 @@ dependencies:
   firebase_ai: ^3.10.0
   sentry_flutter: 9.17.0
   package_info_plus: ^9.0.1
+  flutter_secure_storage: ^10.0.0
 
 dev_dependencies:
   flutter_test:
