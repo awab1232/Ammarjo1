@@ -69,6 +69,7 @@ async function bootstrap() {
   initSentry();
 
   let app: INestApplication;
+  console.log('[DB-CONNECTION]', process.env.DATABASE_URL);
   try {
     app = await NestFactory.create(AppModule, { abortOnError: false });
   } catch (e) {
