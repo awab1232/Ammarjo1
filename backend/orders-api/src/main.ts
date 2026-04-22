@@ -73,6 +73,9 @@ async function bootstrap() {
     );
     process.exit(1);
   }
+  const dbUrl = process.env.DATABASE_URL || '';
+  const safeUrl = dbUrl.replace(/:(.*?)@/, ':****@');
+  console.log('[DB-CONNECTION]', safeUrl);
   app.use((req: { method: string; originalUrl?: string; path?: string; firebaseUid?: string }, res: { on: (event: string, cb: () => void) => void; statusCode: number; setHeader: (name: string, value: string) => void; getHeader: (name: string) => unknown }, next: () => void) => {
     // Ensure UTF-8 JSON responses so Arabic text is rendered correctly.
     if (!res.getHeader('Content-Type')) {
