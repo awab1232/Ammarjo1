@@ -14,7 +14,7 @@ export type FcmDispatchResult = {
 @Injectable()
 export class FcmClientService {
   private readonly logger = new Logger(FcmClientService.name);
-  private readonly app = getFirebaseApp();
+  private appInitialized = false;
   private readonly notificationsEnabled: boolean;
 
   constructor() {
@@ -24,6 +24,25 @@ export class FcmClientService {
 
   private isReady(): boolean {
     return this.notificationsEnabled;
+  }
+
+  private getAppOrNull() {
+    if (!this.notificationsEnabled) return null;
+    if (this.appInitialized) {
+      try {
+        return getFirebaseApp();
+      } catch {
+        return null;
+      }
+    }
+    this.appInitialized = true;
+    try {
+      return getFirebaseApp();
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : String(e);
+      this.logger.warn(`FCM unavailable: ${reason}`);
+      return null;
+    }
   }
 
   async sendToUser(userId: string, token: string, payload: NotificationPayload): Promise<FcmDispatchResult> {
@@ -36,8 +55,18 @@ export class FcmClientService {
         errorMessage: 'fcm_not_ready',
       };
     }
+    const app = this.getAppOrNull();
+    if (!app) {
+      return {
+        success: false,
+        successCount: 0,
+        failureCount: 1,
+        invalidTokens: [],
+        errorMessage: 'fcm_not_ready',
+      };
+    }
     try {
-      await getMessaging(this.app).send({
+      await getMessaging(app).send({
         token,
         notification: { title: payload.title, body: payload.body },
         data: payload.data,
@@ -76,8 +105,18 @@ export class FcmClientService {
         errorMessage: !this.isReady() ? 'fcm_not_ready' : 'no_tokens',
       };
     }
+    const app = this.getAppOrNull();
+    if (!app) {
+      return {
+        success: false,
+        successCount: 0,
+        failureCount: tokens.length,
+        invalidTokens: [],
+        errorMessage: 'fcm_not_ready',
+      };
+    }
     try {
-      const out = await getMessaging(this.app).sendEachForMulticast({
+      const out = await getMessaging(app).sendEachForMulticast({
         tokens,
         notification: { title: payload.title, body: payload.body },
         data: payload.data,
