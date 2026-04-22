@@ -40,6 +40,12 @@ class WholesaleRepository {
     final uri = Uri.parse('$_baseUrl$path').replace(queryParameters: query);
     final res = await http.get(uri, headers: headers).timeout(const Duration(seconds: 20));
     if (res.statusCode < 200 || res.statusCode >= 300) {
+      if (res.statusCode == 401) {
+        throw StateError('انتهت الجلسة، سجل الدخول مجدداً ثم أعد المحاولة.');
+      }
+      if (res.statusCode == 403) {
+        throw StateError('لا تملك صلاحية تنفيذ هذه العملية.');
+      }
       throw StateError('فشل تحميل بيانات الجملة (${res.statusCode})');
     }
     return jsonDecode(res.body);
@@ -58,6 +64,12 @@ class WholesaleRepository {
         )
         .timeout(const Duration(seconds: 25));
     if (res.statusCode < 200 || res.statusCode >= 300) {
+      if (res.statusCode == 401) {
+        throw StateError('انتهت الجلسة، سجل الدخول مجدداً ثم أعد المحاولة.');
+      }
+      if (res.statusCode == 403) {
+        throw StateError('لا تملك صلاحية تنفيذ هذه العملية.');
+      }
       throw StateError('فشل تنفيذ العملية (${res.statusCode})');
     }
     final decoded = jsonDecode(res.body);
@@ -79,6 +91,12 @@ class WholesaleRepository {
         )
         .timeout(const Duration(seconds: 25));
     if (res.statusCode < 200 || res.statusCode >= 300) {
+      if (res.statusCode == 401) {
+        throw StateError('انتهت الجلسة، سجل الدخول مجدداً ثم أعد المحاولة.');
+      }
+      if (res.statusCode == 403) {
+        throw StateError('لا تملك صلاحية تنفيذ هذه العملية.');
+      }
       throw StateError('فشل تنفيذ العملية (${res.statusCode})');
     }
     if (res.body.trim().isEmpty) return <String, dynamic>{};
@@ -95,6 +113,12 @@ class WholesaleRepository {
     final uri = Uri.parse('$_baseUrl$path');
     final res = await http.delete(uri, headers: headers).timeout(const Duration(seconds: 20));
     if (res.statusCode < 200 || res.statusCode >= 300) {
+      if (res.statusCode == 401) {
+        throw StateError('انتهت الجلسة، سجل الدخول مجدداً ثم أعد المحاولة.');
+      }
+      if (res.statusCode == 403) {
+        throw StateError('لا تملك صلاحية تنفيذ هذه العملية.');
+      }
       throw StateError('فشل تنفيذ العملية (${res.statusCode})');
     }
   }

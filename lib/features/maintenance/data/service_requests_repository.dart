@@ -170,6 +170,9 @@ class ServiceRequestsRepository {
           .map((x) => _fromBackendMap(Map<String, dynamic>.from(x)))
           .toList();
       return FeatureState.success(items);
+    } on StateError catch (e) {
+      final msg = e.message.toString().trim();
+      return FeatureState.failure(msg.isNotEmpty ? msg : 'تعذر تحميل طلبات الخدمة.');
     } on Object {
       return FeatureState.failure('Failed to load service requests.');
     }
@@ -301,6 +304,9 @@ class ServiceRequestsRepository {
         return FeatureState.failure('INVALID_NUMERIC_DATA');
       }
       return FeatureState.success(total);
+    } on StateError catch (e) {
+      final msg = e.message.toString().trim();
+      return FeatureState.failure(msg.isNotEmpty ? msg : 'تعذر تحميل أرباح الفني.');
     } on Object {
       return FeatureState.failure('Failed to load technician earnings.');
     }

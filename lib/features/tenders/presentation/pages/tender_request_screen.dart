@@ -279,6 +279,9 @@ class _TenderRequestScreenState extends State<TenderRequestScreen> {
           backgroundColor: Colors.green.shade700,
         ),
       );
+    } on StateError catch (e) {
+      final msg = e.message.toString().trim();
+      _showError(msg.isNotEmpty ? msg : 'تعذر إرسال المناقصة حالياً.');
     } on Object {
       debugPrint('Tender submission failed.');
       _showError('خطأ غير متوقع. تحقق من الاتصال وحاول لاحقاً.');

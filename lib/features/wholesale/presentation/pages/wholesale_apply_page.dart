@@ -360,6 +360,18 @@ class _WholesaleApplyPageState extends State<WholesaleApplyPage> {
 
       if (!mounted) return;
       setState(() => _submitted = true);
+    } on StateError catch (e) {
+      if (!mounted) return;
+      final msg = e.message.toString().trim();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            msg.isNotEmpty ? msg : 'تعذر إرسال الطلب حالياً. حاول مرة أخرى.',
+            style: GoogleFonts.tajawal(),
+          ),
+          backgroundColor: Colors.red,
+        ),
+      );
     } on Object {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(

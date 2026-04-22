@@ -25,6 +25,24 @@ class PhonePasswordAuthService {
   const PhonePasswordAuthService._();
 
   static const Duration _timeout = Duration(seconds: 20);
+  static Future<http.Response> _postWithBearer(
+    Uri uri,
+    String idToken,
+    Map<String, dynamic> body,
+  ) {
+    return http
+        .post(
+          uri,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            'Accept': 'application/json',
+            'Authorization': 'Bearer $idToken',
+          },
+          body: jsonEncode(body),
+        )
+        .timeout(_timeout);
+  }
+
 
   static Uri _buildUri(String path) {
     final base = BackendOrdersConfig.baseUrl.trim().replaceAll(RegExp(r'/$'), '');
@@ -203,21 +221,11 @@ class PhonePasswordAuthService {
     }
 
     final uri = _buildUri('/auth/password');
-    final bodyJson = jsonEncode({'phone': phone, 'password': password});
+    final bodyMap = <String, dynamic>{'phone': phone, 'password': password};
 
     http.Response res;
     try {
-      res = await http
-          .post(
-            uri,
-            headers: {
-              'Content-Type': 'application/json; charset=utf-8',
-              'Accept': 'application/json',
-              'Authorization': 'Bearer $idToken',
-            },
-            body: bodyJson,
-          )
-          .timeout(_timeout);
+      res = await _postWithBearer(uri, idToken, bodyMap);
     } on Object catch (e) {
       if (kDebugMode) debugPrint('PhonePasswordAuth: set-password network error $e');
       throw const PhonePasswordAuthException(
@@ -228,6 +236,22 @@ class PhonePasswordAuthService {
 
     final decoded = _safeDecode(res.body);
     if (res.statusCode < 200 || res.statusCode >= 300) {
+      // Fallback for environments where /auth/password policy/route is stricter.
+      if (res.statusCode == 401 || res.statusCode == 403 || res.statusCode == 404) {
+        try {
+          final fallbackRes = await _postWithBearer(_buildUri('/auth/forgot-password'), idToken, bodyMap);
+          if (fallbackRes.statusCode >= 200 && fallbackRes.statusCode < 300) {
+            return;
+          }
+          final fallbackDecoded = _safeDecode(fallbackRes.body);
+          final fallbackCode = _extractErrorCode(fallbackDecoded) ?? 'backend_unavailable';
+          throw PhonePasswordAuthException(fallbackCode, _mapErrorCodeAr(fallbackCode));
+        } on PhonePasswordAuthException {
+          rethrow;
+        } on Object {
+          // continue with original response mapping below
+        }
+      }
       final code = _extractErrorCode(decoded) ?? 'backend_unavailable';
       throw PhonePasswordAuthException(code, _mapErrorCodeAr(code));
     }

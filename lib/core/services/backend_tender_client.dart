@@ -144,7 +144,15 @@ final class BackendTenderClient {
     final req = await _request(path, query: query);
     if (req == null) throw StateError('NULL_RESPONSE');
     final res = await http.get(req.$1, headers: req.$2);
-    if (res.statusCode < 200 || res.statusCode >= 300) throw StateError('NULL_RESPONSE');
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      if (res.statusCode == 401) {
+        throw StateError('انتهت الجلسة، سجل الدخول مجدداً ثم أعد المحاولة.');
+      }
+      if (res.statusCode == 403) {
+        throw StateError('لا تملك صلاحية تنفيذ هذه العملية.');
+      }
+      throw StateError('فشل تحميل بيانات المناقصات (${res.statusCode}).');
+    }
     final decoded = jsonDecode(res.body);
     if (decoded is Map<String, dynamic>) return decoded;
     if (decoded is Map) return Map<String, dynamic>.from(decoded);
@@ -156,7 +164,15 @@ final class BackendTenderClient {
     if (req == null) throw StateError('NULL_RESPONSE');
     final headers = <String, String>{...req.$2, 'Content-Type': 'application/json'};
     final res = await http.post(req.$1, headers: headers, body: jsonEncode(body));
-    if (res.statusCode < 200 || res.statusCode >= 300) throw StateError('NULL_RESPONSE');
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      if (res.statusCode == 401) {
+        throw StateError('انتهت الجلسة، سجل الدخول مجدداً ثم أعد المحاولة.');
+      }
+      if (res.statusCode == 403) {
+        throw StateError('لا تملك صلاحية تنفيذ هذه العملية.');
+      }
+      throw StateError('فشل إرسال المناقصة (${res.statusCode}).');
+    }
     if (res.body.trim().isEmpty) return <String, dynamic>{};
     final decoded = jsonDecode(res.body);
     if (decoded is Map<String, dynamic>) return decoded;
@@ -169,7 +185,15 @@ final class BackendTenderClient {
     if (req == null) throw StateError('NULL_RESPONSE');
     final headers = <String, String>{...req.$2, 'Content-Type': 'application/json'};
     final res = await http.patch(req.$1, headers: headers, body: jsonEncode(body));
-    if (res.statusCode < 200 || res.statusCode >= 300) throw StateError('NULL_RESPONSE');
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      if (res.statusCode == 401) {
+        throw StateError('انتهت الجلسة، سجل الدخول مجدداً ثم أعد المحاولة.');
+      }
+      if (res.statusCode == 403) {
+        throw StateError('لا تملك صلاحية تنفيذ هذه العملية.');
+      }
+      throw StateError('فشل تحديث المناقصة (${res.statusCode}).');
+    }
     if (res.body.trim().isEmpty) return <String, dynamic>{};
     final decoded = jsonDecode(res.body);
     if (decoded is Map<String, dynamic>) return decoded;

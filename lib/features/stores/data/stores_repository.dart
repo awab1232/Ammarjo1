@@ -195,11 +195,18 @@ class StoresRepository {
   }
 
   Future<FeatureState<FeatureUnit>> applyForStore(Map<String, dynamic> data) async {
-    final ok = await BackendOrdersClient.instance.submitStoreApplication(Map<String, dynamic>.from(data));
-    if (!ok) {
-      return FeatureState.criticalPublicDataFailure(FeatureIds.stores);
+    try {
+      final ok = await BackendOrdersClient.instance.submitStoreApplication(Map<String, dynamic>.from(data));
+      if (!ok) {
+        return FeatureState.failure('تعذر إرسال طلب الانضمام حالياً. حاول مرة أخرى.');
+      }
+      return FeatureState.success(FeatureUnit.value);
+    } on StateError catch (e) {
+      final msg = e.message.toString().trim();
+      return FeatureState.failure(msg.isNotEmpty ? msg : 'تعذر إرسال طلب الانضمام حالياً.');
+    } on Object catch (e) {
+      return FeatureState.failure('تعذر إرسال طلب الانضمام حالياً.', e);
     }
-    return FeatureState.success(FeatureUnit.value);
   }
 
   Future<FeatureState<List<Map<String, dynamic>>>> fetchPendingRequestsOnce() async {

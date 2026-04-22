@@ -77,11 +77,19 @@ class _MyServiceRequestsPageState extends State<MyServiceRequestsPage> {
         limit: _pageSize,
         cursor: null,
       );
-      final result = switch (resultState) {
-        FeatureSuccess(:final data) => data,
-        FeatureFailure(:final message) => throw StateError(message),
-        _ => throw StateError('FAILED_TO_LOAD_SERVICE_REQUESTS_PAGE'),
-      };
+      if (resultState is! FeatureSuccess<({List<ServiceRequest> items, String? nextCursor, bool hasMore})>) {
+        final message = switch (resultState) {
+          FeatureFailure(:final message) => message,
+          _ => 'تعذر تحميل طلبات الخدمة',
+        };
+        if (!mounted) return;
+        setState(() {
+          _hasError = true;
+          _errorMessage = message;
+        });
+        return;
+      }
+      final result = resultState.data;
       await _loadTechnicians();
       if (!mounted) return;
       setState(() {
@@ -129,11 +137,19 @@ class _MyServiceRequestsPageState extends State<MyServiceRequestsPage> {
         limit: _pageSize,
         cursor: cur,
       );
-      final result = switch (resultState) {
-        FeatureSuccess(:final data) => data,
-        FeatureFailure(:final message) => throw StateError(message),
-        _ => throw StateError('FAILED_TO_LOAD_SERVICE_REQUESTS_PAGE'),
-      };
+      if (resultState is! FeatureSuccess<({List<ServiceRequest> items, String? nextCursor, bool hasMore})>) {
+        final message = switch (resultState) {
+          FeatureFailure(:final message) => message,
+          _ => 'تعذر تحميل المزيد حالياً.',
+        };
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(message, style: GoogleFonts.tajawal())),
+          );
+        }
+        return;
+      }
+      final result = resultState.data;
       if (!mounted) return;
       setState(() {
         final existing = _requests.map((e) => e.id).toSet();
