@@ -71,22 +71,11 @@ export class UsersService {
     }
     const email = decoded.email != null ? String(decoded.email).trim() : null;
     return this.withClient(async (client) => {
-      const sel = await client.query(
-        `SELECT id, firebase_uid, email, role, tenant_id, store_id, wholesaler_id, store_type, is_active
-         FROM users WHERE firebase_uid = $1 LIMIT 1`,
-        [uid],
-      );
-      if (sel.rows.length > 0) {
-        const cur = this.mapRow(sel.rows[0] as Record<string, unknown>);
-        if (email != null && email.length > 0 && (cur.email == null || cur.email !== email)) {
-          await client.query(`UPDATE users SET email = $2 WHERE id = $1::uuid`, [cur.id, email]);
-          return { ...cur, email };
-        }
-        return cur;
-      }
       const ins = await client.query(
         `INSERT INTO users (firebase_uid, email, role, is_active)
          VALUES ($1, $2, 'customer', true)
+         ON CONFLICT (firebase_uid)
+         DO UPDATE SET email = EXCLUDED.email
          RETURNING id, firebase_uid, email, role, tenant_id, store_id, wholesaler_id, store_type, is_active`,
         [uid, email],
       );
