@@ -17,6 +17,7 @@ import '../../features/stores/domain/store_model.dart';
 import '../monitoring/sentry_safe.dart';
 import '../contracts/feature_state.dart';
 import '../contracts/feature_unit.dart';
+import 'firebase_auth_header_provider.dart';
 
 typedef JsonMap = Map<String, dynamic>;
 typedef JsonList = List<JsonMap>;
@@ -83,13 +84,15 @@ final class BackendOrdersClient {
     final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}/orders');
     final Duration t = BackendOrdersConfig.backendOrdersWriteTimeout;
     try {
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      };
+      FirebaseAuthHeaderProvider.logRequestHeaders(method: 'POST', uri: uri, headers: headers);
       final res = await http
           .post(
             uri,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
+            headers: headers,
             body: jsonEncode(payload),
           )
           .timeout(t);
@@ -176,12 +179,14 @@ final class BackendOrdersClient {
 
     final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}/orders');
     try {
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      };
+      FirebaseAuthHeaderProvider.logRequestHeaders(method: 'POST', uri: uri, headers: headers);
       final res = await http.post(
         uri,
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer $token',
-        },
+        headers: headers,
         body: jsonEncode(payload),
       );
       if (res.statusCode < 200 || res.statusCode >= 300) {
@@ -385,7 +390,10 @@ final class BackendOrdersClient {
 
   Future<String?> _idToken(User user) async {
     try {
-      return await user.getIdToken();
+      final token = await user.getIdToken();
+      debugPrint('[AUTH-HEADER] reason=backend_orders_id_token token=$token');
+      debugPrint('[AUTH-HEADER] reason=backend_orders_id_token token_is_null=${token == null}');
+      return token;
     } on Object {
       debugPrint('BackendOrders: getIdToken failed');
       throw StateError('NULL_RESPONSE');
@@ -409,13 +417,15 @@ final class BackendOrdersClient {
     if (token == null || token.isEmpty) throw StateError('NULL_RESPONSE');
     final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}$path');
     try {
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      };
+      FirebaseAuthHeaderProvider.logRequestHeaders(method: 'POST', uri: uri, headers: headers);
       final res = await http
           .post(
             uri,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
+            headers: headers,
             body: jsonEncode(body),
           )
           .timeout(timeout);
@@ -466,13 +476,15 @@ final class BackendOrdersClient {
     if (token == null || token.isEmpty) throw StateError('NULL_RESPONSE');
     final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}$path');
     try {
+      final headers = <String, String>{
+        'Content-Type': 'application/json',
+        'Authorization': 'Bearer $token',
+      };
+      FirebaseAuthHeaderProvider.logRequestHeaders(method: 'PATCH', uri: uri, headers: headers);
       final res = await http
           .patch(
             uri,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
+            headers: headers,
             body: jsonEncode(body),
           )
           .timeout(timeout);
@@ -522,7 +534,9 @@ final class BackendOrdersClient {
     if (token == null || token.isEmpty) return false;
     final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}$path');
     try {
-      final res = await http.delete(uri, headers: {'Authorization': 'Bearer $token'}).timeout(timeout);
+      final headers = <String, String>{'Authorization': 'Bearer $token'};
+      FirebaseAuthHeaderProvider.logRequestHeaders(method: 'DELETE', uri: uri, headers: headers);
+      final res = await http.delete(uri, headers: headers).timeout(timeout);
       if (res.statusCode < 200 || res.statusCode >= 300) {
         BackendFallbackLogger.logBackendFallbackTriggered(
           flow: flow,
@@ -566,7 +580,9 @@ final class BackendOrdersClient {
     if (token == null || token.isEmpty) throw StateError('NULL_RESPONSE');
     final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}$path').replace(queryParameters: query);
     try {
-      final res = await http.get(uri, headers: {'Authorization': 'Bearer $token'}).timeout(timeout);
+      final headers = <String, String>{'Authorization': 'Bearer $token'};
+      FirebaseAuthHeaderProvider.logRequestHeaders(method: 'GET', uri: uri, headers: headers);
+      final res = await http.get(uri, headers: headers).timeout(timeout);
       if (res.statusCode < 200 || res.statusCode >= 300) {
         BackendFallbackLogger.logBackendFallbackTriggered(
           flow: flow,
@@ -615,7 +631,9 @@ final class BackendOrdersClient {
     }
     final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}$path').replace(queryParameters: query);
     try {
-      final res = await http.get(uri).timeout(timeout);
+      final headers = await FirebaseAuthHeaderProvider.authHeadersIfSignedIn(reason: 'backend_orders_public_get:$path');
+      FirebaseAuthHeaderProvider.logRequestHeaders(method: 'GET', uri: uri, headers: headers);
+      final res = await http.get(uri, headers: headers).timeout(timeout);
       if (res.statusCode < 200 || res.statusCode >= 300) {
         BackendFallbackLogger.logBackendFallbackTriggered(
           flow: flow,
@@ -668,7 +686,11 @@ final class BackendOrdersClient {
     }
     final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}$path').replace(queryParameters: query);
     try {
-      final res = await http.get(uri).timeout(timeout);
+      final headers = await FirebaseAuthHeaderProvider.authHeadersIfSignedIn(
+        reason: 'backend_orders_public_get_or_null:$path',
+      );
+      FirebaseAuthHeaderProvider.logRequestHeaders(method: 'GET', uri: uri, headers: headers);
+      final res = await http.get(uri, headers: headers).timeout(timeout);
       if (res.statusCode < 200 || res.statusCode >= 300) {
         debugPrint('[BackendOrdersClient] $flow: HTTP ${res.statusCode}');
         return null;

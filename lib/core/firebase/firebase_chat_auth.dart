@@ -3,6 +3,7 @@
 import 'package:crypto/crypto.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
+import '../services/firebase_auth_header_provider.dart';
 
 /// حساب Firebase بريدي مشتق للضيف أو عند عدم وجود جلسة هاتف (كلمة مرور مشتقة محلياً).
 ///
@@ -27,10 +28,12 @@ abstract final class FirebaseChatAuth {
     final pwd = derivedPasswordForEmail(email);
     try {
       final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: pwd);
+      await FirebaseAuthHeaderProvider.requireIdToken(reason: 'firebase_chat_auth_signin');
       return cred.user;
     } on FirebaseAuthException {
       try {
         final cred = await FirebaseAuth.instance.createUserWithEmailAndPassword(email: email, password: pwd);
+        await FirebaseAuthHeaderProvider.requireIdToken(reason: 'firebase_chat_auth_signup');
         return cred.user;
       } on Object {
         debugPrint('FirebaseChatAuth createUser failed');

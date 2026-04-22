@@ -1,9 +1,11 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 
 import '../../../core/contracts/feature_contract_registry.dart';
 import '../../../core/contracts/feature_state.dart';
 import '../../../core/contracts/feature_unit.dart';
 import '../../../core/services/backend_orders_client.dart';
+import '../../../core/services/firebase_auth_header_provider.dart';
 import '../domain/store_model.dart';
 import '../domain/store_shelf_product.dart';
 
@@ -29,8 +31,9 @@ class StoresRepository {
     String? category,
     required int limit,
     String? startAfter,
+    required bool isLoggedIn,
   }) =>
-      '${city ?? ''}|${category ?? ''}|$limit|${startAfter ?? ''}';
+      '${city ?? ''}|${category ?? ''}|$limit|${startAfter ?? ''}|auth=$isLoggedIn';
 
   bool _isFresh(DateTime? ts) =>
       ts != null && DateTime.now().difference(ts) <= _cacheTtl;
@@ -77,24 +80,58 @@ class StoresRepository {
     int limit = pageSize,
     String? startAfter,
   }) async {
-    final key = _cacheKey(city: city, category: category, limit: limit, startAfter: startAfter);
+    final isLoggedIn = FirebaseAuth.instance.currentUser != null;
+    final key = _cacheKey(
+      city: city,
+      category: category,
+      limit: limit,
+      startAfter: startAfter,
+      isLoggedIn: isLoggedIn,
+    );
     final cached = _storesPageCache[key];
     if (cached != null && _isFresh(_storesPageCacheAt[key])) {
       return cached;
     }
-    // Home / directory: **public API only** (`GET /stores/public`) — no Firebase, no authed
-    // `/stores` (avoids empty list on Android when user is not signed in).
-    const int publicFetchLimit = 200;
+    const int fetchLimit = 200;
     List<Map<String, dynamic>> backend;
-    try {
-      backend = await BackendOrdersClient.instance.fetchStoresPublic(
-            category: category,
-            limit: publicFetchLimit,
-          ) ??
-          <Map<String, dynamic>>[];
-    } on Object catch (e) {
-      debugPrint('[StoresRepository] fetchStoresPublic failed: $e');
-      backend = <Map<String, dynamic>>[];
+    final authHeaders = await FirebaseAuthHeaderProvider.authHeadersIfSignedIn(
+      reason: 'stores_repository_switch',
+    );
+    final tokenExists = (authHeaders['Authorization'] ?? '').trim().isNotEmpty;
+    if (isLoggedIn) {
+      debugPrint('[StoresRepository] endpoint=/stores (protected) tokenExists=$tokenExists');
+      try {
+        backend = await BackendOrdersClient.instance.fetchStores(
+              category: category,
+              limit: fetchLimit,
+            ) ??
+            <Map<String, dynamic>>[];
+      } on Object catch (e) {
+        debugPrint('[StoresRepository] fetchStores (protected) failed: $e');
+        debugPrint('[StoresRepository] fallback endpoint=/stores/public tokenExists=$tokenExists');
+        try {
+          backend = await BackendOrdersClient.instance.fetchStoresPublic(
+                category: category,
+                limit: fetchLimit,
+              ) ??
+              <Map<String, dynamic>>[];
+        } on Object catch (fallbackError) {
+          debugPrint('[StoresRepository] fetchStoresPublic fallback failed: $fallbackError');
+          backend = <Map<String, dynamic>>[];
+        }
+      }
+    } else {
+      debugPrint('[StoresRepository] endpoint=/stores/public tokenExists=$tokenExists');
+      try {
+        backend = await BackendOrdersClient.instance.fetchStoresPublic(
+              category: category,
+              limit: fetchLimit,
+            ) ??
+            <Map<String, dynamic>>[];
+      } on Object catch (e) {
+        debugPrint('[StoresRepository] fetchStoresPublic failed: $e');
+        backend = <Map<String, dynamic>>[];
+      }
     }
     if (backend.isEmpty) {
       debugPrint('[StoresRepository] fetchStoresPublic returned 0 rows (check API / base URL).');

@@ -10,6 +10,7 @@ import '../../../core/firebase/account_password_service.dart';
 import '../../../core/firebase/chat_firebase_sync.dart';
 import '../../../core/firebase/phone_auth_service.dart';
 import '../../../core/firebase/users_repository.dart';
+import '../../../core/services/firebase_auth_header_provider.dart';
 import '../../../core/services/firebase_backend_session_service.dart';
 import '../../../core/utils/jordan_phone.dart';
 import '../../../core/utils/web_image_url.dart';
@@ -42,6 +43,8 @@ class StoreController extends ChangeNotifier {
   final LocalStorageService _local = LocalStorageService();
 
   StreamSubscription<FeatureState<List<FavoriteProduct>>>? _favoritesSub;
+  StreamSubscription<User?>? _authSub;
+  bool _isLoggedIn = Firebase.apps.isNotEmpty && FirebaseAuth.instance.currentUser != null;
 
   StoreController() {
     catalog = CatalogController();
@@ -57,6 +60,22 @@ class StoreController extends ChangeNotifier {
     filter.addListener(forward);
     cartState.addListener(forward);
     user.addListener(forward);
+    _bindAuthState();
+  }
+
+  bool get isLoggedIn => _isLoggedIn;
+
+  void _bindAuthState() {
+    if (Firebase.apps.isEmpty) {
+      _isLoggedIn = false;
+      return;
+    }
+    _authSub?.cancel();
+    _authSub = FirebaseAuth.instance.authStateChanges().listen((User? u) {
+      _isLoggedIn = u != null;
+      debugPrint('[AUTH-STATE] isLoggedIn=$_isLoggedIn uid=${u?.uid}');
+      notifyListeners();
+    });
   }
 
   /// كتالوج المنتجات والأقسام.
@@ -342,6 +361,7 @@ class StoreController extends ChangeNotifier {
   @override
   void dispose() {
     _detachFavoritesListener();
+    _authSub?.cancel();
     catalog.dispose();
     search.dispose();
     filter.dispose();
@@ -430,7 +450,11 @@ class StoreController extends ChangeNotifier {
       notifyListeners();
       final un = normalizeJordanPhoneForUsername(localNineDigits);
       final email = syntheticEmailForPhone(un);
-      await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
+      final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
+      await FirebaseAuthHeaderProvider.requireIdToken(
+        reason: 'store_controller_signin_phone_password',
+      );
+      debugPrint('[AUTH-HEADER] login_phone uid=${cred.user?.uid}');
       await FirebaseBackendSessionService.syncWithBackend();
       await _local.setLocalBypassSession(false);
       await syncLocalProfileWithFirebaseSession();
@@ -464,10 +488,12 @@ class StoreController extends ChangeNotifier {
       isLoading = true;
       errorMessage = null;
       notifyListeners();
-      await FirebaseAuth.instance.signInWithEmailAndPassword(
+      final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
         email: email.trim(),
         password: password,
       );
+      await FirebaseAuthHeaderProvider.requireIdToken(reason: 'store_controller_signin_email_password');
+      debugPrint('[AUTH-HEADER] login_email uid=${cred.user?.uid}');
       await FirebaseBackendSessionService.syncWithBackend();
       await _local.setLocalBypassSession(false);
       await syncLocalProfileWithFirebaseSession();
@@ -533,6 +559,7 @@ class StoreController extends ChangeNotifier {
     } on FirebaseAuthException {
       // Keep flow deterministic; backend validation handles detailed reason.
     }
+    await FirebaseAuthHeaderProvider.requireIdToken(reason: 'store_controller_signup_link_password');
     try {
       await u.updateDisplayName(displayName);
     } on Object {

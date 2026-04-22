@@ -596,7 +596,8 @@ class _StoresHomePageState extends State<StoresHomePage> {
     SeoService.apply(SeoService.homeFallback, updatePath: true);
     final storeController = context.watch<StoreController>();
     final city = storeController.profile?.city?.trim();
-    final storeKey = '${city ?? ''}|${widget.storeCategoryFilter}|$_selectedStoreTypeId|$_storesReloadNonce';
+    final authMode = storeController.isLoggedIn ? 'authed' : 'public';
+    final storeKey = '${city ?? ''}|${widget.storeCategoryFilter}|$_selectedStoreTypeId|$_storesReloadNonce|$authMode';
     if (_storesFetchKey != storeKey) {
       _storesFetchKey = storeKey;
       _storesFetchMemo = StoresRepository.instance.fetchApprovedStores(

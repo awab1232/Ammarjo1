@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import '../utils/jordan_phone.dart';
+import 'firebase_auth_header_provider.dart';
 import 'firebase_backend_session_service.dart';
 
 /// Thrown by [PhonePasswordAuthService] with a user-friendly Arabic message
@@ -40,6 +41,7 @@ class PhonePasswordAuthService {
     }
 
     try {
+      await FirebaseAuthHeaderProvider.requireIdToken(reason: 'phone_password_service_signin');
       await FirebaseBackendSessionService.syncWithBackend(firebaseUser: credential.user);
       debugPrint('[AUTH-AUDIT] login backend sync success for uid=${credential.user?.uid}');
       return credential;

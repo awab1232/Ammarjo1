@@ -1,11 +1,11 @@
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/backend_orders_config.dart';
 import '../contracts/feature_state.dart';
+import 'firebase_auth_header_provider.dart';
 
 final class BackendTenderClient {
   BackendTenderClient._();
@@ -203,11 +203,10 @@ final class BackendTenderClient {
 
   Future<(Uri, Map<String, String>)?> _request(String path, {Map<String, String>? query}) async {
     final base = BackendOrdersConfig.baseUrl.trim();
-    final user = FirebaseAuth.instance.currentUser;
-    if (base.isEmpty || user == null) throw StateError('NULL_RESPONSE');
-    final token = (await user.getIdToken()) ?? '';
-    if (token.isEmpty) throw StateError('NULL_RESPONSE');
+    if (base.isEmpty) throw StateError('NULL_RESPONSE');
+    final authHeaders = await FirebaseAuthHeaderProvider.requireAuthHeaders(reason: 'backend_tender:$path');
     final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}$path').replace(queryParameters: query);
-    return (uri, <String, String>{'Authorization': 'Bearer $token'});
+    FirebaseAuthHeaderProvider.logRequestHeaders(method: 'REQUEST', uri: uri, headers: authHeaders);
+    return (uri, authHeaders);
   }
 }
