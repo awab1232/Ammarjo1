@@ -1,3 +1,9 @@
+// Google Services Gradle plugin — تسجيل مرة واحدة على مستوى المشروع (apply false).
+// الوحدة `:app` تطبّق الإضافة بدون إصدار؛ الإصدار يُؤخذ من هنا فقط.
+plugins {
+    id("com.google.gms.google-services") version "4.4.4" apply false
+}
+
 allprojects {
     repositories {
         google()

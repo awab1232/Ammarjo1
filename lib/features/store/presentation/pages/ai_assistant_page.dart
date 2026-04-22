@@ -44,8 +44,22 @@ class _AiAssistantPageState extends State<AiAssistantPage> {
     final p = await SharedPreferences.getInstance();
     final k = p.getString(_prefsKey)?.trim();
     if (k != null && k.isNotEmpty) {
+      if (k == 'AIzaSyAoidnJwqUtFe6TAQoodkUJPwuhEUhgJDI') {
+        await p.remove(_prefsKey);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                'تم حذف مفتاح Gemini قديم ومحظور. سيتم استخدام المفتاح الحالي.',
+                style: GoogleFonts.tajawal(),
+              ),
+            ),
+          );
+        }
+      } else {
       setGeminiApiKeyRuntimeOverride(k);
       _apiKeyCtrl.text = k;
+      }
     }
     if (mounted) setState(() {});
   }

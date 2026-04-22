@@ -729,57 +729,63 @@ class _HorizontalStoreProductTile extends StatelessWidget {
                   ),
               ],
             ),
-            Padding(
-              padding: const EdgeInsets.all(8),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    product.name,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: GoogleFonts.tajawal(fontSize: 12, fontWeight: FontWeight.bold),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    '${product.priceDisplay} دينار',
-                    style: GoogleFonts.tajawal(
-                      color: const Color(0xFFFF6B00),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 13,
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      product.name,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.tajawal(fontSize: 12, fontWeight: FontWeight.bold),
                     ),
-                  ),
-                  const SizedBox(height: 6),
-                  SizedBox(
-                    width: double.infinity,
-                    height: 28,
-                    child: ElevatedButton(
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFFFF6B00),
-                        foregroundColor: Colors.white,
-                        padding: EdgeInsets.zero,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                    const SizedBox(height: 4),
+                    Text(
+                      '${product.priceDisplay} دينار',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.tajawal(
+                        color: const Color(0xFFFF6B00),
+                        fontWeight: FontWeight.bold,
+                        fontSize: 13,
                       ),
-                      onPressed: canBuy ? () async {
-                        await storeController.addToCart(
-                          product.toCartProduct(),
-                          storeId: store.id,
-                          storeName: store.name,
-                        );
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('تمت الإضافة ✓', style: GoogleFonts.tajawal()),
-                              backgroundColor: Colors.green.shade700,
-                              duration: const Duration(seconds: 1),
-                            ),
-                          );
-                        }
-                      } : null,
-                      child: Text('أضف للسلة', style: GoogleFonts.tajawal(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
                     ),
-                  ),
-                ],
+                    const Spacer(),
+                    SizedBox(
+                      width: double.infinity,
+                      height: 28,
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: const Color(0xFFFF6B00),
+                          foregroundColor: Colors.white,
+                          padding: EdgeInsets.zero,
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        ),
+                        onPressed: canBuy
+                            ? () async {
+                                await storeController.addToCart(
+                                  product.toCartProduct(),
+                                  storeId: store.id,
+                                  storeName: store.name,
+                                );
+                                if (context.mounted) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text('تمت الإضافة ✓', style: GoogleFonts.tajawal()),
+                                      backgroundColor: Colors.green.shade700,
+                                      duration: const Duration(seconds: 1),
+                                    ),
+                                  );
+                                }
+                              }
+                            : null,
+                        child: Text('أضف للسلة', style: GoogleFonts.tajawal(color: Colors.white, fontSize: 11, fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                  ],
+                ),
               ),
             ),
           ],

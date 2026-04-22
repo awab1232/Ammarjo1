@@ -3,6 +3,7 @@ plugins {
     id("kotlin-android")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+    // يجب تطبيق google-services بعد إضافة Android (مع Flutter) حتى يُعالَج `google-services.json`.
     id("com.google.gms.google-services")
 }
 
@@ -38,7 +39,8 @@ android {
 
     defaultConfig {
         // يجب أن يطابق package_name في android/app/google-services.json (حمّل الملف من Firebase بعد تسجيل التطبيق).
-        // Verify SHA-1 and SHA-256 in Firebase Console manually.
+        // Phone Auth / Dynamic Links / بعض OAuth: أضف SHA-1 و SHA-256 لكل من:
+        // debug keystore، release keystore (Play)، و Play App Signing في Firebase Console → Project settings → Your apps.
         applicationId = "com.ammarjo.store"
         minSdk = maxOf(flutter.minSdkVersion, 21)
         targetSdk = 34
@@ -77,4 +79,12 @@ dependencies {
     coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.4")
     implementation("androidx.constraintlayout:constraintlayout:2.1.4")
     implementation("com.google.android.material:material:1.12.0")
+
+    // Firebase (رسمي): BoM يثبّت إصدارات مكتبات Firebase المتسقة مع بعضها.
+    // حزم Flutter (firebase_core، firebase_auth، …) تضيف تعريفاتها؛ هذا يضمن طبقة أندرويد الأصلية متوافقة مع Console.
+    implementation(platform("com.google.firebase:firebase-bom:34.12.0"))
+    implementation("com.google.firebase:firebase-auth")
+    implementation("com.google.firebase:firebase-analytics")
+    // إشعارات FCM على مستوى الخدمة الأصلية (مع firebase_messaging من pubspec)
+    implementation("com.google.firebase:firebase-messaging")
 }

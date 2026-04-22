@@ -20,8 +20,11 @@ pluginManagement {
 plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
     id("com.android.application") version "8.9.2" apply false
+    // START: FlutterFire Configuration
+    id("com.google.gms.google-services") version("4.3.15") apply false
+    // END: FlutterFire Configuration
     id("org.jetbrains.kotlin.android") version "2.2.20" apply false
-    id("com.google.gms.google-services") version "4.3.15" apply false
+    // google-services: يُعرَّف مرة واحدة فقط في `android/build.gradle.kts` (apply false) لتجنب التكرار مع settings.
 }
 
 include(":app")

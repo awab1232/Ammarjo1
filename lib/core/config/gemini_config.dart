@@ -55,6 +55,13 @@ bool _looksLikeGoogleBrowserApiKey(String raw) {
   return t.length >= 35 && t.startsWith('AIza');
 }
 
+// مفاتيح معروفة بأنها مسرّبة/مرفوضة ويجب عدم استخدامها حتى لو جاءت من runtime أو dart-define.
+const Set<String> _blockedGeminiKeys = <String>{
+  'AIzaSyAoidnJwqUtFe6TAQoodkUJPwuhEUhgJDI',
+};
+
+bool _isBlockedGeminiKey(String key) => _blockedGeminiKeys.contains(key.trim());
+
 /// يحدد المفتاح الفعّال: define → بيئة العملية.
 ///
 /// ملاحظة: مفتاح `Firebase.app().options.apiKey` غالباً مفتاح Firebase/Web وليس
@@ -62,8 +69,11 @@ bool _looksLikeGoogleBrowserApiKey(String raw) {
 String _computeEffectiveGeminiKey() {
   final fromDefine = kGeminiApiKeyFromConfig.trim();
   final fromOs = geminiKeyFromPlatformEnv()?.trim() ?? '';
-  for (final candidate in [fromDefine, fromOs]) {
-    if (candidate.isNotEmpty && _looksLikeGoogleBrowserApiKey(candidate)) {
+  final fromFallback = kGeminiFallbackApiKey.trim();
+  for (final candidate in [fromDefine, fromOs, fromFallback]) {
+    if (candidate.isNotEmpty &&
+        _looksLikeGoogleBrowserApiKey(candidate) &&
+        !_isBlockedGeminiKey(candidate)) {
       return candidate;
     }
   }
@@ -86,7 +96,12 @@ void refreshGeminiApiKeyAtStartup() {
 /// المفتاح الفعّال لمسار **HTTP** والتحقق: أولوية للمفتاح من الشاشة، ثم نتيجة [refreshGeminiApiKeyAtStartup]، ثم حساب فوري.
 String get kGeminiApiKey {
   final runtime = geminiApiKeyRuntimeOverride?.trim();
-  if (runtime != null && runtime.isNotEmpty) return runtime;
+  if (runtime != null &&
+      runtime.isNotEmpty &&
+      _looksLikeGoogleBrowserApiKey(runtime) &&
+      !_isBlockedGeminiKey(runtime)) {
+    return runtime;
+  }
   if (_startupResolvedKey != null && _startupResolvedKey!.isNotEmpty) {
     return _startupResolvedKey!;
   }
@@ -97,7 +112,9 @@ String get kGeminiModel => GeminiConfig.kGeminiModel;
 
 /// `true` عندما يكون المفتاح من الشاشة — نستخدم طلبات HTTP حتى يطابق مفتاح Firebase للـ SDK.
 bool get useGeminiHttpDueToRuntimeKey =>
-    geminiApiKeyRuntimeOverride != null && geminiApiKeyRuntimeOverride!.trim().isNotEmpty;
+    geminiApiKeyRuntimeOverride != null &&
+    geminiApiKeyRuntimeOverride!.trim().isNotEmpty &&
+    !_isBlockedGeminiKey(geminiApiKeyRuntimeOverride!);
 
 bool get isGeminiConfigured {
   final runtime = geminiApiKeyRuntimeOverride?.trim();

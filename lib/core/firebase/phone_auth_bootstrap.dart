@@ -18,8 +18,8 @@ Future<void> ensurePhoneAuthEnvironmentReadyWithRetry({int maxAttempts = 3}) asy
         debugPrint('PhoneAuth: initializeRecaptchaConfig succeeded (attempt ${attempt + 1}/$maxAttempts).');
       }
       return;
-    } on Object {
-      lastError = 'unexpected error';
+    } on Object catch (e) {
+      lastError = e;
       if (attempt < maxAttempts - 1) {
         await Future<void>.delayed(Duration(milliseconds: 250 * (attempt + 1)));
       }

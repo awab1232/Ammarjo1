@@ -103,6 +103,9 @@ abstract final class PhoneAuthService {
         _webConfirmationResult = confirmation;
         debugPrint('OTP SENT');
         return (verificationId: webConfirmationSentinel, resendToken: null);
+      } on FirebaseAuthException catch (e) {
+        debugPrint('PHONE AUTH ERROR: $e');
+        rethrow;
       } on Object catch (e) {
         debugPrint('PHONE AUTH ERROR: $e');
         throw FirebaseAuthException(

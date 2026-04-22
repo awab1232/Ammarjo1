@@ -851,7 +851,14 @@ final class BackendOrdersClient {
 
   Future<JsonList?> fetchStoreCategories(String storeId) async {
     try {
-      final body = await _authedGetJson('/stores/${Uri.encodeComponent(storeId.trim())}/categories', flow: 'store_categories');
+      final body = await _publicGetJsonOrNull(
+        '/stores/${Uri.encodeComponent(storeId.trim())}/categories',
+        flow: 'store_categories',
+      );
+      if (body == null) {
+        debugPrint('EMPTY RESPONSE');
+        return const <Map<String, dynamic>>[];
+      }
       final items = body?['items'];
       if (items is List) {
         if (items.isEmpty) {
