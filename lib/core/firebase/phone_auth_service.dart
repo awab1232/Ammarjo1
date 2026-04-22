@@ -98,7 +98,6 @@ abstract final class PhoneAuthService {
 
     if (kIsWeb) {
       try {
-        await ensurePhoneAuthEnvironmentReadyWithRetry();
         final confirmation = await auth.signInWithPhoneNumber(trimmed);
         _webConfirmationResult = confirmation;
         debugPrint('OTP SENT');

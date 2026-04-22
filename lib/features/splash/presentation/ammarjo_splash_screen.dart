@@ -14,6 +14,7 @@ class AmmarJoSplashScreen extends StatefulWidget {
 }
 
 class _AmmarJoSplashScreenState extends State<AmmarJoSplashScreen> with TickerProviderStateMixin {
+  bool _isDisposed = false;
   late AnimationController _bgController;
   late Animation<Color?> _bgColorAnimation;
 
@@ -108,32 +109,42 @@ class _AmmarJoSplashScreenState extends State<AmmarJoSplashScreen> with TickerPr
 
   /// تأخيرات مضبوطة لمجموع ~3 ثوانٍ (محتوى + خفوت + انتقال).
   Future<void> _startAnimationSequence() async {
+    if (!mounted || _isDisposed) return;
     await Future<void>.delayed(const Duration(milliseconds: 200));
+    if (!mounted || _isDisposed) return;
 
     _block1Controller.forward();
     await Future<void>.delayed(const Duration(milliseconds: 170));
+    if (!mounted || _isDisposed) return;
     _block2Controller.forward();
     await Future<void>.delayed(const Duration(milliseconds: 170));
+    if (!mounted || _isDisposed) return;
     _block3Controller.forward();
     await Future<void>.delayed(const Duration(milliseconds: 170));
+    if (!mounted || _isDisposed) return;
     _block4Controller.forward();
     await Future<void>.delayed(const Duration(milliseconds: 220));
+    if (!mounted || _isDisposed) return;
 
     _nameController.forward();
     await Future<void>.delayed(const Duration(milliseconds: 200));
+    if (!mounted || _isDisposed) return;
 
     _bgController.forward();
     await Future<void>.delayed(const Duration(milliseconds: 380));
+    if (!mounted || _isDisposed) return;
 
     _taglineController.forward();
     // إبقاء الحالة النهائية ظاهرة ثم خفوت — مجموع التسلسل ~3 ثوانٍ
     await Future<void>.delayed(const Duration(milliseconds: 1090));
+    if (!mounted || _isDisposed) return;
 
     await _fadeOutController.forward();
   }
 
   @override
   void dispose() {
+    _isDisposed = true;
     _bgController.dispose();
     _block1Controller.dispose();
     _block2Controller.dispose();

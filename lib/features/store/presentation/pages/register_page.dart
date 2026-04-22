@@ -217,31 +217,27 @@ class _RegisterPageState extends State<RegisterPage> {
 
     // Attach phone + bcrypt(password) to the backend user row so future logins
     // can use phone + password (OTP is only used here to verify ownership).
+    String? postCreateWarning;
     try {
       await PhonePasswordAuthService.setPasswordForCurrentUser(
         phone: phone,
         password: _password.text,
       );
     } on PhonePasswordAuthException catch (e) {
-      if (!mounted) return;
-      setState(() {
-        _error = 'تم إنشاء الحساب ولكن تعذر حفظ كلمة المرور: ${e.messageAr}';
-        _submitting = false;
-      });
-      return;
+      postCreateWarning = 'تم إنشاء الحساب، لكن تعذر حفظ كلمة المرور الآن: ${e.messageAr}';
     } on Object {
-      if (!mounted) return;
-      setState(() {
-        _error = 'تم إنشاء الحساب ولكن تعذر حفظ كلمة المرور. جرّب تسجيل الدخول لاحقاً.';
-        _submitting = false;
-      });
-      return;
+      postCreateWarning = 'تم إنشاء الحساب، لكن تعذر حفظ كلمة المرور الآن. يمكنك المتابعة وإعادة تعيينها لاحقاً.';
     }
 
     if (!mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('تم إنشاء الحساب بنجاح 🎉', style: GoogleFonts.tajawal())),
     );
+    if (postCreateWarning != null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(postCreateWarning, style: GoogleFonts.tajawal())),
+      );
+    }
 
     final Widget home = await resolveHomeForSignedInUser(user);
     if (!mounted) return;

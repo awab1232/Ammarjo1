@@ -33,8 +33,15 @@ class BackendIdentityController extends ChangeNotifier {
   }
 
   Future<void> refresh() async {
-    final next = await BackendOrdersClient.instance.fetchAuthMe();
-    _me = next;
+    try {
+      final next = await BackendOrdersClient.instance.fetchAuthMe();
+      _me = next;
+    } on Object catch (e) {
+      // `/auth/me` may return 401 right after OTP on some environments;
+      // keep UI alive and treat backend identity as unavailable.
+      debugPrint('[BackendIdentityController] refresh skipped: $e');
+      _me = null;
+    }
     notifyListeners();
   }
 

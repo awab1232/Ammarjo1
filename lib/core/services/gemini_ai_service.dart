@@ -234,6 +234,14 @@ Future<String> generateGeminiViaHttp({
             _geminiDevLog('body head: $bh');
           }
           if (response.statusCode < 200 || response.statusCode >= 300) {
+            final body = response.body;
+            if (response.statusCode == 400 &&
+                (body.contains('API_KEY_INVALID') ||
+                    body.contains('API key not valid'))) {
+              throw const GeminiServiceException(
+                'مفتاح Gemini غير صالح. حدّث المفتاح من AI Studio أو مرّره عبر --dart-define=GEMINI_API_KEY.',
+              );
+            }
             if (kDebugMode && (response.statusCode == 403 || response.statusCode == 400)) {
               _geminiDevLog(
                 'Hint: فعّل Generative Language API في Google Cloud لمشروع المفتاح، أو استخدم مفتاحاً من AI Studio (--dart-define=GEMINI_API_KEY).',
@@ -253,6 +261,8 @@ Future<String> generateGeminiViaHttp({
               }
             }
           }
+        } on GeminiServiceException {
+          rethrow;
         } on Object {
           _geminiDevLog('API Error on version=$version model=$model');
         }

@@ -40,8 +40,24 @@ export class AuthController {
   @Get('me')
   async me(@Req() req: RequestWithFirebase) {
     const snap = getTenantContext();
-    if (!req.firebaseUid || !snap?.uid) {
+    if (!req.firebaseUid) {
       throw new UnauthorizedException('Not authenticated');
+    }
+    if (!snap?.uid) {
+      // Graceful fallback for newly created Firebase users whose backend row/tenant
+      // snapshot is not materialized yet. Keep the session usable as customer.
+      return {
+        id: req.firebaseUid,
+        role: 'customer',
+        storeId: undefined,
+        storeType: undefined,
+        userId: null,
+        firebaseUid: req.firebaseUid,
+        email: req.firebaseDecoded?.email ?? null,
+        tenantId: null,
+        wholesalerId: null,
+        permissions: [] as string[],
+      };
     }
     const persisted = apiRoleFromPersisted(snap.persistedRole);
     const role = apiMeRole(persisted);
