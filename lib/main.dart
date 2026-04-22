@@ -59,6 +59,10 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
         options: DefaultFirebaseOptions.currentPlatform,
       );
     }
+    if (Firebase.apps.isNotEmpty) {
+      // ignore: avoid_print
+      print('🔥 Firebase project: ${Firebase.app().options.projectId}');
+    }
     if (kDebugMode) {
       developer.log(
         'FCM background message received',
@@ -172,6 +176,10 @@ Future<void> _appMain() async {
       // ignore: avoid_print
       print('FIREBASE OK');
       debugPrint('✅ Firebase already initialized (${Firebase.apps.length} app(s))');
+    }
+    if (Firebase.apps.isNotEmpty) {
+      // ignore: avoid_print
+      print('🔥 Firebase project: ${Firebase.app().options.projectId}');
     }
     if (Firebase.apps.isNotEmpty && kIsWeb) {
       await FirebaseAuth.instance.setPersistence(Persistence.LOCAL);

@@ -390,9 +390,14 @@ final class BackendOrdersClient {
 
   Future<String?> _idToken(User user) async {
     try {
-      final token = await user.getIdToken();
+      final token = await user.getIdToken(true);
       debugPrint('[AUTH-HEADER] reason=backend_orders_id_token token=$token');
       debugPrint('[AUTH-HEADER] reason=backend_orders_id_token token_is_null=${token == null}');
+      final trimmed = token?.trim() ?? '';
+      if (trimmed.isNotEmpty) {
+        // ignore: avoid_print
+        print('🔥 TOKEN SENT: ${trimmed.length >= 20 ? trimmed.substring(0, 20) : trimmed}');
+      }
       return token;
     } on Object {
       debugPrint('BackendOrders: getIdToken failed');
