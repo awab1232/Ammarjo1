@@ -63,6 +63,7 @@ assets/ml/
 # --- Node / NestJS backend, Firebase Functions, Web tooling ---
 **/node_modules/
 **/dist/
+backend/orders-api/dist/
 **/coverage/
 **/.nest/
 **/.turbo/

@@ -43,6 +43,7 @@ function initSentry(): void {
 }
 
 async function bootstrap() {
+  console.log('[BUILD-CHECK] New build is running');
   const dbUrl = process.env.DATABASE_URL || '';
   const safeUrl = dbUrl.replace(/:(.*?)@/, ':****@');
   console.log('[DB-CONNECTION]', safeUrl);
