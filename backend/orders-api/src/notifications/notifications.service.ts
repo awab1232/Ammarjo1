@@ -24,7 +24,15 @@ export class NotificationsService {
   ) {}
 
   async registerDeviceToken(userId: string, token: string, platform?: string): Promise<void> {
-    if (!this.notificationsEnabled) return;
+    if (!this.notificationsEnabled) {
+      this.logger.warn(
+        JSON.stringify({
+          kind: 'notifications_disabled_register_device_skipped',
+          userId,
+        }),
+      );
+      return;
+    }
     await this.devices.registerDeviceToken({ userId, token, platform });
   }
 
@@ -183,10 +191,6 @@ export class NotificationsService {
   }
 
   private async dispatchToUser(userId: string, payload: NotificationPayload, kind: string): Promise<void> {
-    if (!this.notificationsEnabled) {
-      this.logger.debug(JSON.stringify({ kind: 'notifications_disabled_noop', userId }));
-      return;
-    }
     const eventId = this.buildEventId(kind, userId, payload);
     const inbox = await this.inbox.insertRecord({
       userId,
@@ -196,6 +200,16 @@ export class NotificationsService {
       eventId,
       metadata: payload.data != null ? payload.data : {},
     });
+    if (!this.notificationsEnabled) {
+      this.logger.warn(
+        JSON.stringify({
+          kind: 'notifications_push_disabled_inbox_only',
+          userId,
+          eventId,
+        }),
+      );
+      return;
+    }
     const queued = await this.queue.enqueue({
       userId,
       payload: {

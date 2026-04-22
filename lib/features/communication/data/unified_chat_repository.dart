@@ -407,13 +407,15 @@ class UnifiedChatRepository {
           conversationId: chatId,
           senderId: user.uid,
           targetUserId: receiverId,
+          messageId: msgRef.id,
+          messagePreview: t.length > 120 ? '${t.substring(0, 117)}...' : t,
           type: (cd['kind']?.toString().trim().isNotEmpty ?? (throw StateError('NULL_RESPONSE')))
               ? cd['kind'].toString()
               : 'general',
         ),
       );
     } on Object {
-      debugPrint('UnifiedChatRepository.postChatMessageSent failed');
+      debugPrint('[CHAT-ERROR] UnifiedChatRepository.postChatMessageSent failed');
     }
   }
 

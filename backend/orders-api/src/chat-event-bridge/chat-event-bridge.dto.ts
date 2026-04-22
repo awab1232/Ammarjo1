@@ -30,6 +30,18 @@ export class ChatMessageSentDto extends BaseChatEventDto {
   @IsOptional()
   @IsString()
   type?: string;
+
+  @IsOptional()
+  @IsString()
+  receiverId?: string;
+
+  @IsOptional()
+  @IsString()
+  messageId?: string;
+
+  @IsOptional()
+  @IsString()
+  messagePreview?: string;
 }
 
 export class ChatConversationCreatedDto extends BaseChatEventDto {}

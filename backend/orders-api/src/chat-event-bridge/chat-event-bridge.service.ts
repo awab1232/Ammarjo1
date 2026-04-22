@@ -61,7 +61,33 @@ export class ChatEventBridgeService {
   }
 
   messageSent(dto: ChatMessageSentDto): { accepted: true; trace_id: string } {
-    return this.emit(DomainEventNames.CHAT_MESSAGE_SENT, { ...dto });
+    const out = this.emit(DomainEventNames.CHAT_MESSAGE_SENT, { ...dto });
+    this.logger.log(
+      JSON.stringify({
+        kind: 'chat_message_sent_processed',
+        conversationId: dto.conversationId,
+        senderId: dto.senderId ?? null,
+        receiverId: dto.receiverId ?? dto.targetUserId ?? null,
+        messageId: dto.messageId ?? null,
+      }),
+    );
+    return out;
+  }
+
+  rejectInvalidMessageSent(input: {
+    senderId: string;
+    receiverId: string;
+    conversationId: string;
+    messageId: string;
+    messagePreview: string;
+  }): { accepted: false; reason: string } {
+    this.logger.warn(
+      JSON.stringify({
+        kind: 'chat_message_sent_invalid_payload',
+        ...input,
+      }),
+    );
+    return { accepted: false, reason: 'invalid_payload' };
   }
 
   conversationCreated(dto: ChatConversationCreatedDto): { accepted: true; trace_id: string } {

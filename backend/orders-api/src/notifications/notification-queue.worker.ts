@@ -26,6 +26,7 @@ export class NotificationQueueWorker implements OnModuleInit, OnModuleDestroy {
     this.timer = setInterval(() => {
       void this.tick();
     }, this.pollMs);
+    this.logger.log(JSON.stringify({ kind: 'notification_queue_worker_started', pollMs: this.pollMs }));
     void this.tick();
   }
 
@@ -41,6 +42,7 @@ export class NotificationQueueWorker implements OnModuleInit, OnModuleDestroy {
     this.running = true;
     try {
       const rows = await this.queue.reservePending(50);
+      this.logger.log(JSON.stringify({ kind: 'notification_queue_tick_reserved', count: rows.length }));
       for (const row of rows) {
         await this.deliverOne(row).catch((e) => {
           const msg = e instanceof Error ? e.message : String(e);

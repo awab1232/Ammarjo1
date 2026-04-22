@@ -1079,6 +1079,8 @@ final class BackendOrdersClient {
     required String conversationId,
     required String senderId,
     required String targetUserId,
+    required String messageId,
+    required String messagePreview,
     String type = 'general',
   }) async {
     final base = BackendOrdersConfig.baseUrl.trim();
@@ -1087,27 +1089,47 @@ final class BackendOrdersClient {
     if (user == null) return;
     final token = await _idToken(user);
     if (token == null || token.isEmpty) return;
-    final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}/internal/chat-events/message-sent');
+    final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}/chat/events/message-sent');
     final payload = <String, dynamic>{
       'conversationId': conversationId,
       'senderId': senderId,
+      'receiverId': targetUserId,
       'targetUserId': targetUserId,
+      'messageId': messageId,
+      'messagePreview': messagePreview,
       'type': type,
       'occurredAt': DateTime.now().toUtc().toIso8601String(),
     };
     try {
-      await http.post(
+      debugPrint('[CHAT-ERROR] sending chat event payload=$payload');
+      var res = await http.post(
         uri,
         headers: {
           'Content-Type': 'application/json',
           'Authorization': 'Bearer $token',
-          if (const String.fromEnvironment('INTERNAL_API_KEY').trim().isNotEmpty)
-            'x-internal-api-key': const String.fromEnvironment('INTERNAL_API_KEY').trim(),
         },
         body: jsonEncode(payload),
       );
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        debugPrint('[CHAT-ERROR] chat event failed status=${res.statusCode} body=${res.body}');
+        res = await http.post(
+          uri,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: jsonEncode(payload),
+        );
+        if (res.statusCode < 200 || res.statusCode >= 300) {
+          debugPrint('[CHAT-ERROR] chat event retry failed status=${res.statusCode} body=${res.body}');
+        } else {
+          debugPrint('[CHAT-ERROR] chat event retry succeeded');
+        }
+      } else {
+        debugPrint('[CHAT-ERROR] chat event sent status=${res.statusCode}');
+      }
     } on Object {
-      debugPrint('BackendOrders: message-sent event post failed');
+      debugPrint('[CHAT-ERROR] message-sent event post exception');
     }
   }
 
