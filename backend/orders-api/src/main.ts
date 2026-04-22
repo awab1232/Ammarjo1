@@ -1,4 +1,5 @@
 import './security/firestore-killer.marker';
+import './build-version';
 import { NestFactory } from '@nestjs/core';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as Sentry from '@sentry/node';
