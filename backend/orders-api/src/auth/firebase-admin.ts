@@ -22,6 +22,7 @@ export function getFirebaseApp(): admin.app.App {
       app = admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
       });
+      console.log('Firebase project:', serviceAccount.project_id);
       console.log('[FIREBASE] Initialized with project:', serviceAccount.project_id);
       console.log('[FIREBASE] Project ID:', serviceAccount.project_id);
     } else {
