@@ -1,3 +1,6 @@
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
+
 import '../../../features/store/domain/favorite_product.dart';
 import '../../../features/store/domain/models.dart';
 import '../../contracts/feature_state.dart';
@@ -83,7 +86,9 @@ class BackendUserRepository implements UserRepository {
 
   @override
   Future<void> syncUserDocument(CustomerProfile profile) async {
-    final uid = profile.email.trim();
+    if (!Firebase.apps.isNotEmpty) return;
+    // `/users/{id}` expects the Firebase UID (same as registration `setInitialRegistrationDocument`), not the synthetic phone email.
+    final uid = FirebaseAuth.instance.currentUser?.uid.trim() ?? '';
     if (uid.isEmpty) return;
     await BackendUserClient.instance.patchUser(uid, <String, dynamic>{
       'name': profile.displayName,

@@ -42,10 +42,31 @@ class PhonePasswordAuthService {
 
     try {
       await FirebaseAuthHeaderProvider.requireIdToken(reason: 'phone_password_service_signin');
-      await FirebaseBackendSessionService.syncWithBackend(firebaseUser: credential.user);
+      final res = await FirebaseBackendSessionService.syncWithBackend(firebaseUser: credential.user);
+      // ignore: avoid_print
+      print('LOGIN SUCCESS');
+      // ignore: avoid_print
+      print('BACKEND RESPONSE: $res');
       debugPrint('[AUTH-AUDIT] login backend sync success for uid=${credential.user?.uid}');
       return credential;
-    } on Object {
+    } on FirebaseBackendSessionException catch (e, st) {
+      debugPrint('[AUTH-AUDIT] login backend sync failed: $e\n$st');
+      await FirebaseAuth.instance.signOut();
+      throw PhonePasswordAuthException(
+        'backend_unavailable',
+        e.message.isNotEmpty
+            ? e.message
+            : 'تم تسجيل الدخول في Firebase لكن تعذر ربط الجلسة مع الخادم',
+      );
+    } on StateError catch (e, st) {
+      debugPrint('[AUTH-AUDIT] login id-token/backend glue failed: $e\n$st');
+      await FirebaseAuth.instance.signOut();
+      throw const PhonePasswordAuthException(
+        'backend_unavailable',
+        'تم تسجيل الدخول في Firebase لكن تعذر ربط الجلسة مع الخادم',
+      );
+    } on Object catch (e, st) {
+      debugPrint('[AUTH-AUDIT] login backend sync unexpected: $e\n$st');
       await FirebaseAuth.instance.signOut();
       throw const PhonePasswordAuthException(
         'backend_unavailable',

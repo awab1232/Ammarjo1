@@ -245,24 +245,25 @@ class _TechnicianUserRatingRow extends StatelessWidget {
         rating: rating.toDouble(),
         comment: '',
       );
-      if (state is! FeatureSuccess) {
-        if (context.mounted) {
-          final msg = state is FeatureFailure<FeatureUnit> ? state.message : 'تعذر حفظ التقييم.';
+      if (!context.mounted) return;
+      switch (state) {
+        case FeatureSuccess():
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('شكراً على تقييمك! ⭐', style: GoogleFonts.tajawal()),
+              backgroundColor: AppColors.accent,
+            ),
+          );
+        case FeatureFailure(:final message):
+          final msg = message.trim().isNotEmpty ? message.trim() : 'تعذر حفظ التقييم.';
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text(msg, style: GoogleFonts.tajawal())),
           );
-        }
-        return;
+        default:
+          debugPrint('_TechnicianUserRatingRow._submit: unexpected state (no user error): $state');
       }
-      if (!context.mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('شكراً على تقييمك! ⭐', style: GoogleFonts.tajawal()),
-          backgroundColor: AppColors.accent,
-        ),
-      );
-    } on Object {
-      debugPrint('_TechnicianUserRatingRow._submit failed.');
+    } on Object catch (e, st) {
+      debugPrint('_TechnicianUserRatingRow._submit failed: $e\n$st');
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('تعذر حفظ التقييم.', style: GoogleFonts.tajawal())),
