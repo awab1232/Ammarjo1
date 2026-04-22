@@ -4,6 +4,7 @@ import { NestFactory } from '@nestjs/core';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as Sentry from '@sentry/node';
 import { AppModule } from './app.module';
+import { initFirebase } from './auth/firebase-admin';
 import { enforceProductionSafetyOrThrow, logProductionEnvWarnings } from './config/env.validation';
 import { SentryExceptionFilter } from './common/sentry-exception.filter';
 
@@ -67,6 +68,12 @@ async function bootstrap() {
     /* warnings must never block boot */
   }
   initSentry();
+
+  try {
+    initFirebase();
+  } catch (e) {
+    console.error('[bootstrap] Firebase Admin init failed:', e instanceof Error ? e.message : String(e));
+  }
 
   let app: INestApplication;
   console.log('[DB-CONNECTION]', process.env.DATABASE_URL);

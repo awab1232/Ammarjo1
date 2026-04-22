@@ -1,41 +1,41 @@
 import * as admin from 'firebase-admin';
-import { Logger } from '@nestjs/common';
 
-let app: admin.app.App | null = null;
-const logger = new Logger('FirebaseAdmin');
+let app: admin.app.App | undefined;
 
-export function getFirebaseApp(): admin.app.App {
-  if (app) return app;
-  const base64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64?.trim();
+export function initFirebase(): admin.app.App {
+  if (app) {
+    return app;
+  }
+
+  const base64 = process.env.FIREBASE_SERVICE_ACCOUNT_BASE64;
+
   if (!base64) {
-    throw new Error('Firebase Admin init failed: Missing FIREBASE_SERVICE_ACCOUNT_BASE64');
+    console.error('❌ FIREBASE_SERVICE_ACCOUNT_BASE64 missing');
+    throw new Error('Firebase config missing');
   }
-  let serviceAccount: Record<string, unknown>;
-  try {
-    serviceAccount = JSON.parse(Buffer.from(base64, 'base64').toString('utf8'));
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    throw new Error(`Firebase Admin init failed: invalid FIREBASE_SERVICE_ACCOUNT_BASE64 (${message})`);
+
+  const json = Buffer.from(base64, 'base64').toString('utf8');
+  const serviceAccount = JSON.parse(json) as Record<string, unknown>;
+
+  console.log('🔥 Firebase Admin Initializing...');
+  console.log('🔥 Firebase project:', serviceAccount.project_id);
+
+  if (admin.apps.length > 0) {
+    app = admin.app();
+    return app;
   }
-  try {
-    if (admin.apps.length === 0) {
-      app = admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
-      });
-      console.log('Firebase project:', serviceAccount.project_id);
-      console.log('[FIREBASE] Initialized with project:', serviceAccount.project_id);
-      console.log('[FIREBASE] Project ID:', serviceAccount.project_id);
-    } else {
-      app = admin.app();
-    }
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
-    logger.warn(`Firebase Admin init failed: ${message}`);
-    throw new Error(`Firebase Admin init failed: ${message}`);
-  }
+
+  app = admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount as admin.ServiceAccount),
+  });
+
   return app;
 }
 
+export function getFirebaseApp(): admin.app.App {
+  return initFirebase();
+}
+
 export function getFirebaseAuth(): admin.auth.Auth {
-  return getFirebaseApp().auth();
+  return initFirebase().auth();
 }

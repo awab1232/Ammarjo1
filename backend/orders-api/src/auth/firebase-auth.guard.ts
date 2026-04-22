@@ -5,9 +5,10 @@ import {
   UnauthorizedException,
 } from '@nestjs/common';
 import type { Request } from 'express';
+import * as admin from 'firebase-admin';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { logAuditJson } from '../common/audit-log';
-import { getFirebaseAuth } from './firebase-admin';
+import { initFirebase } from './firebase-admin';
 import { getTenantContext } from '../identity/tenant-context.storage';
 import { verifyBackendSessionToken } from './session-token.util';
 
@@ -43,12 +44,15 @@ export class FirebaseAuthGuard implements CanActivate {
       throw new UnauthorizedException('Empty bearer token');
     }
     try {
-      const auth = getFirebaseAuth();
-      const decoded = await auth.verifyIdToken(token);
+      initFirebase();
+      console.log('[AUTH] verifying token...');
+      const decoded = await admin.auth().verifyIdToken(token);
+      console.log('[AUTH] token valid:', decoded.uid);
       req.firebaseUid = decoded.uid;
       req.firebaseDecoded = decoded;
       return true;
-    } catch {
+    } catch (error) {
+      console.log('[AUTH ERROR]', error instanceof Error ? error.message : String(error));
       const backendSession = verifyBackendSessionToken(token);
       if (backendSession != null) {
         req.firebaseUid = backendSession.uid;
