@@ -3,9 +3,10 @@ import 'dart:convert';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
-
 import '../config/backend_orders_config.dart';
+import '../session/user_session.dart';
 import '../utils/jordan_phone.dart';
+import 'backend_user_client.dart';
 import 'firebase_backend_session_service.dart';
 
 /// Thrown by [PhonePasswordAuthService] with a user-friendly Arabic message
@@ -131,9 +132,23 @@ class PhonePasswordAuthService {
       credential = await FirebaseAuth.instance.signInWithCustomToken(customToken);
       // ignore: avoid_print
       print('🔥 USER SIGNED IN');
+      final idToken = await credential.user?.getIdToken(true);
+      if (idToken != null && idToken.trim().isNotEmpty) {
+        await UserSession.setAuthToken(idToken.trim());
+      }
       await FirebaseBackendSessionService.syncWithBackend(firebaseUser: credential.user);
       // ignore: avoid_print
       print('🔥 BACKEND SYNC CALLED');
+      try {
+        final profile = await BackendUserClient.getMe();
+        if (profile != null) {
+          UserSession.setUser(profile);
+        } else {
+          UserSession.isLoggedIn = true;
+        }
+      } on Object {
+        UserSession.isLoggedIn = true;
+      }
       debugPrint('[AUTH-AUDIT] login backend sync success for uid=${credential.user?.uid}');
       return <String, dynamic>{
         'role': _lastRole ?? 'customer',

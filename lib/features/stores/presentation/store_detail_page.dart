@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../../core/contracts/feature_state.dart';
 import '../../../core/data/repositories/user_repository.dart';
+import '../../../core/session/user_session.dart';
 import '../../../core/services/chat_service.dart';
 import '../../../core/widgets/ammar_cached_image.dart';
 import '../../../core/widgets/home_page_shimmers.dart';
@@ -117,7 +118,7 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
       return;
     }
 
-    if (FirebaseAuth.instance.currentUser == null) {
+    if (!UserSession.isLoggedIn && FirebaseAuth.instance.currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('يرجى تسجيل الدخول أولاً', style: GoogleFonts.tajawal())),
       );

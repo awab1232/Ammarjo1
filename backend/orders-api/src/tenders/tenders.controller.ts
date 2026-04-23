@@ -13,9 +13,11 @@ import {
 import { FirebaseAuthGuard, type RequestWithFirebase } from '../auth/firebase-auth.guard';
 import { ApiPolicy } from '../gateway/api-policy.decorator';
 import { ApiPolicyGuard } from '../gateway/api-policy.guard';
+import { RoleGuard } from '../identity/role.guard';
 import { RbacGuard } from '../identity/rbac.guard';
 import { RequirePermissions } from '../identity/require-permissions.decorator';
 import { TenantContextGuard } from '../identity/tenant-context.guard';
+import { Roles } from '../identity/roles.decorator';
 import { TendersService } from './tenders.service';
 
 interface CreateTenderBody {
@@ -85,13 +87,17 @@ export class TendersController {
    */
   @Get('open')
   @RequirePermissions('orders.read')
+  @UseGuards(RoleGuard)
+  @Roles('store_owner', 'admin')
   open(
+    @Req() req: RequestWithFirebase,
     @Query('storeTypeId') storeTypeId?: string,
     @Query('storeTypeKey') storeTypeKey?: string,
     @Query('city') city?: string,
     @Query('limit') limit?: string,
   ) {
     return this.tenders.listOpenForStore({
+      actorUid: req.firebaseUid ?? '',
       storeTypeId,
       storeTypeKey,
       city,
@@ -113,16 +119,18 @@ export class TendersController {
 
   @Post(':id/offers')
   @RequirePermissions('orders.write')
+  @UseGuards(RoleGuard)
+  @Roles('store_owner', 'admin')
   submitOffer(
     @Req() req: RequestWithFirebase,
     @Param('id') id: string,
     @Body() body: SubmitOfferBody,
   ) {
     return this.tenders.submitOffer({
+      actorUid: req.firebaseUid ?? '',
       tenderId: id,
       storeId: body.storeId ?? '',
       storeName: body.storeName ?? '',
-      storeOwnerUid: (body.storeOwnerUid ?? req.firebaseUid ?? '').toString(),
       price: Number(body.price ?? 0),
       note: body.note ?? '',
     });

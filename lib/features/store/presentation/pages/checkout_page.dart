@@ -7,6 +7,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../../../core/constants/jordan_regions.dart';
+import '../../../../core/session/user_session.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/services/growth_analytics_service.dart';
 import '../../../../core/widgets/app_bar_back_button.dart';
@@ -46,7 +47,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      if (FirebaseAuth.instance.currentUser == null) {
+      if (!UserSession.isLoggedIn && FirebaseAuth.instance.currentUser == null) {
         if (!mounted) return;
         await Navigator.of(context).pushReplacement<void, void>(
           MaterialPageRoute<void>(builder: (_) => const LoginPage()),

@@ -2,6 +2,7 @@ import 'dart:developer' as developer;
 import 'dart:async';
 
 import 'core/session/backend_identity_controller.dart';
+import 'core/session/user_session.dart';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -287,6 +288,7 @@ Future<void> _appMain() async {
       developer.log('LocalChatNotificationService init failed');
     }
   }
+  await UserSession.bootstrap();
   runApp(
     MultiProvider(
       providers: [

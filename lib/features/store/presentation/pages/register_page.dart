@@ -313,6 +313,7 @@ class _RegisterPageState extends State<RegisterPage> {
           ),
         ),
       );
+      return;
     }
 
     sessionUser = FirebaseAuth.instance.currentUser;

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
+import '../../../../core/session/user_session.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_bar_back_button.dart';
 import '../../../../core/widgets/app_bottom_sheet.dart';
@@ -65,7 +66,7 @@ class _CartPageState extends State<CartPage> {
     List<CartItem> items,
   ) async {
     if (items.isEmpty) return;
-    if (FirebaseAuth.instance.currentUser == null) {
+    if (!UserSession.isLoggedIn && FirebaseAuth.instance.currentUser == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(

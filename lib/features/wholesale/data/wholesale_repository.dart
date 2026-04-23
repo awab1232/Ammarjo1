@@ -6,6 +6,8 @@ import 'package:http/http.dart' as http;
 
 import '../../../core/config/backend_orders_config.dart';
 import '../../../core/contracts/feature_state.dart';
+import '../../../core/services/firebase_auth_header_provider.dart';
+import '../../../core/session/user_session.dart';
 import '../domain/quantity_price_tier.dart';
 import '../domain/wholesale_order_model.dart';
 import '../domain/wholesale_product_model.dart';
@@ -23,14 +25,13 @@ class WholesaleRepository {
   String get _baseUrl => BackendOrdersConfig.baseUrl.trim().replaceAll(RegExp(r'/$'), '');
 
   Future<Map<String, String>> _authHeaders() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) throw StateError('يرجى تسجيل الدخول أولاً');
-    final token = await user.getIdToken();
-    if (token == null || token.isEmpty) throw StateError('تعذر التحقق من هوية المستخدم');
-    return {
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-    };
+    if (!UserSession.isLoggedIn && FirebaseAuth.instance.currentUser == null) {
+      throw StateError('يرجى تسجيل الدخول أولاً');
+    }
+    final headers = await FirebaseAuthHeaderProvider.requireAuthHeaders(
+      reason: 'wholesale_repository_auth_headers',
+    );
+    return <String, String>{...headers, 'Content-Type': 'application/json'};
   }
 
   Future<dynamic> _httpGetJson(String path, {Map<String, String>? query}) async {

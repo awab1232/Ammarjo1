@@ -286,10 +286,7 @@ export class PhonePasswordService {
       throw new UnauthorizedException('password_not_set');
     }
 
-    console.log('INPUT PASSWORD:', pwd);
-    console.log('HASH FROM DB:', row.password_hash);
     const ok = await bcrypt.compare(pwd, row.password_hash);
-    console.log('COMPARE RESULT:', ok);
     if (!ok) {
       throw new UnauthorizedException('INVALID PHONE OR PASSWORD');
     }

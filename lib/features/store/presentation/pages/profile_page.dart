@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -12,6 +11,7 @@ import '../../../maintenance/domain/maintenance_models.dart';
 import '../../../maintenance/presentation/maintenance_controller.dart';
 import '../../../../core/services/permission_service.dart';
 import '../../../../core/session/backend_identity_controller.dart';
+import '../../../../core/session/user_session.dart';
 import '../../../maintenance/presentation/pages/technician_dashboard_page.dart';
 import '../../../communication/presentation/messages_inbox_page.dart';
 import '../store_controller.dart';
@@ -45,6 +45,12 @@ class ProfilePage extends StatelessWidget {
     return Consumer<StoreController>(
       builder: (context, store, _) {
         final profile = store.profile;
+        final sessionUser = UserSession.user ?? <String, dynamic>{};
+        final sessionPhone = (sessionUser['phone'] ?? '').toString().trim();
+        final sessionRole = (sessionUser['role'] ?? '').toString().trim();
+        final loggedIn = UserSession.isLoggedIn;
+        // ignore: avoid_print
+        print('🔥 ACCOUNT PAGE STATE: $loggedIn');
         return Scaffold(
           backgroundColor: AppColors.background,
           appBar: AppBar(
@@ -56,7 +62,7 @@ class ProfilePage extends StatelessWidget {
           ),
           body: SingleChildScrollView(
             padding: const EdgeInsets.all(16),
-            child: profile == null
+            child: !loggedIn
                 ? Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -72,7 +78,13 @@ class ProfilePage extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
-                        onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const LoginPage())),
+                        onPressed: () async {
+                          await Navigator.push<void>(
+                            context,
+                            MaterialPageRoute<void>(builder: (_) => const LoginPage()),
+                          );
+                          await store.syncLocalProfileWithFirebaseSession();
+                        },
                         child: Text('تسجيل الدخول', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
                       ),
                       const SizedBox(height: 8),
@@ -83,7 +95,13 @@ class ProfilePage extends StatelessWidget {
                           padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
                         ),
-                        onPressed: () => Navigator.push(context, MaterialPageRoute<void>(builder: (_) => const RegisterPage())),
+                        onPressed: () async {
+                          await Navigator.push<void>(
+                            context,
+                            MaterialPageRoute<void>(builder: (_) => const RegisterPage()),
+                          );
+                          await store.syncLocalProfileWithFirebaseSession();
+                        },
                         child: Text('إنشاء حساب', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
                       ),
                     ],
@@ -92,14 +110,29 @@ class ProfilePage extends StatelessWidget {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        'مرحباً ${profile.fullName ?? (throw StateError('NULL_RESPONSE'))}',
+                        'مرحباً ${(profile?.fullName ?? '').trim().isNotEmpty ? profile!.fullName : 'مستخدم'}',
                         style: GoogleFonts.tajawal(fontSize: 20, fontWeight: FontWeight.w700, color: AppColors.textPrimary),
                       ),
+                      if (sessionPhone.isNotEmpty) ...[
+                        const SizedBox(height: 8),
+                        Text(
+                          sessionPhone,
+                          style: GoogleFonts.tajawal(color: AppColors.textSecondary, fontSize: 14),
+                        ),
+                      ],
+                      if (sessionRole.isNotEmpty) ...[
+                        const SizedBox(height: 4),
+                        Text(
+                          sessionRole,
+                          style: GoogleFonts.tajawal(color: AppColors.textSecondary, fontSize: 13),
+                        ),
+                      ],
                       const SizedBox(height: 8),
-                      Text(
-                        _profileContactLine(store),
-                        style: GoogleFonts.tajawal(color: AppColors.textSecondary, fontSize: 14),
-                      ),
+                      if (profile != null)
+                        Text(
+                          _profileContactLine(store),
+                          style: GoogleFonts.tajawal(color: AppColors.textSecondary, fontSize: 14),
+                        ),
                       const SizedBox(height: 16),
                       ListTile(
                         contentPadding: EdgeInsets.zero,
@@ -136,7 +169,7 @@ class ProfilePage extends StatelessWidget {
                         trailing: const Icon(Icons.chevron_left),
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: AppColors.border)),
                         onTap: () {
-                          if (FirebaseAuth.instance.currentUser == null) {
+                          if (!UserSession.isLoggedIn) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               SnackBar(content: Text('انتهت الجلسة. سجّل الدخول مرة أخرى.', style: GoogleFonts.tajawal())),
                             );
@@ -157,11 +190,11 @@ class ProfilePage extends StatelessWidget {
                         ),
                       ),
                       const SizedBox(height: 10),
-                      AmmarjoLoyaltyGoldCard(points: profile.loyaltyPoints),
+                      AmmarjoLoyaltyGoldCard(points: profile?.loyaltyPoints ?? 0),
                       const SizedBox(height: 24),
                       _TechnicianModeSection(
-                        email: profile.email.trim(),
-                        displayName: profile.fullName ?? 'فني',
+                        email: (profile?.email ?? '').trim(),
+                        displayName: profile?.fullName ?? 'فني',
                       ),
                       const SizedBox(height: 28),
                       FilledButton.tonal(

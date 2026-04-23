@@ -89,11 +89,13 @@ export class PhonePasswordController {
    * Used only as fallback from the app when `/auth/password` returns 401/403.
    */
   @Post('password/bootstrap')
-  @UseGuards(TenantContextGuard, ApiPolicyGuard)
-  @ApiPolicy({ auth: false, tenant: 'optional', rateLimit: { rpm: 10 } })
-  async bootstrapPassword(@Body() body: BootstrapPasswordBody) {
-    const uid = String(body?.firebaseUid ?? '').trim();
-    if (!uid) throw new UnauthorizedException('firebase_uid_missing');
+  @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard)
+  @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 10 } })
+  async bootstrapPassword(@Req() req: RequestWithFirebase, @Body() body: BootstrapPasswordBody) {
+    const uid = String(body?.firebaseUid ?? req.firebaseUid ?? '').trim();
+    if (!uid || !req.firebaseUid || uid !== req.firebaseUid) {
+      throw new UnauthorizedException('firebase_uid_mismatch');
+    }
     const phone = String(body?.phone ?? '').trim();
     const password = String(body?.password ?? '');
     return this.svc.setPasswordForFirebaseUid(uid, phone, password);

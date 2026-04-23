@@ -9,6 +9,7 @@ import 'firebase_auth_header_provider.dart';
 final class BackendUserClient {
   BackendUserClient._();
   static final BackendUserClient instance = BackendUserClient._();
+  static Future<Map<String, dynamic>?> getMe() => instance.fetchMe();
 
   Future<Map<String, dynamic>?> fetchMe() async {
     return _authedGet('/auth/me');

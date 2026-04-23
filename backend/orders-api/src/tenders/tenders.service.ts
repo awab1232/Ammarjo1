@@ -22,10 +22,10 @@ export interface CreateTenderInput {
 }
 
 export interface SubmitOfferInput {
+  actorUid: string;
   tenderId: string;
   storeId: string;
   storeName: string;
-  storeOwnerUid: string;
   price: number;
   note: string;
 }
@@ -205,6 +205,7 @@ export class TendersService {
    * with `_notifyTargetedStores` on the client side.
    */
   async listOpenForStore(params: {
+    actorUid: string;
     storeTypeId?: string;
     storeTypeKey?: string;
     city?: string;
@@ -215,13 +216,39 @@ export class TendersService {
     const skey = (params.storeTypeKey ?? '').trim().toLowerCase();
     const city = (params.city ?? '').trim();
     return this.withClient(async (client) => {
+      const actorUid = (params.actorUid ?? '').trim();
+      if (!actorUid) throw new BadRequestException('missing_actor_uid');
       const where: string[] = [`status = 'open'`];
       const vals: unknown[] = [];
       let n = 1;
+      const ownStores = await client.query(
+        `SELECT id::text AS id, store_type_id::text AS store_type_id, lower(store_type_key) AS store_type_key, city
+         FROM stores
+         WHERE owner_id = $1`,
+        [actorUid],
+      );
+      const ownStoreIds = new Set(
+        ownStores.rows.map((r) => String(r['id'] ?? '').trim()).filter((v) => v.length > 0),
+      );
+      if (ownStoreIds.size === 0) {
+        return { items: [] };
+      }
       if (sid) {
+        const ownsRequestedType = ownStores.rows.some(
+          (r) => String(r['store_type_id'] ?? '').trim() === sid,
+        );
+        if (!ownsRequestedType) {
+          return { items: [] };
+        }
         where.push(`store_type_id = $${n++}::uuid`);
         vals.push(sid);
       } else if (skey) {
+        const ownsRequestedKey = ownStores.rows.some(
+          (r) => String(r['store_type_key'] ?? '').trim() === skey,
+        );
+        if (!ownsRequestedKey) {
+          return { items: [] };
+        }
         where.push(`lower(store_type_key) = $${n++}`);
         vals.push(skey);
       }
@@ -275,10 +302,23 @@ export class TendersService {
   }
 
   async submitOffer(input: SubmitOfferInput): Promise<Record<string, unknown>> {
+    const actorUid = input.actorUid.trim();
+    if (!actorUid) throw new BadRequestException('missing_actor_uid');
     if (!input.tenderId.trim()) throw new BadRequestException('missing_tender_id');
     if (!input.storeId.trim()) throw new BadRequestException('missing_store_id');
     if (!Number.isFinite(input.price) || input.price < 0) throw new BadRequestException('invalid_price');
     return this.withClient(async (client) => {
+      const store = await client.query(
+        `SELECT id::text AS id, owner_id, name
+         FROM stores
+         WHERE id::text = $1
+         LIMIT 1`,
+        [input.storeId.trim()],
+      );
+      if (store.rows.length === 0) throw new NotFoundException('store_not_found');
+      if (String(store.rows[0]['owner_id'] ?? '').trim() !== actorUid) {
+        throw new BadRequestException('store_owner_mismatch');
+      }
       const sel = await client.query(`SELECT status FROM tenders WHERE id = $1::uuid`, [input.tenderId.trim()]);
       if (sel.rows.length === 0) throw new NotFoundException('tender_not_found');
       if (String(sel.rows[0]['status']) !== 'open') throw new BadRequestException('tender_closed');
@@ -290,8 +330,10 @@ export class TendersService {
         [
           input.tenderId.trim(),
           input.storeId.trim(),
-          input.storeName.trim(),
-          input.storeOwnerUid.trim(),
+          input.storeName.trim().length > 0
+              ? input.storeName.trim()
+              : String(store.rows[0]['name'] ?? '').trim(),
+          actorUid,
           input.price,
           input.note.trim(),
         ],

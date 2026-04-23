@@ -13,6 +13,7 @@ import '../../../core/firebase/users_repository.dart';
 import '../../../core/services/firebase_auth_header_provider.dart';
 import '../../../core/services/firebase_backend_session_service.dart';
 import '../../../core/services/phone_password_auth_service.dart';
+import '../../../core/session/user_session.dart';
 import '../../../core/utils/jordan_phone.dart';
 import '../../../core/utils/web_image_url.dart';
 import '../../../core/config/shipping_policy.dart';
@@ -871,6 +872,8 @@ class StoreController extends ChangeNotifier {
   Future<void> logout() async {
     _detachFavoritesListener();
     await user.clearSessionProfile();
+    await FirebaseBackendSessionService.clear();
+    await UserSession.clear();
     phoneVerificationId = null;
     phoneResendToken = null;
     favoriteProductIds = await _local.getFavoriteIds();
