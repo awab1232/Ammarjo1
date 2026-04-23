@@ -3,6 +3,7 @@ import './build-version';
 import { NestFactory } from '@nestjs/core';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import * as Sentry from '@sentry/node';
+import { Client } from 'pg';
 import { AppModule } from './app.module';
 import { initFirebase } from './auth/firebase-admin';
 import { enforceProductionSafetyOrThrow, logProductionEnvWarnings } from './config/env.validation';
@@ -46,9 +47,40 @@ function initSentry(): void {
 
 async function bootstrap() {
   console.log('[BUILD-CHECK] New build is running');
-  const dbUrl = process.env.DATABASE_URL || '';
+  const rawDbUrl = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim() || '';
+  const dbUrl =
+    (rawDbUrl.startsWith('"') && rawDbUrl.endsWith('"')) ||
+    (rawDbUrl.startsWith("'") && rawDbUrl.endsWith("'"))
+      ? rawDbUrl.slice(1, -1).trim()
+      : rawDbUrl;
+  if (!process.env.DATABASE_URL?.trim() && dbUrl) {
+    process.env.DATABASE_URL = dbUrl;
+  }
   const safeUrl = dbUrl.replace(/:(.*?)@/, ':****@');
   console.log('[DB-CONNECTION]', safeUrl);
+  try {
+    if (!dbUrl) {
+      console.error('[DB-CONNECTION] DATABASE_URL is missing');
+    } else {
+      const parsed = new URL(dbUrl);
+      console.log(
+        '[DB-CONNECTION-INFO]',
+        JSON.stringify({
+          host: parsed.hostname,
+          port: parsed.port || '5432',
+          database: parsed.pathname.replace(/^\//, ''),
+          user: parsed.username ? `${parsed.username.slice(0, 2)}***` : '',
+        }),
+      );
+      const dbClient = new Client({ connectionString: dbUrl });
+      await dbClient.connect();
+      await dbClient.query('SELECT 1');
+      await dbClient.end();
+      console.log('DB CONNECTED SUCCESSFULLY');
+    }
+  } catch (e) {
+    console.error('[DB-CONNECTION] startup verification failed:', e instanceof Error ? e.message : String(e));
+  }
   // Deployment invariant: the server MUST always reach `app.listen()` so
   // platform healthchecks (Railway / Docker / k8s) can reach `/health`. Env
   // validation failures are surfaced as loud warnings, not a fatal throw —
@@ -76,7 +108,7 @@ async function bootstrap() {
   }
 
   let app: INestApplication;
-  console.log('[DB-CONNECTION]', process.env.DATABASE_URL);
+  console.log('[DB-CONNECTION]', process.env.DATABASE_URL || process.env.ORDERS_DATABASE_URL || '');
   try {
     app = await NestFactory.create(AppModule, { abortOnError: false });
   } catch (e) {

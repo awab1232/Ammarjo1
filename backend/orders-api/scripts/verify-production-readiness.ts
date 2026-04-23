@@ -27,7 +27,13 @@ function loadStagingEnvIfPresent(): void {
     const idx = t.indexOf('=');
     if (idx <= 0) continue;
     const k = t.slice(0, idx).trim();
-    const v = t.slice(idx + 1).trim();
+    let v = t.slice(idx + 1).trim();
+    if (
+      (v.startsWith('"') && v.endsWith('"')) ||
+      (v.startsWith("'") && v.endsWith("'"))
+    ) {
+      v = v.slice(1, -1).trim();
+    }
     if (!process.env[k]) process.env[k] = v;
   }
 }
