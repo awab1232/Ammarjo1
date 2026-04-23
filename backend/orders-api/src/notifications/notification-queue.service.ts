@@ -23,9 +23,13 @@ export class NotificationQueueService {
 
   private async ensureSchema(): Promise<void> {
     if (this.schemaEnsured) return;
-    if (this.schemaEnsureInFlight) return this.schemaEnsureInFlight;
-    this.schemaEnsureInFlight = this.pg
-      .withWriteClient(async (c) => {
+    if (this.schemaEnsureInFlight) {
+      return this.schemaEnsureInFlight;
+    }
+    // If withWriteClient has no client yet, the old .then() path incorrectly set schemaEnsured=true
+    // without running DDL, so the worker later SELECTs a missing table (relation does not exist).
+    this.schemaEnsureInFlight = (async () => {
+      const out = await this.pg.withWriteClient(async (c) => {
         await c.query(`
           DO $$
           BEGIN
@@ -66,10 +70,15 @@ export class NotificationQueueService {
           WHERE event_id IS NOT NULL;
         `);
         return true;
-      })
-      .then(() => {
-        this.schemaEnsured = true;
-      })
+      });
+      if (out == null) {
+        const msg =
+          'notifications_queue: no PostgreSQL write client (set DATABASE_URL / ORDERS_DATABASE_URL, or run migration 036_notifications_queue_and_devices.sql)';
+        this.logger.warn(msg);
+        throw new Error(msg);
+      }
+      this.schemaEnsured = true;
+    })()
       .catch((e) => {
         const reason = e instanceof Error ? e.message : String(e);
         this.logger.warn(`notifications_queue schema ensure failed: ${reason}`);

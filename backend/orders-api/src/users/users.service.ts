@@ -5,6 +5,13 @@ import { normalizeDbRoleToAppRole } from '../identity/db-user-role.util';
 import { permissionsForRole, type AppRole } from '../identity/rbac-roles.config';
 import type { TenantContextSnapshot } from '../identity/tenant-context.types';
 
+function isPgUniqueViolationOnFirebaseUid(e: unknown): boolean {
+  if (e === null || typeof e !== 'object') {
+    return false;
+  }
+  return (e as { code?: string; constraint?: string }).code === '23505';
+}
+
 export type AppUserRow = {
   id: string;
   firebase_uid: string;
@@ -71,19 +78,37 @@ export class UsersService {
     }
     const email = decoded.email != null ? String(decoded.email).trim() : null;
     return this.withClient(async (client) => {
-      const ins = await client.query(
-        `INSERT INTO users (firebase_uid, email, role, is_active)
-         VALUES ($1, $2, 'customer', true)
-         ON CONFLICT (firebase_uid)
-         DO UPDATE SET email = EXCLUDED.email
-         RETURNING id, firebase_uid, email, role, tenant_id, store_id, wholesaler_id, store_type, is_active`,
-        [uid, email],
-      );
-      const row = ins.rows[0];
-      if (!row) {
-        throw new ServiceUnavailableException('user provisioning failed');
+      try {
+        const ins = await client.query(
+          `INSERT INTO users (firebase_uid, email, role, is_active)
+           VALUES ($1, $2, 'customer', true)
+           ON CONFLICT (firebase_uid)
+           DO UPDATE SET email = COALESCE(NULLIF(EXCLUDED.email, ''), users.email)
+           RETURNING id, firebase_uid, email, role, tenant_id, store_id, wholesaler_id, store_type, is_active`,
+          [uid, email],
+        );
+        const row = ins.rows[0];
+        if (!row) {
+          throw new ServiceUnavailableException('user provisioning failed');
+        }
+        return this.mapRow(row as Record<string, unknown>);
+      } catch (e) {
+        // Legacy binary without ON CONFLICT, or rare race: fall back to SELECT by firebase_uid.
+        if (isPgUniqueViolationOnFirebaseUid(e)) {
+          const sel = await client.query(
+            `SELECT id, firebase_uid, email, role, tenant_id, store_id, wholesaler_id, store_type, is_active
+             FROM users
+             WHERE firebase_uid = $1
+             LIMIT 1`,
+            [uid],
+          );
+          const r = sel.rows[0];
+          if (r) {
+            return this.mapRow(r as Record<string, unknown>);
+          }
+        }
+        throw e;
       }
-      return this.mapRow(row as Record<string, unknown>);
     });
   }
 

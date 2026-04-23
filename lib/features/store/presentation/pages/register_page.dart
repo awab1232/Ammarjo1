@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:provider/provider.dart';
 
 import '../../../admin/data/admin_notification_repository.dart';
 import '../../../../core/routing/role_home_resolver.dart';
@@ -15,6 +16,7 @@ import '../../../../core/services/firebase_backend_session_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/jordan_phone.dart';
 import '../../../../core/widgets/app_bar_back_button.dart';
+import '../store_controller.dart';
 
 enum _RegistrationStep { profile, otp }
 
@@ -178,9 +180,6 @@ class _RegisterPageState extends State<RegisterPage> {
       });
       return;
     }
-    if (mounted) {
-      setState(() => _submitting = false);
-    }
     final uid = user.uid;
     final fn = _firstName.text.trim();
     final ln = _lastName.text.trim();
@@ -234,7 +233,10 @@ class _RegisterPageState extends State<RegisterPage> {
         password: _password.text,
       );
       await user.linkWithCredential(credential);
-      debugPrint('[AUTH-AUDIT] linkWithCredential success uid=${user.uid} email=${user.email}');
+      await user.reload();
+      debugPrint(
+        '[AUTH-AUDIT] linkWithCredential success uid=${user.uid} email=${FirebaseAuth.instance.currentUser?.email}',
+      );
     } on FormatException catch (e, st) {
       // ignore: avoid_print
       print('ERROR TRIGGER LOCATION: register_page phoneToEmail before link: $e');
@@ -260,8 +262,23 @@ class _RegisterPageState extends State<RegisterPage> {
       postCreateWarning = 'تم إنشاء الحساب، لكن تعذر تفعيل تسجيل الدخول بكلمة المرور.';
     }
 
+    var sessionUser = FirebaseAuth.instance.currentUser;
+    if (sessionUser == null) {
+      if (mounted) {
+        setState(() {
+          _error = 'تعذر ربط الجلسة. أعد تسجيل الدخول.';
+          _submitting = false;
+        });
+      }
+      return;
+    }
     try {
-      await FirebaseBackendSessionService.syncWithBackend(firebaseUser: user);
+      try {
+        await sessionUser.getIdToken(true);
+      } on Object {
+        // best-effort refresh before session sync
+      }
+      await FirebaseBackendSessionService.syncWithBackend(firebaseUser: sessionUser);
     } on FirebaseBackendSessionException catch (e, st) {
       // Only the explicit backend rejection path — not arbitrary throws (avoids false warnings after good login).
       // ignore: avoid_print
@@ -276,17 +293,36 @@ class _RegisterPageState extends State<RegisterPage> {
       debugPrint('$st');
     }
 
+    try {
+      if (mounted) {
+        await context.read<StoreController>().syncLocalProfileWithFirebaseSession();
+      }
+    } on Object catch (e, st) {
+      // ignore: avoid_print
+      print('ERROR TRIGGER LOCATION: register_page.dart syncLocalProfileWithFirebaseSession: $e');
+      debugPrint('$st');
+    }
+
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('تم إنشاء الحساب بنجاح 🎉', style: GoogleFonts.tajawal())),
-    );
-    if (postCreateWarning != null) {
+    setState(() => _submitting = false);
+    if (postCreateWarning == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(postCreateWarning, style: GoogleFonts.tajawal())),
+        SnackBar(content: Text('تم إنشاء الحساب بنجاح 🎉', style: GoogleFonts.tajawal())),
+      );
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'تم إنشاء الحساب.\n$postCreateWarning',
+            style: GoogleFonts.tajawal(),
+          ),
+        ),
       );
     }
 
-    final Widget home = await resolveHomeForSignedInUser(user);
+    sessionUser = FirebaseAuth.instance.currentUser;
+    if (sessionUser == null) return;
+    final Widget home = await resolveHomeForSignedInUser(sessionUser);
     if (!mounted) return;
     HapticFeedback.lightImpact();
     Navigator.of(context).pushAndRemoveUntil<void>(

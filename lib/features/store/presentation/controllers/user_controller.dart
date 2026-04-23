@@ -110,8 +110,10 @@ class UserController extends ChangeNotifier {
     }
 
     var uname = PhoneAuthService.jordanUsernameFromFirebaseUser(u);
-    uname ??= _jordanUsernameFromSyntheticEmail(u.email);
-    if (uname == null) return;
+    if (uname == null || uname.isEmpty) {
+      uname = _jordanUsernameFromSyntheticEmail(u.email);
+    }
+    if (uname == null || uname.isEmpty) return;
     final email = syntheticEmailForPhone(uname);
     final saved = await _local.getProfile();
     final pts = await _local.loyaltyPointsForEmail(email);
