@@ -12,6 +12,7 @@ import '../../../../core/routing/role_home_resolver.dart';
 import '../../../../core/data/repositories/user_repository.dart';
 import '../../../../core/constants/jordan_cities.dart';
 import '../../../../core/firebase/phone_auth_service.dart';
+import '../../../../core/services/phone_password_auth_service.dart';
 import '../../../../core/services/firebase_backend_session_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/jordan_phone.dart';
@@ -220,46 +221,31 @@ class _RegisterPageState extends State<RegisterPage> {
       debugPrint('$st');
     }
 
-    // Link an email/password credential to the OTP-authenticated Firebase user
-    // so next logins can use phone+password via the same [phoneToEmail] as [PhonePasswordAuthService].
+    // Persist phone + password in backend after OTP verification.
     String? postCreateWarning;
     try {
       final localDigits = _phoneLocal.text.replaceAll(RegExp(r'\D'), '');
-      // نفس شكل [PhoneOtpLoginPage]: +962 + 9 أرقام — لا نعرض «البريد» في الواجهة.
-      final syntheticEmail = phoneToEmail('+962$localDigits');
-      debugPrint('[AUTH-AUDIT] signup link uses phoneToEmail (internal only): $syntheticEmail');
-      final credential = EmailAuthProvider.credential(
-        email: syntheticEmail,
+      await PhonePasswordAuthService.registerAfterOtp(
+        firebaseUser: user,
+        phone: '+962$localDigits',
         password: _password.text,
       );
-      await user.linkWithCredential(credential);
-      await user.reload();
-      debugPrint(
-        '[AUTH-AUDIT] linkWithCredential success uid=${user.uid} email=${FirebaseAuth.instance.currentUser?.email}',
-      );
+      debugPrint('[AUTH-AUDIT] registerAfterOtp success uid=${user.uid}');
     } on FormatException catch (e, st) {
       // ignore: avoid_print
-      print('ERROR TRIGGER LOCATION: register_page phoneToEmail before link: $e');
+      print('ERROR TRIGGER LOCATION: register_page invalid phone before /auth/register: $e');
       debugPrint('$st');
-      postCreateWarning = 'تعذر تجهيز ربط تسجيل الدخول بكلمة المرور. تحقق من رقم الجوال.';
-    } on FirebaseAuthException catch (e) {
-      debugPrint('[AUTH-AUDIT] linkWithCredential failed code=${e.code} message=${e.message}');
-      final c = e.code;
-      if (c == 'provider-already-linked' || c == 'auth/provider-already-linked') {
-        // مرتبط مسبقاً — تسجيل الدخول لاحقاً بـ phone+password يجب أن ينجح
-        debugPrint('[AUTH-AUDIT] linkWithCredential: provider already linked (ok)');
-      } else if (c == 'email-already-in-use' || c == 'auth/email-already-in-use' ||
-          c == 'credential-already-in-use' || c == 'auth/credential-already-in-use') {
-        postCreateWarning =
-            'هذا الرقم مرتبط بحساب آخر أو بكلمة مرور سابقة. جرّب تسجيل الدخول أو استعادة كلمة المرور.';
-      } else {
-        postCreateWarning = 'تم إنشاء الحساب، لكن تعذر تفعيل تسجيل الدخول بكلمة المرور.';
-      }
+      postCreateWarning = 'تعذر تجهيز التسجيل على الخادم. تحقق من رقم الجوال.';
+    } on PhonePasswordAuthException catch (e, st) {
+      // ignore: avoid_print
+      print('ERROR TRIGGER LOCATION: register_page registerAfterOtp failed: $e');
+      debugPrint('$st');
+      postCreateWarning = e.messageAr;
     } on Object catch (e, st) {
       // ignore: avoid_print
-      print('ERROR TRIGGER LOCATION: register_page.dart linkWithCredential (non-FirebaseAuth): $e');
+      print('ERROR TRIGGER LOCATION: register_page.dart /auth/register (non-FirebaseAuth): $e');
       debugPrint('$st');
-      postCreateWarning = 'تم إنشاء الحساب، لكن تعذر تفعيل تسجيل الدخول بكلمة المرور.';
+      postCreateWarning = 'تم التحقق من الهاتف، لكن تعذر حفظ الحساب على الخادم.';
     }
 
     var sessionUser = FirebaseAuth.instance.currentUser;

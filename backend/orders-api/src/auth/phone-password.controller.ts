@@ -8,6 +8,7 @@ import { PhonePasswordService } from './phone-password.service';
 type LoginBody = { phone?: string; password?: string };
 type SetPasswordBody = { phone?: string; password?: string };
 type BootstrapPasswordBody = { firebaseUid?: string; phone?: string; password?: string };
+type RegisterBody = { firebaseToken?: string; phone?: string; password?: string };
 
 /**
  * Phone + password endpoints:
@@ -22,6 +23,20 @@ type BootstrapPasswordBody = { firebaseUid?: string; phone?: string; password?: 
 export class PhonePasswordController {
   constructor(private readonly svc: PhonePasswordService) {}
 
+  /**
+   * OTP-first registration:
+   * Flutter verifies phone with Firebase OTP, then sends Firebase ID token + phone + password.
+   */
+  @Post('register')
+  @UseGuards(TenantContextGuard, ApiPolicyGuard)
+  @ApiPolicy({ auth: false, tenant: 'optional', rateLimit: { rpm: 20 } })
+  async register(@Body() body: RegisterBody) {
+    const firebaseToken = String(body?.firebaseToken ?? '').trim();
+    const phone = String(body?.phone ?? '').trim();
+    const password = String(body?.password ?? '');
+    return this.svc.registerWithFirebaseToken(firebaseToken, phone, password);
+  }
+
   /** Public phone + password login — issues a Firebase custom token. */
   @Post('login')
   @UseGuards(TenantContextGuard, ApiPolicyGuard)
@@ -32,6 +47,7 @@ export class PhonePasswordController {
     const result = await this.svc.loginWithPhonePassword(phone, password);
     return {
       ok: true,
+      token: result.token,
       customToken: result.customToken,
       firebaseUid: result.firebaseUid,
       phone: result.phone,

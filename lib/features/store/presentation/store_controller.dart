@@ -12,6 +12,7 @@ import '../../../core/firebase/phone_auth_service.dart';
 import '../../../core/firebase/users_repository.dart';
 import '../../../core/services/firebase_auth_header_provider.dart';
 import '../../../core/services/firebase_backend_session_service.dart';
+import '../../../core/services/phone_password_auth_service.dart';
 import '../../../core/utils/jordan_phone.dart';
 import '../../../core/utils/web_image_url.dart';
 import '../../../core/config/shipping_policy.dart';
@@ -448,17 +449,10 @@ class StoreController extends ChangeNotifier {
       isLoading = true;
       errorMessage = null;
       notifyListeners();
-      final email = phoneToEmail(localNineDigits);
-      final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
-      // ignore: avoid_print
-      print('🔥 USER SIGNED IN');
-      await FirebaseAuthHeaderProvider.requireIdToken(
-        reason: 'store_controller_signin_phone_password',
+      await PhonePasswordAuthService.signInWithPhonePassword(
+        phone: '+962${localNineDigits.trim()}',
+        password: password,
       );
-      debugPrint('[AUTH-HEADER] login_phone uid=${cred.user?.uid}');
-      await FirebaseBackendSessionService.syncWithBackend();
-      // ignore: avoid_print
-      print('🔥 BACKEND SYNC CALLED');
       await _local.setLocalBypassSession(false);
       await syncLocalProfileWithFirebaseSession();
       if (await user.isUserBannedInFirestore()) {
@@ -468,11 +462,8 @@ class StoreController extends ChangeNotifier {
       }
       await _syncFavoritesAfterAuth();
       return true;
-    } on FormatException {
-      errorMessage = 'رقم الجوال غير صالح.';
-      return false;
-    } on FirebaseAuthException {
-      errorMessage = 'رقم الجوال أو كلمة المرور غير صحيحة.';
+    } on PhonePasswordAuthException catch (e) {
+      errorMessage = e.messageAr;
       return false;
     } on Object {
       errorMessage = 'تعذر تسجيل الدخول حالياً.';
@@ -485,45 +476,9 @@ class StoreController extends ChangeNotifier {
 
   /// تسجيل دخول بالبريد وكلمة المرور (مناسب للويب).
   Future<bool> signInWithEmailPassword(String email, String password) async {
-    if (!Firebase.apps.isNotEmpty) {
-      errorMessage = 'يتطلب Firebase.';
-      notifyListeners();
-      return false;
-    }
-    try {
-      isLoading = true;
-      errorMessage = null;
-      notifyListeners();
-      final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(
-        email: email.trim(),
-        password: password,
-      );
-      // ignore: avoid_print
-      print('🔥 USER SIGNED IN');
-      await FirebaseAuthHeaderProvider.requireIdToken(reason: 'store_controller_signin_email_password');
-      debugPrint('[AUTH-HEADER] login_email uid=${cred.user?.uid}');
-      await FirebaseBackendSessionService.syncWithBackend();
-      // ignore: avoid_print
-      print('🔥 BACKEND SYNC CALLED');
-      await _local.setLocalBypassSession(false);
-      await syncLocalProfileWithFirebaseSession();
-      if (await user.isUserBannedInFirestore()) {
-        errorMessage = 'تم حظر حسابك. تواصل مع الدعم.';
-        await logout();
-        return false;
-      }
-      await _syncFavoritesAfterAuth();
-      return true;
-    } on FirebaseAuthException {
-      errorMessage = 'تعذر تسجيل الدخول. تحقق من البريد وكلمة المرور.';
-      return false;
-    } on Object {
-      errorMessage = 'تعذر تسجيل الدخول حالياً.';
-      return false;
-    } finally {
-      isLoading = false;
-      notifyListeners();
-    }
+    errorMessage = 'تم إيقاف تسجيل الدخول بالبريد. استخدم رقم الجوال وكلمة المرور.';
+    notifyListeners();
+    return false;
   }
 
   /// بعد التحقق بالهاتف (OTP): ربط كلمة المرور بحساب Firebase ثم حفظ الاسم وبريد التواصل في Firestore فقط هنا.
@@ -560,16 +515,25 @@ class StoreController extends ChangeNotifier {
       errorMessage = 'رقم الهاتف غير متاح من الجلسة.';
       return false;
     }
-    final email = phoneToEmail(uname);
+    final phone = '+$uname';
     final phoneLocal = uname.startsWith('962') && uname.length >= 12 ? uname.substring(3) : '';
     final displayName = '$fn $ln'.trim();
     try {
-      final cred = EmailAuthProvider.credential(email: email, password: password);
-      await u.linkWithCredential(cred);
-    } on FirebaseAuthException {
-      // Keep flow deterministic; backend validation handles detailed reason.
+      await PhonePasswordAuthService.registerAfterOtp(
+        firebaseUser: u,
+        phone: phone,
+        password: password,
+      );
+    } on PhonePasswordAuthException catch (e) {
+      errorMessage = e.messageAr;
+      notifyListeners();
+      return false;
+    } on Object {
+      errorMessage = 'تعذر حفظ كلمة المرور على الخادم.';
+      notifyListeners();
+      return false;
     }
-    await FirebaseAuthHeaderProvider.requireIdToken(reason: 'store_controller_signup_link_password');
+    await FirebaseAuthHeaderProvider.requireIdToken(reason: 'store_controller_signup_backend_register');
     try {
       // ignore: avoid_print
       print('🔥 USER SIGNED IN');
@@ -586,9 +550,9 @@ class StoreController extends ChangeNotifier {
     } on Object {
       debugPrint('[StoreController] updateDisplayName skipped');
     }
-    final pts = await _local.loyaltyPointsForEmail(email);
+    final pts = await _local.loyaltyPointsForEmail(syntheticEmailForPhone(uname));
     profile = CustomerProfile(
-      email: email,
+      email: syntheticEmailForPhone(uname),
       token: null,
       fullName: displayName,
       firstName: fn,

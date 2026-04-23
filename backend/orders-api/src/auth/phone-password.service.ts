@@ -9,6 +9,7 @@ import * as bcrypt from 'bcryptjs';
 import { Pool, type PoolClient } from 'pg';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { getFirebaseAuth } from './firebase-admin';
+import { signBackendSessionToken } from './session-token.util';
 
 const MIN_PASSWORD_LEN = 6;
 const MAX_PASSWORD_LEN = 128;
@@ -71,6 +72,11 @@ export class PhonePasswordService {
         );
         await client.query(
           `CREATE INDEX IF NOT EXISTS idx_users_phone ON users (phone) WHERE phone IS NOT NULL`,
+        );
+        await client.query(
+          `CREATE UNIQUE INDEX IF NOT EXISTS uq_users_phone_non_empty
+           ON users ((NULLIF(btrim(phone), '')))
+           WHERE phone IS NOT NULL AND btrim(phone) <> ''`,
         );
         this.schemaReady = true;
       }).catch((err) => {
@@ -181,13 +187,51 @@ export class PhonePasswordService {
   }
 
   /**
+   * Registration entrypoint used by Flutter after OTP verification.
+   * Verifies the Firebase ID token and persists phone + password hash in `users`.
+   */
+  async registerWithFirebaseToken(
+    firebaseTokenRaw: string,
+    phoneRaw: string,
+    password: string,
+  ): Promise<{ ok: true; firebaseUid: string; phone: string }> {
+    const firebaseToken = String(firebaseTokenRaw ?? '').trim();
+    if (!firebaseToken) throw new UnauthorizedException('firebase_token_required');
+    const phone = PhonePasswordService.normalizePhone(phoneRaw ?? '');
+    if (!phone) throw new BadRequestException('invalid_phone');
+    const pwd = this.validatePassword(password);
+
+    let decoded: DecodedIdToken;
+    try {
+      decoded = await getFirebaseAuth().verifyIdToken(firebaseToken);
+    } catch {
+      throw new UnauthorizedException('invalid_firebase_token');
+    }
+    const firebaseUid = String(decoded.uid ?? '').trim();
+    if (!firebaseUid) throw new UnauthorizedException('firebase_uid_missing');
+
+    // If token contains phone_number, ensure it matches the requested phone.
+    const tokenPhone = decoded.phone_number
+      ? PhonePasswordService.normalizePhone(String(decoded.phone_number))
+      : null;
+    if (tokenPhone && tokenPhone !== phone) {
+      throw new BadRequestException('phone_mismatch');
+    }
+
+    this.logger.log(`[PhonePassword] register_hit uid=${firebaseUid} phone=${phone}`);
+    await this.setPasswordForFirebaseUid(firebaseUid, phone, pwd);
+    this.logger.log(`[PhonePassword] register_insert_ok uid=${firebaseUid}`);
+    return { ok: true, firebaseUid, phone };
+  }
+
+  /**
    * Public (no Firebase token required). Verifies phone + password, returns a
    * fresh Firebase custom token the Flutter client can use to sign in.
    */
   async loginWithPhonePassword(
     phoneRaw: string,
     password: string,
-  ): Promise<{ customToken: string; firebaseUid: string; phone: string }> {
+  ): Promise<{ token: string; customToken: string; firebaseUid: string; phone: string }> {
     const phone = PhonePasswordService.normalizePhone(phoneRaw ?? '');
     if (!phone) throw new BadRequestException('invalid_phone');
     const pwd = String(password ?? '');
@@ -197,14 +241,14 @@ export class PhonePasswordService {
 
     const row = await this.withClient(async (client) => {
       const r = await client.query(
-        `SELECT firebase_uid, password_hash, is_active
+        `SELECT id, firebase_uid, password_hash, role, is_active
          FROM users
          WHERE phone = $1
          LIMIT 1`,
         [phone],
       );
       return r.rows[0] as
-        | { firebase_uid: string; password_hash: string | null; is_active: boolean }
+        | { id: string; firebase_uid: string; password_hash: string | null; role: string; is_active: boolean }
         | undefined;
     });
 
@@ -228,6 +272,9 @@ export class PhonePasswordService {
     if (!firebaseUid) {
       throw new ServiceUnavailableException('firebase_uid_missing');
     }
+    const userId = String(row.id ?? '').trim();
+    if (!userId) throw new ServiceUnavailableException('user_id_missing');
+    const role = String(row.role ?? 'customer').trim() || 'customer';
 
     let customToken: string;
     try {
@@ -239,6 +286,7 @@ export class PhonePasswordService {
     }
 
     this.logger.log(`[PhonePassword] login_ok uid=${firebaseUid} phone=${phone}`);
-    return { customToken, firebaseUid, phone };
+    const token = signBackendSessionToken({ uid: firebaseUid, userId, role });
+    return { token, customToken, firebaseUid, phone };
   }
 }
