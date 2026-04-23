@@ -94,6 +94,8 @@ class PhonePasswordAuthService {
     final uri = _authUri('/auth/login');
     final body = <String, dynamic>{'phone': normalized, 'password': password};
     // ignore: avoid_print
+    print('🔥 CALLING /auth/login');
+    // ignore: avoid_print
     print('🔥 FLUTTER LOGIN CALL: $uri body=$body');
     final res = await http
         .post(
@@ -104,6 +106,8 @@ class PhonePasswordAuthService {
         .timeout(const Duration(seconds: 20));
     // ignore: avoid_print
     print('🔥 FLUTTER LOGIN RESPONSE: ${res.statusCode} ${res.body}');
+    // ignore: avoid_print
+    print('🔥 LOGIN RESPONSE: ${res.body}');
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw const PhonePasswordAuthException('invalid_credentials', 'رقم الهاتف أو كلمة المرور غير صحيحة');
     }

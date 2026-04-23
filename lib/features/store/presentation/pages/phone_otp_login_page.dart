@@ -63,6 +63,10 @@ class _PhoneOtpLoginPageState extends State<PhoneOtpLoginPage> {
     });
 
     try {
+      // ignore: avoid_print
+      print('🔥 LOGIN BUTTON PRESSED');
+      // ignore: avoid_print
+      print('🔥 PHONE: $e164');
       await PhonePasswordAuthService.signInWithPhonePassword(
         phone: e164,
         password: password,
