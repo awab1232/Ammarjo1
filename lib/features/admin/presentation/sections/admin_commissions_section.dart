@@ -15,7 +15,7 @@ class AdminCommissionsSection extends StatefulWidget {
 }
 
 class _AdminCommissionsSectionState extends State<AdminCommissionsSection> {
-  final List<Map<String, dynamic>> _stores = [];
+  final List<Map<String, dynamic>> _stores = List<Map<String, dynamic>>.empty(growable: true);
   int? _nextOffset;
   bool _loading = true;
   bool _loadingMore = false;
@@ -199,6 +199,8 @@ class _StoreCommissionTileState extends State<_StoreCommissionTile> {
           );
           break;
         case AdminStoreCommissionPercentPatchResult.failed:
+          // ignore: avoid_print
+          print('ERROR TRIGGER LOCATION: admin_commissions_section _saveCommissionPercent failed result');
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(content: Text('تعذر الحفظ. تحقق من الصلاحيات أو حاول لاحقاً.', style: GoogleFonts.tajawal())),
           );
@@ -282,7 +284,9 @@ class _StoreCommissionTileState extends State<_StoreCommissionTile> {
         final totalPaid = (data?['totalPaid'] as num?)?.toDouble() ?? 0;
         final balance = (data?['balance'] as num?)?.toDouble() ?? 0;
         final orders = data?['orders'];
-        final orderList = orders is List ? orders : const [];
+        final orderList = orders is List
+            ? List<dynamic>.from(orders)
+            : List<dynamic>.empty(growable: true);
         var salesSum = 0.0;
         for (final o in orderList) {
           if (o is Map) {
