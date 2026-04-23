@@ -130,30 +130,39 @@ export class PhonePasswordService {
     await this.ensureSchema();
     const hash = await bcrypt.hash(pwd, BCRYPT_ROUNDS);
 
-    await this.withClient(async (client) => {
-      // Ensure the row exists for this firebase_uid (defensive — normally created by UsersService).
-      await client.query(
-        `INSERT INTO users (firebase_uid, role, is_active)
-         VALUES ($1, 'customer', TRUE)
-         ON CONFLICT (firebase_uid) DO NOTHING`,
-        [uid],
-      );
+    try {
+      await this.withClient(async (client) => {
+        // Ensure the row exists for this firebase_uid (defensive — normally created by UsersService).
+        await client.query(
+          `INSERT INTO users (firebase_uid, role, is_active)
+           VALUES ($1, 'customer', TRUE)
+           ON CONFLICT (firebase_uid) DO NOTHING`,
+          [uid],
+        );
 
-      // If another account already owns this phone, release it there first so a user can re-register.
-      await client.query(
-        `UPDATE users SET phone = NULL WHERE phone = $1 AND firebase_uid <> $2`,
-        [phone, uid],
-      );
+        // If another account already owns this phone, release it there first so a user can re-register.
+        await client.query(
+          `UPDATE users SET phone = NULL WHERE phone = $1 AND firebase_uid <> $2`,
+          [phone, uid],
+        );
 
-      await client.query(
-        `UPDATE users
-            SET phone = $2,
-                password_hash = $3,
-                password_updated_at = NOW()
-          WHERE firebase_uid = $1`,
-        [uid, phone, hash],
-      );
-    });
+        const up = await client.query(
+          `UPDATE users
+              SET phone = $2,
+                  password_hash = $3,
+                  password_updated_at = NOW()
+            WHERE firebase_uid = $1`,
+          [uid, phone, hash],
+        );
+        if ((up.rowCount ?? 0) < 1) {
+          throw new ServiceUnavailableException('user_update_failed');
+        }
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      this.logger.error(`[PhonePassword] set_password failed uid=${uid} phone=${phone}: ${msg}`);
+      throw err;
+    }
 
     this.logger.log(`[PhonePassword] set_password uid=${uid} phone=${phone}`);
     return { ok: true, phone };
@@ -218,8 +227,12 @@ export class PhonePasswordService {
       throw new BadRequestException('phone_mismatch');
     }
 
+    console.log('firebase_uid:', firebaseUid);
+    console.log('🔥 firebase_uid:', firebaseUid);
     this.logger.log(`[PhonePassword] register_hit uid=${firebaseUid} phone=${phone}`);
     await this.setPasswordForFirebaseUid(firebaseUid, phone, pwd);
+    console.log('USER INSERTED');
+    console.log('🔥 USER INSERTED');
     this.logger.log(`[PhonePassword] register_insert_ok uid=${firebaseUid}`);
     return { ok: true, firebaseUid, phone };
   }
@@ -231,7 +244,14 @@ export class PhonePasswordService {
   async loginWithPhonePassword(
     phoneRaw: string,
     password: string,
-  ): Promise<{ token: string; customToken: string; firebaseUid: string; phone: string }> {
+  ): Promise<{
+    token: string;
+    customToken: string;
+    firebaseUid: string;
+    phone: string;
+    role: string;
+    userId: string;
+  }> {
     const phone = PhonePasswordService.normalizePhone(phoneRaw ?? '');
     if (!phone) throw new BadRequestException('invalid_phone');
     const pwd = String(password ?? '');
@@ -285,8 +305,10 @@ export class PhonePasswordService {
       throw new ServiceUnavailableException('token_mint_failed');
     }
 
-    this.logger.log(`[PhonePassword] login_ok uid=${firebaseUid} phone=${phone}`);
+    console.log('USER ROLE:', role);
+    console.log('🔥 USER ROLE:', role);
+    this.logger.log(`[PhonePassword] login_ok uid=${firebaseUid} phone=${phone} role=${role}`);
     const token = signBackendSessionToken({ uid: firebaseUid, userId, role });
-    return { token, customToken, firebaseUid, phone };
+    return { token, customToken, firebaseUid, phone, role, userId };
   }
 }

@@ -8,6 +8,9 @@ import '../../../../core/services/phone_password_auth_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/jordan_phone.dart';
 import '../../../../core/widgets/app_bar_back_button.dart';
+import '../../../admin/presentation/pages/admin_dashboard_screen.dart';
+import '../../../maintenance/presentation/pages/technician_dashboard_page.dart';
+import '../../../store_owner/presentation/store_owner_dashboard.dart';
 import 'main_navigation_page.dart';
 import 'register_page.dart';
 
@@ -82,6 +85,31 @@ class _PhoneOtpLoginPageState extends State<PhoneOtpLoginPage> {
   }
 
   Future<void> _navigateAfterLogin() async {
+    final role = PhonePasswordAuthService.lastRole?.toLowerCase().trim() ?? '';
+    // ignore: avoid_print
+    print('🔥 USER ROLE: ${role.isEmpty ? 'customer' : role}');
+    if (!mounted) return;
+    if (role == 'admin' || role == 'system_internal') {
+      Navigator.of(context).pushAndRemoveUntil<void>(
+        MaterialPageRoute<void>(builder: (_) => const AdminDashboardScreen()),
+        (_) => false,
+      );
+      return;
+    }
+    if (role == 'store_owner') {
+      Navigator.of(context).pushAndRemoveUntil<void>(
+        MaterialPageRoute<void>(builder: (_) => const StoreOwnerDashboard()),
+        (_) => false,
+      );
+      return;
+    }
+    if (role == 'technician') {
+      Navigator.of(context).pushAndRemoveUntil<void>(
+        MaterialPageRoute<void>(builder: (_) => const TechnicianDashboardPage()),
+        (_) => false,
+      );
+      return;
+    }
     final user = FirebaseAuth.instance.currentUser;
     final Widget home =
         user != null ? await resolveHomeForSignedInUser(user) : const MainNavigationPage();

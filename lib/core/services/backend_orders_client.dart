@@ -13,6 +13,7 @@ import '../models/backend_auth_me.dart';
 import '../models/home_section.dart';
 import '../models/sub_category.dart';
 import '../models/marketplace_product.dart';
+import '../session/backend_identity_controller.dart';
 import '../../features/stores/domain/store_model.dart';
 import '../monitoring/sentry_safe.dart';
 import '../contracts/feature_state.dart';
@@ -27,6 +28,24 @@ typedef VersionedJsonList = ({JsonList items, int version});
 final class BackendOrdersClient {
   BackendOrdersClient._();
   static final BackendOrdersClient instance = BackendOrdersClient._();
+
+  bool _isAdminPath(String path) {
+    final p = path.trim().toLowerCase();
+    return p.startsWith('/admin/');
+  }
+
+  Future<bool> _allowPath(String path) async {
+    if (!_isAdminPath(path)) return true;
+    final identity = BackendIdentityController.instance;
+    if (identity.me == null) {
+      await identity.refresh();
+    }
+    final ok = identity.isBackendFullAdmin;
+    if (!ok) {
+      debugPrint('[BackendOrdersClient] blocked admin path for non-admin: $path');
+    }
+    return ok;
+  }
 
   Map<String, dynamic>? _safeMap(Map<String, dynamic>? source) {
     if (source == null) throw StateError('NULL_RESPONSE');
@@ -419,6 +438,7 @@ final class BackendOrdersClient {
     Duration timeout = const Duration(seconds: 20),
     required String flow,
   }) async {
+    if (!await _allowPath(path)) throw StateError('NULL_RESPONSE');
     final base = BackendOrdersConfig.baseUrl.trim();
     if (base.isEmpty) {
       BackendOrdersConfig.warnIfBackendBaseUrlMissing(flow);
@@ -479,6 +499,7 @@ final class BackendOrdersClient {
     Duration timeout = const Duration(seconds: 20),
     required String flow,
   }) async {
+    if (!await _allowPath(path)) throw StateError('NULL_RESPONSE');
     final base = BackendOrdersConfig.baseUrl.trim();
     if (base.isEmpty) {
       BackendOrdersConfig.warnIfBackendBaseUrlMissing(flow);
@@ -538,6 +559,7 @@ final class BackendOrdersClient {
     Duration timeout = const Duration(seconds: 20),
     required String flow,
   }) async {
+    if (!await _allowPath(path)) return false;
     final base = BackendOrdersConfig.baseUrl.trim();
     if (base.isEmpty) {
       BackendOrdersConfig.warnIfBackendBaseUrlMissing(flow);
@@ -585,6 +607,7 @@ final class BackendOrdersClient {
     Duration timeout = const Duration(seconds: 15),
     required String flow,
   }) async {
+    if (!await _allowPath(path)) throw StateError('NULL_RESPONSE');
     final base = BackendOrdersConfig.baseUrl.trim();
     if (base.isEmpty) {
       BackendOrdersConfig.warnIfBackendBaseUrlMissing(flow);

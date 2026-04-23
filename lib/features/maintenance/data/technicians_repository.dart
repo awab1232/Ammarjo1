@@ -1,4 +1,5 @@
 ﻿import '../../../core/contracts/feature_state.dart';
+import '../../../core/session/backend_identity_controller.dart';
 import '../../../core/services/backend_orders_client.dart';
 import '../domain/maintenance_models.dart';
 import 'technicians_seed_data.dart';
@@ -29,6 +30,10 @@ class TechniciansRepository {
 
   Future<FeatureState<List<TechnicianProfile>>> fetchTechnicians() async {
     try {
+      if (!BackendIdentityController.instance.isBackendFullAdmin) {
+        // Non-admin users must not hit `/admin/rest/technicians`.
+        return FeatureState.success(TechniciansSeedData.all);
+      }
       final rows = await BackendOrdersClient.instance.fetchAdminTechnicians(limit: 300, offset: 0);
       final fromApi = rows
           .map((e) => TechnicianProfile.fromMap((e['id'] ?? e['uid'] ?? '').toString(), e))

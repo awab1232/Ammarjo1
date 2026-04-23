@@ -1,4 +1,5 @@
 import { Body, Controller, Post, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
+import type { Request } from 'express';
 import { ApiPolicy } from '../gateway/api-policy.decorator';
 import { ApiPolicyGuard } from '../gateway/api-policy.guard';
 import { TenantContextGuard } from '../identity/tenant-context.guard';
@@ -9,6 +10,7 @@ type LoginBody = { phone?: string; password?: string };
 type SetPasswordBody = { phone?: string; password?: string };
 type BootstrapPasswordBody = { firebaseUid?: string; phone?: string; password?: string };
 type RegisterBody = { firebaseToken?: string; phone?: string; password?: string };
+type RequestWithHeaders = Request & { headers: Request['headers'] };
 
 /**
  * Phone + password endpoints:
@@ -30,10 +32,19 @@ export class PhonePasswordController {
   @Post('register')
   @UseGuards(TenantContextGuard, ApiPolicyGuard)
   @ApiPolicy({ auth: false, tenant: 'optional', rateLimit: { rpm: 20 } })
-  async register(@Body() body: RegisterBody) {
-    const firebaseToken = String(body?.firebaseToken ?? '').trim();
+  async register(@Req() req: RequestWithHeaders, @Body() body: RegisterBody) {
+    console.log('REGISTER HIT');
+    console.log('🔥 /auth/register HIT');
+    const firebaseTokenFromBody = String(body?.firebaseToken ?? '').trim();
+    const authHeader = req.headers.authorization;
+    const firebaseTokenFromHeader =
+      typeof authHeader === 'string' && authHeader.startsWith('Bearer ')
+        ? authHeader.slice('Bearer '.length).trim()
+        : '';
+    const firebaseToken = firebaseTokenFromHeader.length > 0 ? firebaseTokenFromHeader : firebaseTokenFromBody;
     const phone = String(body?.phone ?? '').trim();
     const password = String(body?.password ?? '');
+    console.log('🔥 phone:', phone);
     return this.svc.registerWithFirebaseToken(firebaseToken, phone, password);
   }
 
@@ -42,15 +53,18 @@ export class PhonePasswordController {
   @UseGuards(TenantContextGuard, ApiPolicyGuard)
   @ApiPolicy({ auth: false, tenant: 'optional', rateLimit: { rpm: 30 } })
   async login(@Body() body: LoginBody) {
+    console.log('LOGIN HIT');
     const phone = String(body?.phone ?? '').trim();
     const password = String(body?.password ?? '');
     const result = await this.svc.loginWithPhonePassword(phone, password);
     return {
       ok: true,
       token: result.token,
+      role: result.role,
+      userId: result.userId,
+      phone: result.phone,
       customToken: result.customToken,
       firebaseUid: result.firebaseUid,
-      phone: result.phone,
     };
   }
 

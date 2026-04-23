@@ -14,7 +14,9 @@ import {
 } from '@nestjs/common';
 import { ApiPolicy } from '../gateway/api-policy.decorator';
 import { ApiPolicyGuard } from '../gateway/api-policy.guard';
+import { RoleGuard } from '../identity/role.guard';
 import { RbacGuard } from '../identity/rbac.guard';
+import { Roles } from '../identity/roles.decorator';
 import { RequirePermissions } from '../identity/require-permissions.decorator';
 import { TenantContextGuard } from '../identity/tenant-context.guard';
 import { FirebaseAuthGuard, type RequestWithFirebase } from '../auth/firebase-auth.guard';
@@ -147,7 +149,8 @@ class PatchSubCategoryBody {
 }
 
 @Controller('admin/rest')
-@UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard, AdminOnlyGuard)
+@UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard, RoleGuard, AdminOnlyGuard)
+@Roles('admin')
 @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 60 } })
 export class AdminRestController {
   constructor(

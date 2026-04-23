@@ -225,9 +225,14 @@ class _RegisterPageState extends State<RegisterPage> {
     String? postCreateWarning;
     try {
       final localDigits = _phoneLocal.text.replaceAll(RegExp(r'\D'), '');
+      final phone = '+962$localDigits';
+      // ignore: avoid_print
+      print('🔥 CALLING /auth/register');
+      // ignore: avoid_print
+      print('🔥 phone: $phone');
       await PhonePasswordAuthService.registerAfterOtp(
         firebaseUser: user,
-        phone: '+962$localDigits',
+        phone: phone,
         password: _password.text,
       );
       debugPrint('[AUTH-AUDIT] registerAfterOtp success uid=${user.uid}');

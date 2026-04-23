@@ -22,6 +22,11 @@ class PhonePasswordAuthException implements Exception {
 
 class PhonePasswordAuthService {
   const PhonePasswordAuthService._();
+  static String? _lastRole;
+  static String? _lastUserId;
+
+  static String? get lastRole => _lastRole;
+  static String? get lastUserId => _lastUserId;
 
   static Uri _authUri(String path) {
     final base = BackendOrdersConfig.baseUrl.trim().replaceAll(RegExp(r'/$'), '');
@@ -49,16 +54,24 @@ class PhonePasswordAuthService {
       'password': password,
     };
     // ignore: avoid_print
-    print('🔥 FLUTTER REGISTER CALL: $uri body=$body');
+    print('🔥 CALLING /auth/register');
+    // ignore: avoid_print
+    print('🔥 phone: $normalized');
+    // ignore: avoid_print
+    print('🔥 REGISTER REQUEST BODY: $body');
     final res = await http
         .post(
           uri,
-          headers: const {'Content-Type': 'application/json', 'Accept': 'application/json'},
+          headers: <String, String>{
+            'Authorization': 'Bearer ${firebaseToken.trim()}',
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
           body: jsonEncode(body),
         )
         .timeout(const Duration(seconds: 20));
     // ignore: avoid_print
-    print('🔥 FLUTTER REGISTER RESPONSE: ${res.statusCode} ${res.body}');
+    print('🔥 REGISTER RESPONSE: ${res.statusCode} ${res.body}');
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw const PhonePasswordAuthException('register_failed', 'تعذر تسجيل الحساب على الخادم.');
     }
@@ -100,6 +113,12 @@ class PhonePasswordAuthService {
     }
     final m = Map<String, dynamic>.from(decoded);
     final customToken = (m['customToken'] ?? '').toString().trim();
+    final role = (m['role'] ?? '').toString().trim().toLowerCase();
+    final userId = (m['userId'] ?? '').toString().trim();
+    _lastRole = role.isNotEmpty ? role : null;
+    _lastUserId = userId.isNotEmpty ? userId : null;
+    // ignore: avoid_print
+    print('🔥 USER ROLE: ${_lastRole ?? 'customer'}');
     if (customToken.isEmpty) {
       throw const PhonePasswordAuthException('missing_custom_token', 'تعذر إكمال جلسة تسجيل الدخول.');
     }

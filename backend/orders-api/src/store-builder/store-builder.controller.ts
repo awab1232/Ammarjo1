@@ -2,7 +2,9 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@n
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { ApiPolicy } from '../gateway/api-policy.decorator';
 import { ApiPolicyGuard } from '../gateway/api-policy.guard';
+import { RoleGuard } from '../identity/role.guard';
 import { RbacGuard } from '../identity/rbac.guard';
+import { Roles } from '../identity/roles.decorator';
 import { RequirePermissions } from '../identity/require-permissions.decorator';
 import { TenantContextGuard } from '../identity/tenant-context.guard';
 import { StoreBuilderService } from './store-builder.service';
@@ -18,7 +20,8 @@ import {
 } from './store-builder.types';
 
 @Controller()
-@UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
+@UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard, RoleGuard)
+@Roles('store_owner', 'admin')
 @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 180 } })
 export class StoreBuilderController {
   constructor(private readonly storeBuilder: StoreBuilderService) {}

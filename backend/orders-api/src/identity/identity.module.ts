@@ -1,6 +1,7 @@
 import { Global, Module } from '@nestjs/common';
 import { UsersModule } from '../users/users.module';
 import { AccessControlService } from './access-control.service';
+import { RoleGuard } from './role.guard';
 import { RbacGuard } from './rbac.guard';
 import { TenantContextGuard } from './tenant-context.guard';
 import { TenantContextService } from './tenant-context.service';
@@ -8,7 +9,7 @@ import { TenantContextService } from './tenant-context.service';
 @Global()
 @Module({
   imports: [UsersModule],
-  providers: [TenantContextService, TenantContextGuard, RbacGuard, AccessControlService],
-  exports: [TenantContextService, RbacGuard, TenantContextGuard, AccessControlService],
+  providers: [TenantContextService, TenantContextGuard, RbacGuard, RoleGuard, AccessControlService],
+  exports: [TenantContextService, RbacGuard, TenantContextGuard, RoleGuard, AccessControlService],
 })
 export class IdentityModule {}

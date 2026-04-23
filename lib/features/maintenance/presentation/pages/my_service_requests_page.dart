@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shimmer/shimmer.dart';
 
 import '../../../../core/contracts/feature_state.dart';
+import '../../../../core/session/backend_identity_controller.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_bar_back_button.dart';
 import '../../../../core/widgets/ammar_cached_image.dart';
@@ -111,6 +112,7 @@ class _MyServiceRequestsPageState extends State<MyServiceRequestsPage> {
 
   Future<void> _loadTechnicians() async {
     if (_techLoading) return;
+    if (!BackendIdentityController.instance.isBackendFullAdmin) return;
     _techLoading = true;
     try {
       final items = await BackendOrdersClient.instance.fetchAdminTechnicians(limit: 200, offset: 0);
