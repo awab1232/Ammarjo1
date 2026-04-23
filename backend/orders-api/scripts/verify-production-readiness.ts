@@ -40,9 +40,9 @@ function loadStagingEnvIfPresent(): void {
 }
 
 async function verifyDb(): Promise<Check> {
-  const connectionString = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
+  const connectionString = process.env.DATABASE_URL?.trim();
   if (!connectionString) {
-    return { name: 'database_connection', ok: false, reason: 'DATABASE_URL/ORDERS_DATABASE_URL missing' };
+    return { name: 'database_connection', ok: false, reason: 'DATABASE_URL missing' };
   }
   const client = new Client(buildPgClientConfig(connectionString));
   try {

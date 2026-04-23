@@ -261,7 +261,7 @@ export class TelegramSqlService {
 
   private getFallbackPool(): Pool | null {
     if (this.fallbackPool) return this.fallbackPool;
-    const url = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
+    const url = process.env.DATABASE_URL?.trim();
     if (!url) return null;
     try {
       this.fallbackPool = new Pool({

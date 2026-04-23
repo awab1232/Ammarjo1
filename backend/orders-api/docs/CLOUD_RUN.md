@@ -36,7 +36,7 @@ Set these in **Cloud Run → Edit & deploy new revision → Variables & secrets*
 
 | Name | Purpose |
 |------|---------|
-| `DATABASE_URL` | PostgreSQL (or per-region URLs if using `ORDERS_DATABASE_URL_*`). |
+| `DATABASE_URL` | PostgreSQL connection URL. |
 | `REDIS_URL` | Redis for cache / locks (if enabled). |
 | `ALGOLIA_APP_ID`, `ALGOLIA_*` | Algolia catalog search. |
 | `SEARCH_INTERNAL_API_KEY` | Protects internal routes including `GET /internal/ops/global-health` (`x-internal-api-key`). |

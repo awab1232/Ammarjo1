@@ -24,9 +24,9 @@ function loadStagingEnvIfPresent(): void {
 
 async function main(): Promise<void> {
   loadStagingEnvIfPresent();
-  const connectionString = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
+  const connectionString = process.env.DATABASE_URL?.trim();
   if (!connectionString) {
-    logJson('outbox_verification_failed', { reason: 'DATABASE_URL/ORDERS_DATABASE_URL missing' });
+    logJson('outbox_verification_failed', { reason: 'DATABASE_URL missing' });
     process.exit(1);
   }
 

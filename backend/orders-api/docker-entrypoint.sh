@@ -10,7 +10,7 @@
 set -u
 
 RUN_DB_BOOTSTRAP_ON_START="${RUN_DB_BOOTSTRAP_ON_START:-1}"
-DB_URL="${DATABASE_URL:-${ORDERS_DATABASE_URL:-}}"
+DB_URL="${DATABASE_URL:-}"
 
 run_sql_migrations() {
   if [ "$RUN_DB_BOOTSTRAP_ON_START" = "0" ]; then
@@ -19,7 +19,7 @@ run_sql_migrations() {
   fi
 
   if [ -z "$DB_URL" ]; then
-    echo "[entrypoint] WARN: DATABASE_URL / ORDERS_DATABASE_URL not set — skipping SQL migrations."
+    echo "[entrypoint] WARN: DATABASE_URL not set — skipping SQL migrations."
     return 0
   fi
 

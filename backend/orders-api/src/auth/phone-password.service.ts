@@ -31,7 +31,7 @@ export class PhonePasswordService {
   private schemaPromise: Promise<void> | null = null;
 
   constructor() {
-    const url = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
+    const url = process.env.DATABASE_URL?.trim();
     this.pool = url
       ? new Pool(
           buildPgPoolConfig(url, {

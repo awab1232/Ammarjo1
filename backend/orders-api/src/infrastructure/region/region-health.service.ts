@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { Pool } from 'pg';
+import { buildPgPoolConfig } from '../database/pg-ssl';
 
 export type RegionHealthMap = {
   JO: boolean;
@@ -7,7 +8,7 @@ export type RegionHealthMap = {
 };
 
 /**
- * Per-country PostgreSQL reachability (JO / EG URLs). If a URL is not configured, that side is
+ * Per-country PostgreSQL reachability (JO / EG checks over the same DATABASE_URL). If URL is not configured, that side is
  * treated as healthy (no data → safe default).
  */
 @Injectable()
@@ -17,30 +18,28 @@ export class RegionHealthService implements OnModuleDestroy {
   private egPool: Pool | null = null;
 
   constructor() {
-    const jo =
-      process.env.ORDERS_DATABASE_URL_JO?.trim() ||
-      process.env.DATABASE_URL_JO?.trim();
-    const eg =
-      process.env.ORDERS_DATABASE_URL_EG?.trim() ||
-      process.env.DATABASE_URL_EG?.trim();
+    const jo = process.env.DATABASE_URL?.trim();
+    const eg = process.env.DATABASE_URL?.trim();
     if (jo) {
       try {
-        this.joPool = new Pool({
-          connectionString: jo,
-          max: 1,
-          idleTimeoutMillis: 10_000,
-        });
+        this.joPool = new Pool(
+          buildPgPoolConfig(jo, {
+            max: 1,
+            idleTimeoutMillis: 10_000,
+          }),
+        );
       } catch (e) {
         this.logger.warn(`[RegionHealth] JO pool init: ${e instanceof Error ? e.message : String(e)}`);
       }
     }
     if (eg) {
       try {
-        this.egPool = new Pool({
-          connectionString: eg,
-          max: 1,
-          idleTimeoutMillis: 10_000,
-        });
+        this.egPool = new Pool(
+          buildPgPoolConfig(eg, {
+            max: 1,
+            idleTimeoutMillis: 10_000,
+          }),
+        );
       } catch (e) {
         this.logger.warn(`[RegionHealth] EG pool init: ${e instanceof Error ? e.message : String(e)}`);
       }

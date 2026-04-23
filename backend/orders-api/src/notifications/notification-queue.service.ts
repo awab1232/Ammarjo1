@@ -19,7 +19,9 @@ export class NotificationQueueService {
   private schemaEnsured = false;
   private schemaEnsureInFlight: Promise<void> | null = null;
 
-  constructor(private readonly pg: OrdersPgService) {}
+  constructor(private readonly pg: OrdersPgService) {
+    console.log('QUEUE DB USING DATABASE_URL');
+  }
 
   private async ensureSchema(): Promise<void> {
     if (this.schemaEnsured) return;
@@ -73,7 +75,7 @@ export class NotificationQueueService {
       });
       if (out == null) {
         const msg =
-          'notifications_queue: no PostgreSQL write client (set DATABASE_URL / ORDERS_DATABASE_URL, or run migration 036_notifications_queue_and_devices.sql)';
+          'notifications_queue: no PostgreSQL write client (set DATABASE_URL, or run migration 036_notifications_queue_and_devices.sql)';
         this.logger.warn(msg);
         throw new Error(msg);
       }

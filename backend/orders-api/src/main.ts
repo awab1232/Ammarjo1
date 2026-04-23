@@ -48,7 +48,7 @@ function initSentry(): void {
 
 async function bootstrap() {
   console.log('[BUILD-CHECK] New build is running');
-  const rawDbUrl = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim() || '';
+  const rawDbUrl = process.env.DATABASE_URL?.trim() || '';
   const dbUrl =
     (rawDbUrl.startsWith('"') && rawDbUrl.endsWith('"')) ||
     (rawDbUrl.startsWith("'") && rawDbUrl.endsWith("'"))
@@ -109,7 +109,7 @@ async function bootstrap() {
   }
 
   let app: INestApplication;
-  console.log('[DB-CONNECTION]', process.env.DATABASE_URL || process.env.ORDERS_DATABASE_URL || '');
+  console.log('[DB-CONNECTION]', process.env.DATABASE_URL || '');
   try {
     app = await NestFactory.create(AppModule, { abortOnError: false });
   } catch (e) {

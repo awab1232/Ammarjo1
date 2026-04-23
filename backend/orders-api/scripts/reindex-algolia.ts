@@ -67,9 +67,9 @@ async function main() {
   const storesIndexName = requiredEnv('ALGOLIA_INDEX_STORES');
   const categoriesIndexName = process.env.ALGOLIA_INDEX_CATEGORIES?.trim() || `${storesIndexName}_categories`;
 
-  const databaseUrl = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
+  const databaseUrl = process.env.DATABASE_URL?.trim();
   if (!databaseUrl) {
-    throw new Error('DATABASE_URL or ORDERS_DATABASE_URL is required');
+    throw new Error('DATABASE_URL is required');
   }
 
   const client = algoliasearch(appId, apiKey);

@@ -14,9 +14,9 @@ export function logProductionEnvWarnings(): void {
 
   const hasDb =
     !!process.env.DATABASE_URL?.trim() ||
-    !!process.env.ORDERS_DATABASE_URL?.trim();
+    !!process.env.DATABASE_URL?.trim();
   if (!hasDb) {
-    missing.push('DATABASE_URL or ORDERS_DATABASE_URL');
+    missing.push('DATABASE_URL');
   }
 
   if (!process.env.SEARCH_INTERNAL_API_KEY?.trim() && !process.env.INTERNAL_API_KEY?.trim()) {
@@ -49,13 +49,13 @@ export function enforceProductionSafetyOrThrow(): void {
   }
 
   const failures: string[] = [];
-  const hasDb = !!process.env.DATABASE_URL?.trim() || !!process.env.ORDERS_DATABASE_URL?.trim();
+  const hasDb = !!process.env.DATABASE_URL?.trim() || !!process.env.DATABASE_URL?.trim();
 
   if (!process.env.SEARCH_INTERNAL_API_KEY?.trim() && !process.env.INTERNAL_API_KEY?.trim()) {
     failures.push('SEARCH_INTERNAL_API_KEY or INTERNAL_API_KEY is required in production');
   }
   if (!hasDb) {
-    failures.push('DATABASE_URL or ORDERS_DATABASE_URL is required in production');
+    failures.push('DATABASE_URL is required in production');
   }
   mustBeBooleanEnv('USE_BACKEND_STORE_READS', failures);
   mustBeBooleanEnv('USE_BACKEND_PRODUCTS_READS', failures);

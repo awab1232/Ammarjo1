@@ -1,6 +1,6 @@
 -- Production database hardening (PostgreSQL).
 -- Apply during a maintenance window. Review for conflicts with existing constraints.
--- CONNECTION: same database as DATABASE_URL / ORDERS_DATABASE_URL.
+-- CONNECTION: same database as DATABASE_URL.
 
 -- Lookup indexes (IF NOT EXISTS is safe to re-run)
 CREATE INDEX IF NOT EXISTS idx_users_email_lower ON users (lower(trim(email)))

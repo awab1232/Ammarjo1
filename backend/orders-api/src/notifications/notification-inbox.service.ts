@@ -19,7 +19,7 @@ export class NotificationInboxService {
   private readonly pool: Pool | null;
 
   constructor() {
-    const url = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
+    const url = process.env.DATABASE_URL?.trim();
     this.pool = url
       ? new Pool(
           buildPgPoolConfig(url, {

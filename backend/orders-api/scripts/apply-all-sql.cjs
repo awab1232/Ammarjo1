@@ -50,9 +50,9 @@ async function recordApplied(sql, filename) {
 }
 
 async function main() {
-  const url = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
+  const url = process.env.DATABASE_URL?.trim();
   if (!url) {
-    console.error('Missing DATABASE_URL or ORDERS_DATABASE_URL');
+    console.error('Missing DATABASE_URL');
     process.exit(1);
   }
 

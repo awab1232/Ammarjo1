@@ -46,7 +46,7 @@ export class ServiceRequestsService {
     private readonly matching: MatchingService,
     @Optional() private readonly tenant?: TenantContextService,
   ) {
-    const url = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
+    const url = process.env.DATABASE_URL?.trim();
     this.pool = url
       ? new Pool({
           connectionString: url,

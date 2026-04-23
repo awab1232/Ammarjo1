@@ -20,10 +20,10 @@ export class StoreCommissionsService {
   private commissionSchemaReady = false;
 
   constructor(@Optional() private readonly tenant?: TenantContextService) {
-    const connectionString = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
+    const connectionString = process.env.DATABASE_URL?.trim();
     if (!connectionString) {
       this.logger.error(
-        'DATABASE_URL / ORDERS_DATABASE_URL missing — StoreCommissionsService DB queries will fail at runtime until env is set.',
+        'DATABASE_URL missing — StoreCommissionsService DB queries will fail at runtime until env is set.',
       );
     }
     this.pool = new Pool({ connectionString });

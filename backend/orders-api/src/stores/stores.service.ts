@@ -17,14 +17,14 @@ export class StoresService {
     private readonly algoliaSync: AlgoliaSyncService,
     @Optional() private readonly tenant?: TenantContextService,
   ) {
-    const connectionString = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
+    const connectionString = process.env.DATABASE_URL?.trim();
     if (!connectionString) {
       // Fail-lazy: log at boot so operators see the problem in Railway logs,
       // but do NOT throw — throwing here would kill `NestFactory.create` and
       // prevent `/health` from ever responding, causing platform restart loops
       // without surfacing the root cause.
       this.logger.error(
-        'DATABASE_URL / ORDERS_DATABASE_URL missing — StoresService DB queries will fail at runtime until env is set.',
+        'DATABASE_URL missing — StoresService DB queries will fail at runtime until env is set.',
       );
     }
     this.pool = new Pool({ connectionString });

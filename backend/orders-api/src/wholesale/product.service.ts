@@ -12,7 +12,7 @@ export class ProductService {
   private fallbackHits = 0;
 
   constructor(private readonly wholesale: WholesaleService) {
-    const url = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
+    const url = process.env.DATABASE_URL?.trim();
     this.pool = url
       ? new Pool({
           connectionString: url,

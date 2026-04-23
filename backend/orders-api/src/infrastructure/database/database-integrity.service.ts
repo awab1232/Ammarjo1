@@ -20,7 +20,7 @@ export class DatabaseIntegrityService implements OnModuleInit {
       this.logger.warn('SKIP_DB_INTEGRITY_CHECK=1 — database constraint verification skipped');
       return;
     }
-    const url = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
+    const url = process.env.DATABASE_URL?.trim();
     if (!url) {
       return;
     }

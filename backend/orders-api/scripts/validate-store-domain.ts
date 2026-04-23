@@ -1,8 +1,8 @@
 import { Pool } from 'pg';
 
 async function main() {
-  const url = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
-  if (!url) throw new Error('DATABASE_URL or ORDERS_DATABASE_URL is required');
+  const url = process.env.DATABASE_URL?.trim();
+  if (!url) throw new Error('DATABASE_URL is required');
 
   const pool = new Pool({ connectionString: url, max: 4, idleTimeoutMillis: 30_000 });
   const client = await pool.connect();

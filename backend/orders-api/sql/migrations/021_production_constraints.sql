@@ -1,6 +1,6 @@
 -- Production integrity constraints (PostgreSQL).
 -- Apply during a maintenance window after reviewing data (orphans, duplicate emails).
--- CONNECTION: same database as DATABASE_URL / ORDERS_DATABASE_URL.
+-- CONNECTION: same database as DATABASE_URL.
 
 -- -----------------------------------------------------------------------------
 -- 1) Unique non-empty emails (normalized by lower(trim(...)) for lookups)

@@ -23,7 +23,7 @@ function loadStagingEnvIfPresent(): void {
 }
 
 async function dbHealthy(): Promise<boolean> {
-  const connectionString = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
+  const connectionString = process.env.DATABASE_URL?.trim();
   if (!connectionString) return false;
   const client = new Client({ connectionString });
   try {

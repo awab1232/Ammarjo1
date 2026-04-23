@@ -10,9 +10,7 @@ The application **does not** embed the Google Cloud client library for Secret Ma
 
 | Variable / secret name | Criticality | Purpose |
 |------------------------|-------------|---------|
-| `DATABASE_URL` or `ORDERS_DATABASE_URL` | **Critical** (production) | PostgreSQL connection for orders, outbox, catalog (single-URL setups). |
-| `ORDERS_DATABASE_URL_JO` / `ORDERS_DATABASE_URL_EG` (or `DATABASE_URL_JO` / `DATABASE_URL_EG`) | **Optional** | Multi-region Postgres URLs when `ENABLE_MULTI_REGION=1`. |
-| `DATABASE_READ_REPLICA_URL` / per-region replica vars | **Optional** | Read replicas when DB read routing is enabled. |
+| `DATABASE_URL` | **Critical** (production) | PostgreSQL connection for orders, outbox, catalog. |
 | `REDIS_URL` | **Optional** (recommended if Redis features on) | Cache, rate limits, distributed locks when `REDIS_ENABLED=1`. |
 | `ALGOLIA_APP_ID` | **Optional** | Product search — required for Algolia-backed search. |
 | `ALGOLIA_SEARCH_API_KEY` | **Optional** | Server-side search with search-only key. |

@@ -13,7 +13,7 @@ export class CatalogPgService implements OnModuleDestroy, IProductService {
   private pool: Pool | null = null;
 
   constructor() {
-    const url = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
+    const url = process.env.DATABASE_URL?.trim();
     if (!url) {
       return;
     }

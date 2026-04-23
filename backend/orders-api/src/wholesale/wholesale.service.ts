@@ -41,7 +41,7 @@ export class WholesaleService {
     private readonly variants: ProductVariantsService,
     @Optional() private readonly tenant?: TenantContextService,
   ) {
-    const url = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
+    const url = process.env.DATABASE_URL?.trim();
     this.pool = url
       ? new Pool({
           connectionString: url,

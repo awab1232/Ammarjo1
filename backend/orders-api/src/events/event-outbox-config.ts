@@ -3,7 +3,7 @@ export function isEventOutboxEnabled(): boolean {
   if (process.env.DOMAIN_EVENTS_OUTBOX?.trim() !== '1') {
     return false;
   }
-  const url = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
+  const url = process.env.DATABASE_URL?.trim();
   return Boolean(url);
 }
 

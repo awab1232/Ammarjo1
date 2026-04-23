@@ -10,7 +10,7 @@ import { mergeStoredOrderWithDeliveryColumns } from './delivery-order-merge';
 import type { StoredOrder } from './order-types';
 
 /**
- * PostgreSQL persistence for orders. Disabled when DATABASE_URL / ORDERS_DATABASE_URL is unset.
+ * PostgreSQL persistence for orders. Disabled when DATABASE_URL is unset.
  * Optional multi-country pools when ENABLE_MULTI_REGION=1 (see DataRoutingService).
  */
 @Injectable()
@@ -32,7 +32,7 @@ export class OrdersPgService implements OnModuleDestroy {
     if (this.dbRouter?.isActive()) {
       return;
     }
-    const url = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
+    const url = process.env.DATABASE_URL?.trim();
     if (!url) {
       return;
     }
@@ -54,9 +54,9 @@ export class OrdersPgService implements OnModuleDestroy {
   }
 
   private initMultiCountryPools(): void {
-    const jo = process.env.ORDERS_DATABASE_URL_JO?.trim() || process.env.DATABASE_URL_JO?.trim();
-    const eg = process.env.ORDERS_DATABASE_URL_EG?.trim() || process.env.DATABASE_URL_EG?.trim();
-    const fallback = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
+    const jo = process.env.DATABASE_URL?.trim();
+    const eg = process.env.DATABASE_URL?.trim();
+    const fallback = process.env.DATABASE_URL?.trim();
 
     const addPrimary = (url: string, key: string) => {
       try {
@@ -91,12 +91,12 @@ export class OrdersPgService implements OnModuleDestroy {
     }
 
     const rjo =
-      process.env.ORDERS_DATABASE_READ_REPLICA_URL_JO?.trim() ||
-      process.env.DATABASE_READ_REPLICA_URL_JO?.trim();
+      process.env.DATABASE_URL?.trim() ||
+      process.env.DATABASE_URL?.trim();
     const reg =
-      process.env.ORDERS_DATABASE_READ_REPLICA_URL_EG?.trim() ||
-      process.env.DATABASE_READ_REPLICA_URL_EG?.trim();
-    const rfb = process.env.DATABASE_READ_REPLICA_URL?.trim() || process.env.ORDERS_DATABASE_READ_REPLICA_URL?.trim();
+      process.env.DATABASE_URL?.trim() ||
+      process.env.DATABASE_URL?.trim();
+    const rfb = process.env.DATABASE_URL?.trim();
 
     const addReplica = (url: string, key: string) => {
       try {

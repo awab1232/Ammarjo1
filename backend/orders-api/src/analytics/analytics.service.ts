@@ -21,7 +21,7 @@ export class AnalyticsService {
       this.pool = null;
       return;
     }
-    const url = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
+    const url = process.env.DATABASE_URL?.trim();
     this.pool = url
       ? new Pool({
           connectionString: url,
