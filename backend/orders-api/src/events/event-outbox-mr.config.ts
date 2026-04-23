@@ -35,10 +35,8 @@ export function eventOutboxForeignRegionStaleMs(): number {
 
 /** Optional read replica URL for dashboard-style queries (falls back to primary on error). */
 export function eventOutboxReadReplicaUrl(): string | undefined {
-  const u =
-    process.env.DATABASE_URL?.trim() ||
-    process.env.DATABASE_URL?.trim();
-  return u || undefined;
+  const u = process.env.DATABASE_URL?.trim();
+  return u != null && u !== '' ? u : undefined;
 }
 
 export function eventOutboxReadReplicaPoolMax(): number {

@@ -48,15 +48,17 @@ function initSentry(): void {
 
 async function bootstrap() {
   console.log('[BUILD-CHECK] New build is running');
-  const rawDbUrl = process.env.DATABASE_URL?.trim() || '';
+  const rawDbUrl = process.env.DATABASE_URL?.trim();
   const dbUrl =
-    (rawDbUrl.startsWith('"') && rawDbUrl.endsWith('"')) ||
-    (rawDbUrl.startsWith("'") && rawDbUrl.endsWith("'"))
+    rawDbUrl != null &&
+    ((rawDbUrl.startsWith('"') && rawDbUrl.endsWith('"')) ||
+      (rawDbUrl.startsWith("'") && rawDbUrl.endsWith("'")))
       ? rawDbUrl.slice(1, -1).trim()
-      : rawDbUrl;
+      : (rawDbUrl ?? '');
   if (!process.env.DATABASE_URL?.trim() && dbUrl) {
     process.env.DATABASE_URL = dbUrl;
   }
+  console.log('USING DATABASE_URL:', process.env.DATABASE_URL?.slice(0, 50));
   const safeUrl = dbUrl.replace(/:(.*?)@/, ':****@');
   console.log('[DB-CONNECTION]', safeUrl);
   try {
@@ -109,7 +111,7 @@ async function bootstrap() {
   }
 
   let app: INestApplication;
-  console.log('[DB-CONNECTION]', process.env.DATABASE_URL || '');
+  console.log('[DB-CONNECTION]', process.env.DATABASE_URL ?? '');
   try {
     app = await NestFactory.create(AppModule, { abortOnError: false });
   } catch (e) {

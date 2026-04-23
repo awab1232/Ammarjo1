@@ -3,8 +3,6 @@ export function isDbReadRoutingEnabled(): boolean {
 }
 
 export function databaseReadReplicaUrl(): string | undefined {
-  const u =
-    process.env.DATABASE_URL?.trim() ||
-    process.env.DATABASE_URL?.trim();
-  return u || undefined;
+  const u = process.env.DATABASE_URL?.trim();
+  return u != null && u !== '' ? u : undefined;
 }

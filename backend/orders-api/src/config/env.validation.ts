@@ -12,9 +12,7 @@ export function logProductionEnvWarnings(): void {
 
   const missing: string[] = [];
 
-  const hasDb =
-    !!process.env.DATABASE_URL?.trim() ||
-    !!process.env.DATABASE_URL?.trim();
+  const hasDb = !!process.env.DATABASE_URL?.trim();
   if (!hasDb) {
     missing.push('DATABASE_URL');
   }
@@ -49,7 +47,7 @@ export function enforceProductionSafetyOrThrow(): void {
   }
 
   const failures: string[] = [];
-  const hasDb = !!process.env.DATABASE_URL?.trim() || !!process.env.DATABASE_URL?.trim();
+  const hasDb = !!process.env.DATABASE_URL?.trim();
 
   if (!process.env.SEARCH_INTERNAL_API_KEY?.trim() && !process.env.INTERNAL_API_KEY?.trim()) {
     failures.push('SEARCH_INTERNAL_API_KEY or INTERNAL_API_KEY is required in production');

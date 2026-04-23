@@ -90,12 +90,8 @@ export class OrdersPgService implements OnModuleDestroy {
       }
     }
 
-    const rjo =
-      process.env.DATABASE_URL?.trim() ||
-      process.env.DATABASE_URL?.trim();
-    const reg =
-      process.env.DATABASE_URL?.trim() ||
-      process.env.DATABASE_URL?.trim();
+    const rjo = process.env.DATABASE_URL?.trim();
+    const reg = process.env.DATABASE_URL?.trim();
     const rfb = process.env.DATABASE_URL?.trim();
 
     const addReplica = (url: string, key: string) => {
