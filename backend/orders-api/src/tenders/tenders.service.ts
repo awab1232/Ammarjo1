@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
   ServiceUnavailableException,
@@ -271,24 +272,66 @@ export class TendersService {
     });
   }
 
-  async getById(id: string): Promise<Record<string, unknown>> {
+  async getById(id: string, actorUid: string, isAdmin = false): Promise<Record<string, unknown>> {
     if (!id.trim()) throw new BadRequestException('missing_tender_id');
+    const actor = actorUid.trim();
+    if (!actor) throw new ForbiddenException('forbidden');
     return this.withClient(async (client) => {
       const q = await client.query(
         `SELECT id::text, customer_uid, customer_name, category, description, city,
                 image_url, store_type_id::text AS store_type_id, store_type_key, store_type_name,
-                status, accepted_offer_id::text AS accepted_offer_id, created_at, updated_at
+                status, accepted_offer_id::text AS accepted_offer_id, created_at, updated_at,
+                EXISTS (
+                  SELECT 1
+                  FROM tender_offers o
+                  WHERE o.tender_id = tenders.id
+                    AND o.store_owner_uid = $2
+                ) AS has_actor_offer
          FROM tenders WHERE id = $1::uuid`,
-        [id.trim()],
+        [id.trim(), actor],
       );
       if (q.rows.length === 0) throw new NotFoundException('tender_not_found');
-      return this.rowToTender(q.rows[0] as Record<string, unknown>);
+      const row = q.rows[0] as Record<string, unknown>;
+      const isOwner = String(row['customer_uid'] ?? '').trim() === actor;
+      const hasActorOffer = row['has_actor_offer'] === true;
+      if (!isAdmin && !isOwner && !hasActorOffer) {
+        throw new ForbiddenException('forbidden');
+      }
+      return this.rowToTender(row);
     });
   }
 
-  async listOffers(tenderId: string): Promise<{ items: Record<string, unknown>[] }> {
+  async listOffers(
+    tenderId: string,
+    actorUid: string,
+    isAdmin = false,
+  ): Promise<{ items: Record<string, unknown>[] }> {
     if (!tenderId.trim()) throw new BadRequestException('missing_tender_id');
+    const actor = actorUid.trim();
+    if (!actor) throw new ForbiddenException('forbidden');
     return this.withClient(async (client) => {
+      const tender = await client.query(
+        `SELECT customer_uid
+         FROM tenders
+         WHERE id = $1::uuid
+         LIMIT 1`,
+        [tenderId.trim()],
+      );
+      if (tender.rows.length === 0) throw new NotFoundException('tender_not_found');
+      const isOwner = String(tender.rows[0]?.['customer_uid'] ?? '').trim() === actor;
+      if (!isAdmin && !isOwner) {
+        const actorOffer = await client.query(
+          `SELECT 1
+           FROM tender_offers
+           WHERE tender_id = $1::uuid
+             AND store_owner_uid = $2
+           LIMIT 1`,
+          [tenderId.trim(), actor],
+        );
+        if (actorOffer.rows.length === 0) {
+          throw new ForbiddenException('forbidden');
+        }
+      }
       const q = await client.query(
         `SELECT id::text, tender_id::text, store_id, store_name, store_owner_uid,
                 price, note, status, created_at, updated_at
@@ -317,7 +360,7 @@ export class TendersService {
       );
       if (store.rows.length === 0) throw new NotFoundException('store_not_found');
       if (String(store.rows[0]['owner_id'] ?? '').trim() !== actorUid) {
-        throw new BadRequestException('store_owner_mismatch');
+        throw new ForbiddenException('forbidden');
       }
       const sel = await client.query(`SELECT status FROM tenders WHERE id = $1::uuid`, [input.tenderId.trim()]);
       if (sel.rows.length === 0) throw new NotFoundException('tender_not_found');
@@ -367,7 +410,7 @@ export class TendersService {
       );
       if (tSel.rows.length === 0) throw new NotFoundException('tender_not_found');
       if (String(tSel.rows[0]['customer_uid']) !== customerUid.trim()) {
-        throw new BadRequestException('not_tender_owner');
+        throw new ForbiddenException('forbidden');
       }
 
       const oSel = await client.query(
@@ -420,7 +463,7 @@ export class TendersService {
       const sel = await client.query(`SELECT customer_uid FROM tenders WHERE id = $1::uuid`, [tenderId.trim()]);
       if (sel.rows.length === 0) throw new NotFoundException('tender_not_found');
       if (String(sel.rows[0]['customer_uid']) !== customerUid.trim()) {
-        throw new BadRequestException('not_tender_owner');
+        throw new ForbiddenException('forbidden');
       }
       await client.query(
         `UPDATE tenders SET status = $1, updated_at = NOW() WHERE id = $2::uuid`,
@@ -435,7 +478,7 @@ export class TendersService {
       const sel = await client.query(`SELECT customer_uid FROM tenders WHERE id = $1::uuid`, [tenderId.trim()]);
       if (sel.rows.length === 0) throw new NotFoundException('tender_not_found');
       if (String(sel.rows[0]['customer_uid']) !== customerUid.trim()) {
-        throw new BadRequestException('not_tender_owner');
+        throw new ForbiddenException('forbidden');
       }
       await client.query(`DELETE FROM tenders WHERE id = $1::uuid`, [tenderId.trim()]);
       logAuditJson('audit', { action: 'tender_deleted', tenderId: tenderId.trim() });

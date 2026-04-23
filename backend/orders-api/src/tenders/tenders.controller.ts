@@ -2,6 +2,7 @@ import {
   Body,
   Controller,
   Delete,
+  ForbiddenException,
   Get,
   Param,
   Patch,
@@ -18,6 +19,7 @@ import { RbacGuard } from '../identity/rbac.guard';
 import { RequirePermissions } from '../identity/require-permissions.decorator';
 import { TenantContextGuard } from '../identity/tenant-context.guard';
 import { Roles } from '../identity/roles.decorator';
+import { getTenantContext } from '../identity/tenant-context.storage';
 import { TendersService } from './tenders.service';
 
 interface CreateTenderBody {
@@ -57,6 +59,17 @@ interface PatchTenderBody {
 @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 180 } })
 export class TendersController {
   constructor(private readonly tenders: TendersService) {}
+
+  private requireActorUid(req: RequestWithFirebase): string {
+    const uid = String(req.firebaseUid ?? '').trim();
+    if (!uid) throw new ForbiddenException('forbidden');
+    return uid;
+  }
+
+  private isAdminActor(): boolean {
+    const role = String(getTenantContext()?.activeRole ?? '').trim().toLowerCase();
+    return role === 'admin' || role === 'system_internal';
+  }
 
   @Post()
   @RequirePermissions('orders.write')
@@ -107,14 +120,14 @@ export class TendersController {
 
   @Get(':id')
   @RequirePermissions('orders.read')
-  getOne(@Param('id') id: string) {
-    return this.tenders.getById(id);
+  getOne(@Req() req: RequestWithFirebase, @Param('id') id: string) {
+    return this.tenders.getById(id, this.requireActorUid(req), this.isAdminActor());
   }
 
   @Get(':id/offers')
   @RequirePermissions('orders.read')
-  offers(@Param('id') id: string) {
-    return this.tenders.listOffers(id);
+  offers(@Req() req: RequestWithFirebase, @Param('id') id: string) {
+    return this.tenders.listOffers(id, this.requireActorUid(req), this.isAdminActor());
   }
 
   @Post(':id/offers')
