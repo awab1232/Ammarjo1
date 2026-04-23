@@ -16,6 +16,7 @@ import '../models/marketplace_product.dart';
 import '../session/backend_identity_controller.dart';
 import '../../features/stores/domain/store_model.dart';
 import '../monitoring/sentry_safe.dart';
+import '../session/user_session.dart';
 import '../contracts/feature_state.dart';
 import '../contracts/feature_unit.dart';
 import 'firebase_auth_header_provider.dart';
@@ -397,21 +398,44 @@ final class BackendOrdersClient {
     String? cursor,
   }) async {
     if (!BackendOrdersConfig.useBackendOrdersRead) throw StateError('NULL_RESPONSE');
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) throw StateError('NULL_RESPONSE');
-    final uid = user.uid.trim();
+    final firebaseUid = FirebaseAuth.instance.currentUser?.uid.trim() ?? '';
+    final sessionUid = UserSession.currentUid;
+    final uid = firebaseUid.isNotEmpty ? firebaseUid : sessionUid;
     if (uid.isEmpty) throw StateError('NULL_RESPONSE');
-    final body = await _authedGetJson(
-      '/users/${Uri.encodeComponent(uid)}/orders',
-      query: {
+    final base = BackendOrdersConfig.baseUrl.trim();
+    if (base.isEmpty) throw StateError('NULL_RESPONSE');
+    final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}/users/${Uri.encodeComponent(uid)}/orders').replace(
+      queryParameters: {
         'limit': '$limit',
         if (cursor != null && cursor.trim().isNotEmpty) 'cursor': cursor.trim(),
       },
-      flow: 'orders_read_list',
     );
-    final items = body?['items'];
+    final headers = await FirebaseAuthHeaderProvider.requireAuthHeaders(reason: 'orders_read_list');
+    FirebaseAuthHeaderProvider.logRequestHeaders(method: 'GET', uri: uri, headers: headers);
+    final res = await http.get(uri, headers: headers).timeout(const Duration(seconds: 20));
+    FirebaseAuthHeaderProvider.logDebugResponse('BackendOrdersClient GET /users/:id/orders', res.statusCode, res.body);
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw StateError('NULL_RESPONSE');
+    }
+    final decoded = jsonDecode(res.body);
+    final body = decoded is Map<String, dynamic>
+        ? decoded
+        : (decoded is Map ? Map<String, dynamic>.from(decoded) : <String, dynamic>{});
+    final items = body['items'];
     if (items is! List) throw StateError('NULL_RESPONSE');
     return items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+  }
+
+  Future<bool> saveUserLocation({
+    required double lat,
+    required double lng,
+  }) async {
+    final body = await _authedPostJson(
+      '/users/location',
+      body: <String, dynamic>{'lat': lat, 'lng': lng},
+      flow: 'user_location_update',
+    );
+    return body != null && body['ok'] == true;
   }
 
   Future<String?> _idToken(User user) async {
@@ -1643,22 +1667,7 @@ final class BackendOrdersClient {
       if (body == null) throw StateError('NULL_RESPONSE');
       return BackendAuthMe.fromJson(body);
     } on Object {
-      final u = FirebaseAuth.instance.currentUser;
-      if (u == null) {
-        throw StateError('NULL_RESPONSE');
-      }
-      // Keep app session functional when backend identity endpoint temporarily returns 401.
-      return BackendAuthMe(
-        userId: u.uid,
-        firebaseUid: u.uid,
-        email: u.email,
-        role: 'customer',
-        tenantId: null,
-        storeId: null,
-        storeType: null,
-        wholesalerId: null,
-        permissions: const <String>[],
-      );
+      throw StateError('NULL_RESPONSE');
     }
   }
 
@@ -1932,10 +1941,19 @@ final class BackendOrdersClient {
   }
 
   Future<JsonList> fetchTechSpecialties() async {
-    final body = await _authedGetJson('/tech-specialties', flow: 'tech_specialties_list');
-    final items = body?['items'];
-    if (items is! List) return const <Map<String, dynamic>>[];
-    return items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+    try {
+      final body = await _authedGetJson('/tech-specialties', flow: 'tech_specialties_list');
+      final items = body?['items'];
+      if (items is! List) return const <Map<String, dynamic>>[];
+      return items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+    } on Object {
+      return const <Map<String, dynamic>>[
+        {'id': 'plumbing', 'name': 'سباكة', 'categoryId': 'plumber'},
+        {'id': 'electricity', 'name': 'كهرباء', 'categoryId': 'electrician'},
+        {'id': 'conditioning', 'name': 'تكييف', 'categoryId': 'ac'},
+        {'id': 'carpentry', 'name': 'نجارة', 'categoryId': 'carpenter'},
+      ];
+    }
   }
 
   // ——— Driver panel (Firebase + [BackendOrdersConfig] base URL) ———

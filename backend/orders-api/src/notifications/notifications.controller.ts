@@ -19,6 +19,12 @@ class RegisterDeviceTokenDto {
   platform?: string;
 }
 
+class UnregisterDeviceTokenDto {
+  @IsString()
+  @IsNotEmpty()
+  token!: string;
+}
+
 @Controller('notifications')
 @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
 @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 240 } })
@@ -32,6 +38,13 @@ export class NotificationsController {
   @RequirePermissions('orders.write')
   async registerDevice(@Req() req: RequestWithFirebase, @Body() body: RegisterDeviceTokenDto) {
     await this.notifications.registerDeviceToken(req.firebaseUid!, body.token, body.platform);
+    return { ok: true };
+  }
+
+  @Post('unregister-device')
+  @RequirePermissions('orders.write')
+  async unregisterDevice(@Req() req: RequestWithFirebase, @Body() body: UnregisterDeviceTokenDto) {
+    await this.notifications.unregisterDeviceToken(req.firebaseUid!, body.token);
     return { ok: true };
   }
 

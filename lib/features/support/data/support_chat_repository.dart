@@ -163,6 +163,26 @@ class SupportChatRepository {
     }
   }
 
-  Future<void> resetAdminUnreadCount(String chatId) async {}
-  Future<void> resetUserUnreadCount(String chatId) async {}
+  Future<void> resetAdminUnreadCount(String chatId) async {
+    await _touchTicket(chatId);
+  }
+
+  Future<void> resetUserUnreadCount(String chatId) async {
+    await _touchTicket(chatId);
+  }
+
+  Future<void> _touchTicket(String chatId) async {
+    final id = chatId.trim();
+    if (id.isEmpty) return;
+    final ticket = await fetchTicket(id);
+    if (ticket == null) return;
+    final res = await http.patch(
+      _uri('/support/tickets/${Uri.encodeComponent(id)}'),
+      headers: await _headers(),
+      body: jsonEncode(<String, dynamic>{'status': ticket.status}),
+    );
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw StateError('تعذّر تحديث حالة القراءة (${res.statusCode})');
+    }
+  }
 }

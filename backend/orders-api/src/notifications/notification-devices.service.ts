@@ -60,4 +60,14 @@ export class NotificationDevicesService {
     });
     this.logger.warn(JSON.stringify({ kind: 'notification_invalid_token_pruned' }));
   }
+
+  async unregisterDeviceToken(params: { userId: string; token: string }): Promise<void> {
+    const userId = params.userId.trim();
+    const token = params.token.trim();
+    if (!userId || !token) return;
+    await this.pg.withWriteClient(async (c) => {
+      await c.query(`DELETE FROM user_devices WHERE user_id = $1 AND fcm_token = $2`, [userId, token]);
+      return true;
+    });
+  }
 }

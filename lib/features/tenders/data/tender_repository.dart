@@ -66,7 +66,16 @@ class TenderRepository {
           await Future<void>.delayed(const Duration(seconds: 4));
           continue;
         }
-        final items = rowsState.data.map((e) => TenderModel.fromMap(e['id']?.toString() ?? '', e)).toList();
+        final items = <TenderModel>[];
+        for (final row in rowsState.data) {
+          try {
+            final id = row['id']?.toString() ?? '';
+            if (id.trim().isEmpty) continue;
+            items.add(TenderModel.fromMap(id, row));
+          } on Object {
+            continue;
+          }
+        }
         yield FeatureState.success(items);
       } on Object {
         yield FeatureState.failure('Failed to load tenders.');
@@ -99,7 +108,16 @@ class TenderRepository {
           await Future<void>.delayed(const Duration(seconds: 4));
           continue;
         }
-        var list = rowsState.data.map((e) => TenderModel.fromMap(e['id']?.toString() ?? '', e)).toList();
+        var list = <TenderModel>[];
+        for (final row in rowsState.data) {
+          try {
+            final id = row['id']?.toString() ?? '';
+            if (id.trim().isEmpty) continue;
+            list.add(TenderModel.fromMap(id, row));
+          } on Object {
+            continue;
+          }
+        }
         if (category.trim().isNotEmpty) {
           list = list.where((e) => e.category == category.trim()).toList();
         }
@@ -130,7 +148,16 @@ class TenderRepository {
           await Future<void>.delayed(const Duration(seconds: 4));
           continue;
         }
-        final items = rowsState.data.map((e) => TenderOffer.fromMap(e['id']?.toString() ?? '', e)).toList();
+        final items = <TenderOffer>[];
+        for (final row in rowsState.data) {
+          try {
+            final id = row['id']?.toString() ?? '';
+            if (id.trim().isEmpty) continue;
+            items.add(TenderOffer.fromMap(id, row));
+          } on Object {
+            continue;
+          }
+        }
         yield FeatureState.success(items);
       } on Object {
         yield FeatureState.failure('Failed to load tender offers.');

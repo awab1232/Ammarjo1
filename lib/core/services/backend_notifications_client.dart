@@ -44,6 +44,20 @@ final class BackendNotificationsClient {
     return res.statusCode >= 200 && res.statusCode < 300;
   }
 
+  Future<bool> unregisterDeviceToken(String token) async {
+    final t = token.trim();
+    if (t.isEmpty) return false;
+    final req = await _request('/notifications/unregister-device');
+    if (req == null) return false;
+    final headers = <String, String>{...req.$2, 'Content-Type': 'application/json'};
+    final res = await http.post(
+      req.$1,
+      headers: headers,
+      body: jsonEncode(<String, dynamic>{'token': t}),
+    );
+    return res.statusCode >= 200 && res.statusCode < 300;
+  }
+
   Future<FeatureState<Map<String, dynamic>>> fetchUpdates({
     required DateTime since,
     int limit = 20,

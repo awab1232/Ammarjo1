@@ -3,7 +3,6 @@ import 'dart:async';
 import 'package:firebase_core/firebase_core.dart' show FirebaseException;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:provider/provider.dart';
 import 'package:ammar_store/core/session/user_session.dart';
 
 import '../../../../core/constants/order_status.dart';
@@ -15,7 +14,6 @@ import '../../../../core/widgets/app_bar_back_button.dart';
 import '../../../../core/data/repositories/customer_ops_repository.dart';
 import '../../../reviews/data/reviews_repository.dart';
 import '../../../../core/contracts/feature_unit.dart';
-import '../store_controller.dart';
 import 'advanced_order_tracking_screen.dart';
 import 'order_tracking_page.dart';
 
@@ -209,7 +207,6 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final profileEmail = context.watch<StoreController>().profile?.email.trim() ?? '';
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -220,9 +217,8 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       ),
       body: Builder(
         builder: (context) {
-          final authEmail = UserSession.currentEmail;
-          final email = authEmail.isNotEmpty ? authEmail : profileEmail;
-          if (email.isEmpty) {
+          final uid = UserSession.currentUid;
+          if (!UserSession.isLoggedIn || uid.isEmpty) {
             return Center(
               child: Text(
                 'سجّل الدخول لعرض حالة طلباتك.',
@@ -232,7 +228,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
           }
           return StreamBuilder<FeatureState<List<TrackOrderItem>>>(
             key: ValueKey<int>(_ordersLimit),
-            stream: CustomerOpsRepository.instance.watchOrders(email, limit: _ordersLimit),
+            stream: CustomerOpsRepository.instance.watchOrders(uid, limit: _ordersLimit),
             builder: (context, snapshot) {
               if (snapshot.hasError) {
                 return Center(

@@ -8,11 +8,13 @@ import '../../../core/data/repositories/order_repository.dart';
 import '../../../core/data/repositories/store_repository.dart';
 import '../../../core/firebase/account_password_service.dart';
 import '../../../core/firebase/chat_firebase_sync.dart';
+import '../../../core/firebase/fcm_bootstrap.dart';
 import '../../../core/firebase/phone_auth_service.dart';
 import '../../../core/firebase/users_repository.dart';
 import '../../../core/services/firebase_auth_header_provider.dart';
 import '../../../core/services/firebase_backend_session_service.dart';
 import '../../../core/services/phone_password_auth_service.dart';
+import '../../../core/services/backend_orders_client.dart';
 import '../../../core/session/user_session.dart';
 import '../../../core/utils/jordan_phone.dart';
 import '../../../core/utils/web_image_url.dart';
@@ -853,6 +855,7 @@ class StoreController extends ChangeNotifier {
   Future<void> logout() async {
     _detachFavoritesListener();
     await user.clearSessionProfile();
+    await FcmBootstrap.unregisterCurrentToken().onError((_, _) => null);
     await FirebaseBackendSessionService.clear();
     await UserSession.clear();
     phoneVerificationId = null;
@@ -886,13 +889,13 @@ class StoreController extends ChangeNotifier {
     String userId, {
     List<CartItem>? lines,
   }) =>
-      cartState.applyCoupon(code, userId);
+      cartState.applyCoupon(code, userId, lines: lines);
   void removeCoupon() => cartState.removeCoupon();
   Future<bool> applyPromotions(
     String userId, {
     List<CartItem>? lines,
   }) =>
-      cartState.applyPromotions(userId);
+      cartState.applyPromotions(userId, lines: lines);
   void clearPromotions() => cartState.clearPromotions();
 
   /// تحديث بيانات المنتجات في السلة من Firestore (`products`).
@@ -1047,6 +1050,11 @@ class StoreController extends ChangeNotifier {
       if (uid.isEmpty) {
         errorMessage = 'انتهت الجلسة. سجّل الدخول مرة أخرى.';
         return false;
+      }
+      if (latitude != null && longitude != null) {
+        await BackendOrdersClient.instance
+            .saveUserLocation(lat: latitude, lng: longitude)
+            .onError((_, _) => false);
       }
       final orderState = await BackendOrderRepository.instance.createOrderFromCart(
         cart: lines,

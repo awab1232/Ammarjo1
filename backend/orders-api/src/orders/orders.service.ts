@@ -547,6 +547,12 @@ export class OrdersService implements IOrderService {
     const flow = ['pending', 'processing', 'shipped', 'delivered'];
     const pi = flow.indexOf(prev);
     const ni = flow.indexOf(next);
+    if (next === 'cancelled' && isOwner && !isAdmin) {
+      const nonCancelable = new Set(['shipped', 'delivered', 'completed']);
+      if (nonCancelable.has(prev)) {
+        throw new BadRequestException('Order can only be cancelled before delivery');
+      }
+    }
     if (next !== 'cancelled' && ni >= 0 && pi >= 0 && ni < pi) {
       throw new BadRequestException('Invalid status transition');
     }

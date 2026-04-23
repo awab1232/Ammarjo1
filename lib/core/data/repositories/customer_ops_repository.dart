@@ -255,7 +255,7 @@ class CustomerOpsRepository {
   /// طلبات المتجر من **`users/{uid}/orders`** — نفس [uid] المستخدم في [syncOrderToFirestore]
   /// (يُفضَّل `FirebaseAuth.currentUser.uid` عند وجود جلسة).
   /// [limit] يُقيّد الحجم (افتراضي 20) — زِد الحدّ في الواجهة لتحميل المزيد.
-  Stream<FeatureState<List<TrackOrderItem>>> watchOrders(String email, {int limit = 20}) async* {
+  Stream<FeatureState<List<TrackOrderItem>>> watchOrders(String userKey, {int limit = 20}) async* {
     while (true) {
       try {
         final rows = await BackendOrdersClient.instance.fetchOrdersForCurrentUser(limit: limit);
@@ -270,6 +270,13 @@ class CustomerOpsRepository {
                     ))
                 .toList(),
           );
+        }
+      } on StateError catch (e) {
+        final message = e.message.toString();
+        if (message.contains('NULL_RESPONSE')) {
+          yield FeatureState.failure('يرجى تسجيل الدخول لعرض الطلبات.');
+        } else {
+          yield FeatureState.failure('Failed to load orders.');
         }
       } on Object {
         yield FeatureState.failure('Failed to load orders.');

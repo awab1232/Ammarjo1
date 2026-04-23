@@ -28,7 +28,7 @@
   });
 
   static DateTime? _parseDate(dynamic value) {
-    if (value == null) throw StateError('NULL_RESPONSE');
+    if (value == null) return null;
     try {
       final sec = (value as dynamic).seconds;
       if (sec is int) return DateTime.fromMillisecondsSinceEpoch(sec * 1000);
@@ -39,17 +39,21 @@
   }
 
   factory TenderModel.fromMap(String id, Map<String, dynamic> d) {
+    final createdAt = _parseDate(d['createdAt']) ?? _parseDate(d['updatedAt']) ?? DateTime.now();
+    final expiresAt = _parseDate(d['expiresAt']) ?? createdAt.add(const Duration(days: 7));
+    final resolvedUserId = d['userId']?.toString() ?? d['customerUid']?.toString() ?? '';
+    final resolvedUserName = d['userName']?.toString() ?? d['customerName']?.toString() ?? 'مستخدم';
     return TenderModel(
       id: id,
-      userId: d['userId']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      userName: d['userName']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      imageUrl: d['imageUrl']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      category: d['category']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      description: d['description']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      city: d['city']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      status: d['status']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      createdAt: _parseDate(d['createdAt']) ?? (throw StateError('NULL_RESPONSE')),
-      expiresAt: _parseDate(d['expiresAt']) ?? (throw StateError('NULL_RESPONSE')),
+      userId: resolvedUserId.isNotEmpty ? resolvedUserId : 'unknown',
+      userName: resolvedUserName.trim().isNotEmpty ? resolvedUserName : 'مستخدم',
+      imageUrl: d['imageUrl']?.toString() ?? '',
+      category: d['category']?.toString() ?? '',
+      description: d['description']?.toString() ?? '',
+      city: d['city']?.toString() ?? '',
+      status: d['status']?.toString() ?? 'open',
+      createdAt: createdAt,
+      expiresAt: expiresAt,
       acceptedOfferId: d['acceptedOfferId']?.toString(),
       offers: const <TenderOffer>[],
     );
@@ -89,18 +93,18 @@ class TenderOffer {
   });
 
   factory TenderOffer.fromMap(String id, Map<String, dynamic> d) {
+    final parsedPrice = (d['price'] is num)
+        ? (d['price'] as num).toDouble()
+        : double.tryParse(d['price']?.toString() ?? '0') ?? 0;
     return TenderOffer(
       id: id,
-      storeId: d['storeId']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      storeName: d['storeName']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      storeOwnerId: d['storeOwnerId']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      price: (d['price'] is num)
-          ? (d['price'] as num).toDouble()
-          : double.tryParse(d['price']?.toString() ?? (throw StateError('NULL_RESPONSE'))) ??
-              (throw StateError('INVALID_NUMERIC_DATA')),
-      note: d['note']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      createdAt: TenderModel._parseDate(d['createdAt']) ?? (throw StateError('NULL_RESPONSE')),
-      status: d['status']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+      storeId: d['storeId']?.toString() ?? '',
+      storeName: d['storeName']?.toString() ?? 'متجر',
+      storeOwnerId: d['storeOwnerId']?.toString() ?? d['storeOwnerUid']?.toString() ?? '',
+      price: parsedPrice,
+      note: d['note']?.toString() ?? '',
+      createdAt: TenderModel._parseDate(d['createdAt']) ?? DateTime.now(),
+      status: d['status']?.toString() ?? 'pending',
     );
   }
 }

@@ -15,7 +15,7 @@ export class StoreRequestsController {
   constructor(private readonly requests: StoreRequestsService) {}
 
   @Post()
-  @RequirePermissions('orders.read')
+  @RequirePermissions('orders.write')
   submit(@Req() req: RequestWithFirebase, @Body() body: Record<string, unknown>) {
     const kind = String(body['kind'] ?? '').trim().toLowerCase();
     if (kind === 'technician_request') {

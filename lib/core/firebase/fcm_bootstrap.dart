@@ -6,6 +6,9 @@ import '../services/backend_notifications_client.dart';
 
 /// تهيئة FCM وحفظ رمز الجهاز تحت `users/{uid}` لمزامنة الإشعارات.
 abstract final class FcmBootstrap {
+  static String? _lastRegisteredToken;
+  static bool _tokenRefreshListenerBound = false;
+
   static Future<void> registerIfSignedIn() async {
     if (Firebase.apps.isEmpty) return;
     final user = FirebaseAuth.instance.currentUser;
@@ -29,12 +32,15 @@ abstract final class FcmBootstrap {
       final token = await messaging.getToken();
       debugPrint('FCM TOKEN: $token');
       await _saveToken(token);
-      FirebaseMessaging.instance.onTokenRefresh.listen((t) {
-        debugPrint('FCM TOKEN: $t');
-        if (FirebaseAuth.instance.currentUser != null) {
-          _saveToken(t);
-        }
-      });
+      if (!_tokenRefreshListenerBound) {
+        _tokenRefreshListenerBound = true;
+        FirebaseMessaging.instance.onTokenRefresh.listen((t) {
+          debugPrint('FCM TOKEN: $t');
+          if (FirebaseAuth.instance.currentUser != null) {
+            _saveToken(t);
+          }
+        });
+      }
     } on Object catch (e, st) {
       debugPrint('FIREBASE ERROR: $e');
       if (kDebugMode) {
@@ -45,9 +51,28 @@ abstract final class FcmBootstrap {
 
   static Future<void> _saveToken(String? token) async {
     if (token == null || token.isEmpty) return;
+    if (_lastRegisteredToken == token) return;
     final ok = await BackendNotificationsClient.instance.registerDeviceToken(token);
     if (!ok && kDebugMode) {
       debugPrint('[FCM] register-device failed');
+      return;
+    }
+    _lastRegisteredToken = token;
+  }
+
+  static Future<void> unregisterCurrentToken() async {
+    if (Firebase.apps.isEmpty) return;
+    final token = await FirebaseMessaging.instance.getToken();
+    if (token == null || token.isEmpty) return;
+    final ok = await BackendNotificationsClient.instance.unregisterDeviceToken(token);
+    if (ok) {
+      if (_lastRegisteredToken == token) {
+        _lastRegisteredToken = null;
+      }
+      return;
+    }
+    if (kDebugMode) {
+      debugPrint('[FCM] unregister-device failed');
     }
   }
 }

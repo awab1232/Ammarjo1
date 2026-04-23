@@ -115,10 +115,13 @@ export class TendersService {
   }
 
   private rowToTender(row: Record<string, unknown>): Record<string, unknown> {
+    const createdAt = row['created_at'] ?? null;
     return {
       id: row['id'],
       customerUid: row['customer_uid'],
+      userId: row['customer_uid'],
       userName: row['customer_name'],
+      customerName: row['customer_name'],
       category: row['category'],
       description: row['description'],
       city: row['city'],
@@ -128,7 +131,8 @@ export class TendersService {
       storeTypeName: row['store_type_name'],
       status: row['status'],
       acceptedOfferId: row['accepted_offer_id'],
-      createdAt: row['created_at'],
+      createdAt,
+      expiresAt: createdAt,
       updatedAt: row['updated_at'],
     };
   }
@@ -140,6 +144,7 @@ export class TendersService {
       storeId: row['store_id'],
       storeName: row['store_name'],
       storeOwnerUid: row['store_owner_uid'],
+      storeOwnerId: row['store_owner_uid'],
       price: Number(row['price']),
       note: row['note'],
       status: row['status'],

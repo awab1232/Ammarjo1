@@ -112,7 +112,13 @@ class _CartPageState extends State<CartPage> {
                 cancelLabel: 'البقاء',
               );
               if (leave == true && context.mounted) {
-                Navigator.of(context).pop();
+                final nav = Navigator.of(context);
+                if (nav.canPop()) {
+                  nav.pop();
+                } else {
+                  store.requestNavigateToMainTab(0);
+                  nav.pushReplacementNamed('/main');
+                }
               }
             },
             child: Scaffold(

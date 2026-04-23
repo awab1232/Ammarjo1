@@ -11,6 +11,7 @@ import { randomUUID } from 'node:crypto';
 import { Pool, type PoolClient } from 'pg';
 import { DomainEventEmitterService } from '../events/domain-event-emitter.service';
 import { DomainEventNames } from '../events/domain-event-names';
+import { buildPgPoolConfig } from '../infrastructure/database/pg-ssl';
 import { TenantContextService } from '../identity/tenant-context.service';
 import { MatchingService } from '../matching/matching.service';
 import type { ServiceRequestRecord, ServiceRequestStatus } from './service-requests.types';
@@ -49,9 +50,10 @@ export class ServiceRequestsService {
     const url = process.env.DATABASE_URL?.trim();
     this.pool = url
       ? new Pool({
-          connectionString: url,
-          max: Number(process.env.SERVICE_REQUESTS_PG_POOL_MAX || 6),
-          idleTimeoutMillis: 30_000,
+          ...buildPgPoolConfig(url, {
+            max: Number(process.env.SERVICE_REQUESTS_PG_POOL_MAX || 6),
+            idleTimeoutMillis: 30_000,
+          }),
         })
       : null;
   }

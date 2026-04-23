@@ -1,5 +1,6 @@
 import 'dart:convert';
 
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/backend_orders_config.dart';
@@ -18,14 +19,26 @@ final class BackendUserClient {
   Future<Map<String, dynamic>?> fetchUserById(String uid) async {
     final id = uid.trim();
     if (id.isEmpty) throw StateError('NULL_RESPONSE');
-    return _authedGet('/users/${Uri.encodeComponent(id)}');
+    try {
+      return await _authedGet('/users/${Uri.encodeComponent(id)}');
+    } on Object {
+      final currentUid = FirebaseAuth.instance.currentUser?.uid.trim() ?? '';
+      if (currentUid.isNotEmpty && currentUid == id) {
+        return _authedGet('/auth/me');
+      }
+      rethrow;
+    }
   }
 
   Future<bool> patchUser(String uid, Map<String, dynamic> fields) async {
     final id = uid.trim();
     if (id.isEmpty || fields.isEmpty) return false;
-    final body = await _authedPatch('/users/${Uri.encodeComponent(id)}', fields);
-    return body != null;
+    try {
+      final body = await _authedPatch('/users/${Uri.encodeComponent(id)}', fields);
+      return body != null;
+    } on Object {
+      return false;
+    }
   }
 
   Future<FeatureState<List<Map<String, dynamic>>>> fetchTechSpecialties() async {
@@ -38,10 +51,14 @@ final class BackendUserClient {
   Future<FeatureState<List<Map<String, dynamic>>>> fetchUserFavorites(String uid) async {
     final id = uid.trim();
     if (id.isEmpty) return FeatureState.failure('User id is required.');
-    final body = await _authedGet('/users/${Uri.encodeComponent(id)}/favorites');
-    final items = body?['items'];
-    if (items is! List) return FeatureState.failure('Invalid favorites payload.');
-    return FeatureState.success(items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList());
+    try {
+      final body = await _authedGet('/users/${Uri.encodeComponent(id)}/favorites');
+      final items = body?['items'];
+      if (items is! List) return FeatureState.failure('Invalid favorites payload.');
+      return FeatureState.success(items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList());
+    } on Object {
+      return FeatureState.success(const <Map<String, dynamic>>[]);
+    }
   }
 
   Future<bool> putUserFavorite(String uid, Map<String, dynamic> payload) async {

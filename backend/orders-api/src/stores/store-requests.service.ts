@@ -1,6 +1,7 @@
 import { BadRequestException, ConflictException, ForbiddenException, Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
+import { buildPgPoolConfig } from '../infrastructure/database/pg-ssl';
 
 @Injectable()
 export class StoreRequestsService {
@@ -9,7 +10,13 @@ export class StoreRequestsService {
 
   constructor() {
     const url = process.env.DATABASE_URL?.trim();
-    this.pool = url ? new Pool({ connectionString: url, max: Number(process.env.STORE_REQUESTS_PG_POOL_MAX || 4) }) : null;
+    this.pool = url
+      ? new Pool(
+          buildPgPoolConfig(url, {
+            max: Number(process.env.STORE_REQUESTS_PG_POOL_MAX || 4),
+          }),
+        )
+      : null;
   }
 
   private requireDb(): Pool {

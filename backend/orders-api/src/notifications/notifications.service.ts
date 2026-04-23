@@ -24,16 +24,13 @@ export class NotificationsService {
   ) {}
 
   async registerDeviceToken(userId: string, token: string, platform?: string): Promise<void> {
-    if (!this.notificationsEnabled) {
-      this.logger.warn(
-        JSON.stringify({
-          kind: 'notifications_disabled_register_device_skipped',
-          userId,
-        }),
-      );
-      return;
-    }
+    // Keep token registry active even when push dispatch is disabled,
+    // so enabling notifications later does not require users to re-login.
     await this.devices.registerDeviceToken({ userId, token, platform });
+  }
+
+  async unregisterDeviceToken(userId: string, token: string): Promise<void> {
+    await this.devices.unregisterDeviceToken({ userId, token });
   }
 
   notifyNewMessage(input: NewMessageNotificationInput): void {
