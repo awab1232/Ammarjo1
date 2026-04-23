@@ -398,17 +398,29 @@ final class BackendOrdersClient {
     final headers = await FirebaseAuthHeaderProvider.requireAuthHeaders(reason: 'orders_read_list');
     FirebaseAuthHeaderProvider.logRequestHeaders(method: 'GET', uri: uri, headers: headers);
     final res = await http.get(uri, headers: headers).timeout(const Duration(seconds: 20));
-    FirebaseAuthHeaderProvider.logDebugResponse('BackendOrdersClient GET /users/:id/orders', res.statusCode, res.body);
+    FirebaseAuthHeaderProvider.logDebugResponse('BackendOrdersClient GET /orders', res.statusCode, res.body);
     if (res.statusCode < 200 || res.statusCode >= 300) {
       throw StateError('NULL_RESPONSE');
     }
-    final decoded = jsonDecode(res.body);
+    final trimmed = res.body.trim();
+    if (trimmed.isEmpty) {
+      return const <Map<String, dynamic>>[];
+    }
+    final dynamic decoded;
+    try {
+      decoded = jsonDecode(trimmed);
+    } on Object {
+      throw StateError('NULL_RESPONSE');
+    }
+    if (decoded is List) {
+      return decoded.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+    }
     final body = decoded is Map<String, dynamic>
         ? decoded
         : (decoded is Map ? Map<String, dynamic>.from(decoded) : <String, dynamic>{});
-    final items = body['items'];
-    if (items is! List) throw StateError('NULL_RESPONSE');
-    return items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+    final itemsRaw = body['items'];
+    final List<dynamic> itemsList = itemsRaw is List ? itemsRaw : const <dynamic>[];
+    return itemsList.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
   }
 
   Future<bool> saveUserLocation({

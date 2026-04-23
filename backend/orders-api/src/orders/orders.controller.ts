@@ -3,6 +3,7 @@ import {
   Body,
   Controller,
   Get,
+  HttpException,
   Patch,
   Param,
   Post,
@@ -23,7 +24,39 @@ import { responseCacheTtlSeconds } from '../infrastructure/cache/cache.config';
 import { logOrderError } from './order-logger';
 import { OrderMetricsService } from './order-metrics.service';
 import { OrdersListRateLimitGuard } from './orders-list-rate-limit.guard';
-import type { UserOrdersListResponse } from './order-types';
+import type { StoredOrder, UserOrdersListResponse } from './order-types';
+
+/** Normalizes list payloads so GET /orders never yields a non-object body without `items`. */
+function asUserOrdersListEnvelope(value: unknown): UserOrdersListResponse {
+  if (Array.isArray(value)) {
+    return {
+      items: value.filter((e) => e != null && typeof e === 'object') as StoredOrder[],
+      nextCursor: null,
+      hasMore: false,
+      useFirestoreFallback: false,
+    };
+  }
+  if (value == null || typeof value !== 'object') {
+    return {
+      items: [],
+      nextCursor: null,
+      hasMore: false,
+      useFirestoreFallback: false,
+    };
+  }
+  const obj = value as Record<string, unknown>;
+  const raw = obj['items'];
+  const items = Array.isArray(raw) ? (raw.filter((e) => e != null && typeof e === 'object') as StoredOrder[]) : [];
+  const nc = obj['nextCursor'];
+  const nextCursor =
+    nc == null || (typeof nc === 'string' && nc.trim() === '') ? null : String(nc).trim();
+  return {
+    items,
+    nextCursor,
+    hasMore: Boolean(obj['hasMore']),
+    useFirestoreFallback: Boolean(obj['useFirestoreFallback']),
+  };
+}
 import { CreateOrderDto } from './dto/create-order.dto';
 import { PatchOrderStatusDto } from './dto/patch-order-status.dto';
 import { OrdersService } from './orders.service';
@@ -129,10 +162,31 @@ export class OrdersController {
     const uid = req.firebaseUid!;
     const limit =
       limitRaw != null && limitRaw.trim() !== '' ? Number.parseInt(limitRaw, 10) : undefined;
-    return this.orders.listForUser(uid, uid, {
-      cursor,
-      limit: Number.isFinite(limit) ? limit : undefined,
-    });
+    try {
+      const raw = await this.orders.listForUser(uid, uid, {
+        cursor,
+        limit: Number.isFinite(limit) ? limit : undefined,
+      });
+      return asUserOrdersListEnvelope(raw);
+    } catch (e) {
+      if (e instanceof BadRequestException) {
+        throw e;
+      }
+      if (e instanceof HttpException) {
+        const st = e.getStatus();
+        if (st >= 400 && st < 500) {
+          throw e;
+        }
+      }
+      logOrderError(e, { userId: uid });
+      this.metrics.recordError();
+      return {
+        items: [],
+        nextCursor: null,
+        hasMore: false,
+        useFirestoreFallback: false,
+      };
+    }
   }
 
   @Patch('orders/:id/status')
@@ -166,17 +220,59 @@ export class OrdersController {
       legacyFormat: legacy === '1' || legacy === 'true',
     };
 
-    if (this.cache.isCacheActive()) {
-      const cacheKey = `orders:user:${id}:page:${cursor ?? ''}:l:${limitRaw ?? ''}:leg:${listOpts.legacyFormat ? '1' : '0'}`;
-      const hit = await this.cache.getJson<UserOrdersListResponse>(cacheKey);
-      if (hit != null) {
-        return hit;
-      }
-      const fresh = await this.orders.listForUser(id, req.firebaseUid!, listOpts);
-      await this.cache.setJson(cacheKey, fresh, responseCacheTtlSeconds());
-      return fresh;
-    }
+    const emptyEnvelope = (): UserOrdersListResponse => ({
+      items: [],
+      nextCursor: null,
+      hasMore: false,
+      useFirestoreFallback: false,
+    });
 
-    return this.orders.listForUser(id, req.firebaseUid!, listOpts);
+    try {
+      if (this.cache.isCacheActive()) {
+        const cacheKey = `orders:user:${id}:page:${cursor ?? ''}:l:${limitRaw ?? ''}:leg:${listOpts.legacyFormat ? '1' : '0'}`;
+        const hit = await this.cache.getJson<unknown>(cacheKey);
+        if (hit != null) {
+          if (listOpts.legacyFormat) {
+            if (Array.isArray(hit)) {
+              return hit as StoredOrder[];
+            }
+            logOrderError(new Error('orders_list_cache_expected_array'), { userId: id });
+            return [];
+          }
+          return asUserOrdersListEnvelope(hit);
+        }
+        const fresh = await this.orders.listForUser(id, req.firebaseUid!, listOpts);
+        if (listOpts.legacyFormat) {
+          const legacyOut = Array.isArray(fresh) ? fresh : [];
+          await this.cache.setJson(cacheKey, legacyOut, responseCacheTtlSeconds());
+          return legacyOut;
+        }
+        const envelope = asUserOrdersListEnvelope(fresh);
+        await this.cache.setJson(cacheKey, envelope, responseCacheTtlSeconds());
+        return envelope;
+      }
+
+      const fresh = await this.orders.listForUser(id, req.firebaseUid!, listOpts);
+      if (listOpts.legacyFormat) {
+        return Array.isArray(fresh) ? fresh : [];
+      }
+      return asUserOrdersListEnvelope(fresh);
+    } catch (e) {
+      if (e instanceof BadRequestException) {
+        throw e;
+      }
+      if (e instanceof HttpException) {
+        const st = e.getStatus();
+        if (st >= 400 && st < 500) {
+          throw e;
+        }
+      }
+      logOrderError(e, { userId: id });
+      this.metrics.recordError();
+      if (listOpts.legacyFormat) {
+        return [];
+      }
+      return emptyEnvelope();
+    }
   }
 }
