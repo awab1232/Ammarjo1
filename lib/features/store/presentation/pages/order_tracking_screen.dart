@@ -39,6 +39,7 @@ class OrderTrackingScreen extends StatefulWidget {
 class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   static const int _kOrdersPageSize = 20;
   int _ordersLimit = _kOrdersPageSize;
+  Stream<FeatureState<List<TrackOrderItem>>>? _ordersStream;
 
   int _statusStep(String status) {
     final s = OrderStatus.toEnglish(status);
@@ -206,6 +207,21 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   }
 
   @override
+  void initState() {
+    super.initState();
+    _resetOrdersStream();
+  }
+
+  void _resetOrdersStream() {
+    final uid = UserSession.currentUid;
+    if (!UserSession.isLoggedIn || uid.isEmpty) {
+      _ordersStream = null;
+      return;
+    }
+    _ordersStream = CustomerOpsRepository.instance.watchOrders(uid, limit: _ordersLimit);
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -228,7 +244,7 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
           }
           return StreamBuilder<FeatureState<List<TrackOrderItem>>>(
             key: ValueKey<int>(_ordersLimit),
-            stream: CustomerOpsRepository.instance.watchOrders(uid, limit: _ordersLimit),
+            stream: _ordersStream,
             builder: (context, snapshot) {
               if (snapshot.hasError) {
                 return Center(
@@ -267,7 +283,12 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                   if (showLoadMore && index == items.length) {
                     return Center(
                       child: FilledButton.icon(
-                        onPressed: () => setState(() => _ordersLimit += _kOrdersPageSize),
+                        onPressed: () {
+                          setState(() {
+                            _ordersLimit += _kOrdersPageSize;
+                            _resetOrdersStream();
+                          });
+                        },
                         icon: const Icon(Icons.expand_more),
                         label: Text('تحميل المزيد', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
                       ),

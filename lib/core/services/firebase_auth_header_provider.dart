@@ -55,7 +55,13 @@ abstract final class FirebaseAuthHeaderProvider {
     required Uri uri,
     required Map<String, String> headers,
   }) {
-    debugPrint('[AUTH-HEADER] request $method $uri headers=$headers');
+    final sanitized = <String, String>{
+      for (final entry in headers.entries)
+        entry.key: entry.key.toLowerCase() == 'authorization'
+            ? ((entry.value.trim().isEmpty) ? '' : 'Bearer <redacted>')
+            : entry.value,
+    };
+    debugPrint('[AUTH-HEADER] request $method $uri headers=$sanitized');
     if (kDebugMode) {
       final hasAuth = (headers['Authorization'] ?? '').trim().isNotEmpty;
       // ignore: avoid_print

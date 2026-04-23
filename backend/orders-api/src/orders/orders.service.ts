@@ -488,7 +488,19 @@ export class OrdersService implements IOrderService {
       };
     }
 
-    const pg = await this.pg.findPayloadsByUserIdPaginated(userId, limit, cursor);
+    let pg: { items: StoredOrder[]; nextCursor: string | null; hasMore: boolean };
+    try {
+      pg = await this.pg.findPayloadsByUserIdPaginated(userId, limit, cursor);
+    } catch (e) {
+      logOrderError(e, { userId });
+      this.metrics.recordError();
+      return {
+        items: [],
+        nextCursor: null,
+        hasMore: false,
+        useFirestoreFallback: false,
+      };
+    }
 
     return {
       items: pg.items,

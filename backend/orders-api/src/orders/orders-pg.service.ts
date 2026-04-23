@@ -220,6 +220,12 @@ export class OrdersPgService implements OnModuleDestroy {
     return this.getWriteClient();
   }
 
+  private logOrdersReadSqlError(scope: string, error: unknown): void {
+    const message = error instanceof Error ? error.message : String(error);
+    console.error(`[OrdersPgService] ${scope} SQL error: ${message}`);
+    console.error(`[OrdersPgService] ${scope} SQL safe: ${safeErrorMessage(error)}`);
+  }
+
   /**
    * Runs [fn] inside BEGIN/COMMIT on the primary write pool (delivery / driver flows).
    * Returns null when PostgreSQL is not configured.
@@ -359,47 +365,80 @@ export class OrdersPgService implements OnModuleDestroy {
     const client = await this.getReadClient();
     if (!client) return null;
     try {
-      const r = await client.query<{
-        payload: unknown;
-        created_at: Date;
-        driver_id: string | null;
-        delivery_status: string | null;
-        delivery_lat: string | null;
-        delivery_lng: string | null;
-        eta_minutes: string | null;
-        assigned_at: Date | null;
-        delivery_on_the_way_at: Date | null;
-        delivery_delivered_at: Date | null;
-        driver_name: string | null;
-        driver_phone: string | null;
-        delivery_manual_retries: string | number | null;
-      }>(
-        `SELECT o.payload, o.created_at, o.driver_id, o.delivery_status, o.delivery_lat, o.delivery_lng, o.eta_minutes, o.assigned_at,
-                o.delivery_on_the_way_at, o.delivery_delivered_at,
-                o.delivery_manual_retries,
-                NULL::text AS driver_name, NULL::text AS driver_phone
-         FROM orders o
-         WHERE o.order_id = $1`,
-        [orderId.trim()],
-      );
+      let r: {
+        rows: Array<{
+          payload: unknown;
+          created_at: Date;
+          driver_id?: string | null;
+          delivery_status?: string | null;
+          delivery_lat?: string | null;
+          delivery_lng?: string | null;
+          eta_minutes?: string | null;
+          assigned_at?: Date | null;
+          delivery_on_the_way_at?: Date | null;
+          delivery_delivered_at?: Date | null;
+          driver_name?: string | null;
+          driver_phone?: string | null;
+          delivery_manual_retries?: string | number | null;
+        }>;
+      };
+      try {
+        r = await client.query<{
+          payload: unknown;
+          created_at: Date;
+          driver_id: string | null;
+          delivery_status: string | null;
+          delivery_lat: string | null;
+          delivery_lng: string | null;
+          eta_minutes: string | null;
+          assigned_at: Date | null;
+          delivery_on_the_way_at: Date | null;
+          delivery_delivered_at: Date | null;
+          driver_name: string | null;
+          driver_phone: string | null;
+          delivery_manual_retries: string | number | null;
+        }>(
+          `SELECT o.payload, o.created_at, o.driver_id, o.delivery_status, o.delivery_lat, o.delivery_lng, o.eta_minutes, o.assigned_at,
+                  o.delivery_on_the_way_at, o.delivery_delivered_at,
+                  o.delivery_manual_retries,
+                  NULL::text AS driver_name, NULL::text AS driver_phone
+           FROM orders o
+           WHERE o.order_id = $1`,
+          [orderId.trim()],
+        );
+      } catch (e) {
+        this.logOrdersReadSqlError('findPayloadById/full', e);
+        r = await client.query<{
+          payload: unknown;
+          created_at: Date;
+        }>(
+          `SELECT o.payload, o.created_at
+           FROM orders o
+           WHERE o.order_id = $1`,
+          [orderId.trim()],
+        );
+      }
       if (r.rows.length === 0) return null;
       const row = r.rows[0];
       const raw = row.payload;
       if (raw == null || typeof raw !== 'object') return null;
       return mergeStoredOrderWithDeliveryColumns(raw, {
-        driver_id: row.driver_id,
-        delivery_status: row.delivery_status,
-        delivery_lat: row.delivery_lat,
-        delivery_lng: row.delivery_lng,
-        eta_minutes: row.eta_minutes,
-        assigned_at: row.assigned_at,
+        driver_id: row.driver_id ?? null,
+        delivery_status: row.delivery_status ?? null,
+        delivery_lat: row.delivery_lat ?? null,
+        delivery_lng: row.delivery_lng ?? null,
+        eta_minutes: row.eta_minutes ?? null,
+        assigned_at: row.assigned_at ?? null,
         created_at: row.created_at,
-        delivery_on_the_way_at: row.delivery_on_the_way_at,
-        delivery_delivered_at: row.delivery_delivered_at,
-        driver_name: row.driver_name,
-        driver_phone: row.driver_phone,
-        delivery_manual_retries: row.delivery_manual_retries,
+        delivery_on_the_way_at: row.delivery_on_the_way_at ?? null,
+        delivery_delivered_at: row.delivery_delivered_at ?? null,
+        driver_name: row.driver_name ?? null,
+        driver_phone: row.driver_phone ?? null,
+        delivery_manual_retries: row.delivery_manual_retries ?? null,
       });
+    } catch (e) {
+      this.logOrdersReadSqlError('findPayloadById', e);
+      return null;
     } finally {
       client.release();
     }
@@ -426,34 +465,56 @@ export class OrdersPgService implements OnModuleDestroy {
           payload: unknown;
           created_at: Date;
           order_id: string;
-          driver_id: string | null;
-          delivery_status: string | null;
-          delivery_lat: string | null;
-          delivery_lng: string | null;
-          eta_minutes: string | null;
-          assigned_at: Date | null;
-          delivery_on_the_way_at: Date | null;
-          delivery_delivered_at: Date | null;
-          driver_name: string | null;
-          driver_phone: string | null;
-          delivery_manual_retries: string | number | null;
+          driver_id?: string | null;
+          delivery_status?: string | null;
+          delivery_lat?: string | null;
+          delivery_lng?: string | null;
+          eta_minutes?: string | null;
+          assigned_at?: Date | null;
+          delivery_on_the_way_at?: Date | null;
+          delivery_delivered_at?: Date | null;
+          driver_name?: string | null;
+          driver_phone?: string | null;
+          delivery_manual_retries?: string | number | null;
         }>;
       };
-      if (cursor == null) {
-        r = await client.query(
-          `SELECT o.payload, o.created_at, o.order_id,
-                  o.driver_id, o.delivery_status, o.delivery_lat, o.delivery_lng, o.eta_minutes, o.assigned_at,
-                  o.delivery_on_the_way_at, o.delivery_delivered_at,
-                  o.delivery_manual_retries,
-                  NULL::text AS driver_name, NULL::text AS driver_phone
-           FROM orders o
-           WHERE o.user_id = $1
-           ORDER BY o.created_at DESC, o.order_id DESC
-           LIMIT $2`,
-          [userId.trim(), fetchN],
-        );
-      } else {
-        r = await client.query(
+      const runQuery = async (compact: boolean) => {
+        if (cursor == null) {
+          if (compact) {
+            return client.query(
+              `SELECT o.payload, o.created_at, o.order_id
+               FROM orders o
+               WHERE o.user_id = $1
+               ORDER BY o.created_at DESC, o.order_id DESC
+               LIMIT $2`,
+              [userId.trim(), fetchN],
+            );
+          }
+          return client.query(
+            `SELECT o.payload, o.created_at, o.order_id,
+                    o.driver_id, o.delivery_status, o.delivery_lat, o.delivery_lng, o.eta_minutes, o.assigned_at,
+                    o.delivery_on_the_way_at, o.delivery_delivered_at,
+                    o.delivery_manual_retries,
+                    NULL::text AS driver_name, NULL::text AS driver_phone
+             FROM orders o
+             WHERE o.user_id = $1
+             ORDER BY o.created_at DESC, o.order_id DESC
+             LIMIT $2`,
+            [userId.trim(), fetchN],
+          );
+        }
+        if (compact) {
+          return client.query(
+            `SELECT o.payload, o.created_at, o.order_id
+             FROM orders o
+             WHERE o.user_id = $1
+               AND (o.created_at, o.order_id) < ($2::timestamptz, $3::text)
+             ORDER BY o.created_at DESC, o.order_id DESC
+             LIMIT $4`,
+            [userId.trim(), cursor.c, cursor.o, fetchN],
+          );
+        }
+        return client.query(
           `SELECT o.payload, o.created_at, o.order_id,
                   o.driver_id, o.delivery_status, o.delivery_lat, o.delivery_lng, o.eta_minutes, o.assigned_at,
                   o.delivery_on_the_way_at, o.delivery_delivered_at,
@@ -466,6 +527,13 @@ export class OrdersPgService implements OnModuleDestroy {
            LIMIT $4`,
           [userId.trim(), cursor.c, cursor.o, fetchN],
         );
+      };
+      try {
+        r = await runQuery(false);
+      } catch (e) {
+        // Some production DBs may lag on delivery columns; fallback to core order columns.
+        this.logOrdersReadSqlError('findPayloadsByUserIdPaginated/full', e);
+        r = await runQuery(true);
       }
       const rows = r.rows;
       const hasMore = rows.length > lim;
@@ -479,18 +547,18 @@ export class OrdersPgService implements OnModuleDestroy {
         try {
           items.push(
             mergeStoredOrderWithDeliveryColumns(p, {
-              driver_id: row.driver_id,
-              delivery_status: row.delivery_status,
-              delivery_lat: row.delivery_lat,
-              delivery_lng: row.delivery_lng,
-              eta_minutes: row.eta_minutes,
-              assigned_at: row.assigned_at,
+              driver_id: row.driver_id ?? null,
+              delivery_status: row.delivery_status ?? null,
+              delivery_lat: row.delivery_lat ?? null,
+              delivery_lng: row.delivery_lng ?? null,
+              eta_minutes: row.eta_minutes ?? null,
+              assigned_at: row.assigned_at ?? null,
               created_at: row.created_at,
-              delivery_on_the_way_at: row.delivery_on_the_way_at,
-              delivery_delivered_at: row.delivery_delivered_at,
-              driver_name: row.driver_name,
-              driver_phone: row.driver_phone,
-              delivery_manual_retries: row.delivery_manual_retries,
+              delivery_on_the_way_at: row.delivery_on_the_way_at ?? null,
+              delivery_delivered_at: row.delivery_delivered_at ?? null,
+              driver_name: row.driver_name ?? null,
+              driver_phone: row.driver_phone ?? null,
+              delivery_manual_retries: row.delivery_manual_retries ?? null,
             }),
           );
         } catch {
@@ -503,6 +571,9 @@ export class OrdersPgService implements OnModuleDestroy {
         nextCursor = encodeOrderListCursor(new Date(last.created_at), last.order_id);
       }
       return { items, nextCursor, hasMore };
+    } catch (e) {
+      this.logOrdersReadSqlError('findPayloadsByUserIdPaginated', e);
+      return { items: [], nextCursor: null, hasMore: false };
     } finally {
       client.release();
     }
@@ -529,34 +600,56 @@ export class OrdersPgService implements OnModuleDestroy {
           payload: unknown;
           created_at: Date;
           order_id: string;
-          driver_id: string | null;
-          delivery_status: string | null;
-          delivery_lat: string | null;
-          delivery_lng: string | null;
-          eta_minutes: string | null;
-          assigned_at: Date | null;
-          delivery_on_the_way_at: Date | null;
-          delivery_delivered_at: Date | null;
-          driver_name: string | null;
-          driver_phone: string | null;
-          delivery_manual_retries: string | number | null;
+          driver_id?: string | null;
+          delivery_status?: string | null;
+          delivery_lat?: string | null;
+          delivery_lng?: string | null;
+          eta_minutes?: string | null;
+          assigned_at?: Date | null;
+          delivery_on_the_way_at?: Date | null;
+          delivery_delivered_at?: Date | null;
+          driver_name?: string | null;
+          driver_phone?: string | null;
+          delivery_manual_retries?: string | number | null;
         }>;
       };
-      if (cursor == null) {
-        r = await client.query(
-          `SELECT o.payload, o.created_at, o.order_id,
-                  o.driver_id, o.delivery_status, o.delivery_lat, o.delivery_lng, o.eta_minutes, o.assigned_at,
-                  o.delivery_on_the_way_at, o.delivery_delivered_at,
-                  o.delivery_manual_retries,
-                  NULL::text AS driver_name, NULL::text AS driver_phone
-           FROM orders o
-           WHERE o.store_id = $1
-           ORDER BY o.created_at DESC, o.order_id DESC
-           LIMIT $2`,
-          [sid, fetchN],
-        );
-      } else {
-        r = await client.query(
+      const runQuery = async (compact: boolean) => {
+        if (cursor == null) {
+          if (compact) {
+            return client.query(
+              `SELECT o.payload, o.created_at, o.order_id
+               FROM orders o
+               WHERE o.store_id = $1
+               ORDER BY o.created_at DESC, o.order_id DESC
+               LIMIT $2`,
+              [sid, fetchN],
+            );
+          }
+          return client.query(
+            `SELECT o.payload, o.created_at, o.order_id,
+                    o.driver_id, o.delivery_status, o.delivery_lat, o.delivery_lng, o.eta_minutes, o.assigned_at,
+                    o.delivery_on_the_way_at, o.delivery_delivered_at,
+                    o.delivery_manual_retries,
+                    NULL::text AS driver_name, NULL::text AS driver_phone
+             FROM orders o
+             WHERE o.store_id = $1
+             ORDER BY o.created_at DESC, o.order_id DESC
+             LIMIT $2`,
+            [sid, fetchN],
+          );
+        }
+        if (compact) {
+          return client.query(
+            `SELECT o.payload, o.created_at, o.order_id
+             FROM orders o
+             WHERE o.store_id = $1
+               AND (o.created_at, o.order_id) < ($2::timestamptz, $3::text)
+             ORDER BY o.created_at DESC, o.order_id DESC
+             LIMIT $4`,
+            [sid, cursor.c, cursor.o, fetchN],
+          );
+        }
+        return client.query(
           `SELECT o.payload, o.created_at, o.order_id,
                   o.driver_id, o.delivery_status, o.delivery_lat, o.delivery_lng, o.eta_minutes, o.assigned_at,
                   o.delivery_on_the_way_at, o.delivery_delivered_at,
@@ -569,6 +662,12 @@ export class OrdersPgService implements OnModuleDestroy {
            LIMIT $4`,
           [sid, cursor.c, cursor.o, fetchN],
         );
+      };
+      try {
+        r = await runQuery(false);
+      } catch (e) {
+        this.logOrdersReadSqlError('findPayloadsByStoreIdPaginated/full', e);
+        r = await runQuery(true);
       }
       const rows = r.rows;
       const hasMore = rows.length > lim;
@@ -582,18 +681,18 @@ export class OrdersPgService implements OnModuleDestroy {
         try {
           items.push(
             mergeStoredOrderWithDeliveryColumns(p, {
-              driver_id: row.driver_id,
-              delivery_status: row.delivery_status,
-              delivery_lat: row.delivery_lat,
-              delivery_lng: row.delivery_lng,
-              eta_minutes: row.eta_minutes,
-              assigned_at: row.assigned_at,
+              driver_id: row.driver_id ?? null,
+              delivery_status: row.delivery_status ?? null,
+              delivery_lat: row.delivery_lat ?? null,
+              delivery_lng: row.delivery_lng ?? null,
+              eta_minutes: row.eta_minutes ?? null,
+              assigned_at: row.assigned_at ?? null,
               created_at: row.created_at,
-              delivery_on_the_way_at: row.delivery_on_the_way_at,
-              delivery_delivered_at: row.delivery_delivered_at,
-              driver_name: row.driver_name,
-              driver_phone: row.driver_phone,
-              delivery_manual_retries: row.delivery_manual_retries,
+              delivery_on_the_way_at: row.delivery_on_the_way_at ?? null,
+              delivery_delivered_at: row.delivery_delivered_at ?? null,
+              driver_name: row.driver_name ?? null,
+              driver_phone: row.driver_phone ?? null,
+              delivery_manual_retries: row.delivery_manual_retries ?? null,
             }),
           );
         } catch {
@@ -606,6 +705,9 @@ export class OrdersPgService implements OnModuleDestroy {
         nextCursor = encodeOrderListCursor(new Date(last.created_at), last.order_id);
       }
       return { items, nextCursor, hasMore };
+    } catch (e) {
+      this.logOrdersReadSqlError('findPayloadsByStoreIdPaginated', e);
+      return { items: [], nextCursor: null, hasMore: false };
     } finally {
       client.release();
     }
