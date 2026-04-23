@@ -398,13 +398,10 @@ final class BackendOrdersClient {
     String? cursor,
   }) async {
     if (!BackendOrdersConfig.useBackendOrdersRead) throw StateError('NULL_RESPONSE');
-    final firebaseUid = FirebaseAuth.instance.currentUser?.uid.trim() ?? '';
-    final sessionUid = UserSession.currentUid;
-    final uid = firebaseUid.isNotEmpty ? firebaseUid : sessionUid;
-    if (uid.isEmpty) throw StateError('NULL_RESPONSE');
+    if (!UserSession.isLoggedIn) throw StateError('NULL_RESPONSE');
     final base = BackendOrdersConfig.baseUrl.trim();
     if (base.isEmpty) throw StateError('NULL_RESPONSE');
-    final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}/users/${Uri.encodeComponent(uid)}/orders').replace(
+    final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}/orders').replace(
       queryParameters: {
         'limit': '$limit',
         if (cursor != null && cursor.trim().isNotEmpty) 'cursor': cursor.trim(),
@@ -444,11 +441,6 @@ final class BackendOrdersClient {
       debugPrint(
         '[AUTH-HEADER] reason=backend_orders_id_token token_is_null=${token == null} len=${token?.trim().length ?? 0}',
       );
-      final trimmed = token?.trim() ?? '';
-      if (trimmed.isNotEmpty && kDebugMode) {
-        // ignore: avoid_print
-        print('🔥 FIREBASE TOKEN: $trimmed');
-      }
       return token;
     } on Object {
       debugPrint('BackendOrders: getIdToken failed');

@@ -41,7 +41,13 @@ export function validateShadowOrderPayload(
   }
 
   // --- storeId ---
-  const resolvedStore = resolveOrderStoreId(items as CartItemLike[]);
+  let resolvedStore = 'ammarjo';
+  try {
+    resolvedStore = resolveOrderStoreId(items as CartItemLike[]);
+  } catch {
+    mismatches.push('multi_store_order_not_allowed');
+    resolvedStore = '';
+  }
   const declaredStore =
     body.storeId != null && String(body.storeId).trim().length > 0
       ? String(body.storeId).trim()

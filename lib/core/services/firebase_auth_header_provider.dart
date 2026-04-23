@@ -21,10 +21,6 @@ abstract final class FirebaseAuthHeaderProvider {
     debugPrint('[AUTH-HEADER] reason=$reason token_is_null=${token == null} len=${token?.trim().length ?? 0}');
     final trimmed = token?.trim() ?? '';
     if (trimmed.isEmpty) throw StateError('NULL_RESPONSE');
-    if (kDebugMode) {
-      // ignore: avoid_print
-      print('🔥 FIREBASE TOKEN: $trimmed');
-    }
     return trimmed;
   }
 
@@ -51,10 +47,6 @@ abstract final class FirebaseAuthHeaderProvider {
     debugPrint('[AUTH-HEADER] optional reason=$reason token_is_null=${token == null} len=${token?.trim().length ?? 0}');
     final trimmed = token?.trim() ?? '';
     if (trimmed.isEmpty) return <String, String>{};
-    if (kDebugMode) {
-      // ignore: avoid_print
-      print('🔥 FIREBASE TOKEN: $trimmed');
-    }
     return <String, String>{'Authorization': 'Bearer $trimmed'};
   }
 

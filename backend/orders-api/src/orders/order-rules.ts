@@ -19,7 +19,7 @@ export function resolveOrderStoreId(items: CartItemLike[]): string {
   if (!ids.length) return 'ammarjo';
   const distinct = new Set(ids);
   if (distinct.size === 1) return ids[0];
-  return ids[0];
+  throw new Error('multi_store_order_not_allowed');
 }
 
 export function assertOrderPayload(

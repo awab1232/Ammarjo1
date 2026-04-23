@@ -45,14 +45,11 @@ export class FirebaseAuthGuard implements CanActivate {
     }
     try {
       initFirebase();
-      console.log('[AUTH] verifying token...');
       const decoded = await admin.auth().verifyIdToken(token);
-      console.log('[AUTH] token valid:', decoded.uid);
       req.firebaseUid = decoded.uid;
       req.firebaseDecoded = decoded;
       return true;
-    } catch (error) {
-      console.log('[AUTH ERROR]', error instanceof Error ? error.message : String(error));
+    } catch {
       const backendSession = verifyBackendSessionToken(token);
       if (backendSession != null) {
         req.firebaseUid = backendSession.uid;

@@ -58,7 +58,12 @@ class _TechnicianDashboardPageState extends State<TechnicianDashboardPage> {
         technicianId: technicianScopeId.trim(),
         limit: 30,
       );
-      final earningsState = await ServiceRequestsRepository.instance.sumEarningsForTechnician(technicianScopeId);
+      final earningsScope = UserSession.currentEmail.isNotEmpty
+          ? UserSession.currentEmail
+          : technicianScopeId;
+      final earningsState = await ServiceRequestsRepository.instance.sumEarningsForTechnician(
+        earningsScope,
+      );
       if (!mounted) return;
       setState(() {
         _requests = switch (itemsState) {

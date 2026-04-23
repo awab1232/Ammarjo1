@@ -547,6 +547,9 @@ export class OrdersService implements IOrderService {
     const flow = ['pending', 'processing', 'shipped', 'delivered'];
     const pi = flow.indexOf(prev);
     const ni = flow.indexOf(next);
+    if (isOwner && !isAdmin && !isScopedStoreOwner && !isWholesaler && next !== 'cancelled') {
+      throw new BadRequestException('Customers can only cancel their orders');
+    }
     if (next === 'cancelled' && isOwner && !isAdmin) {
       const nonCancelable = new Set(['shipped', 'delivered', 'completed']);
       if (nonCancelable.has(prev)) {

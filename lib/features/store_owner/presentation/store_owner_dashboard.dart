@@ -240,8 +240,10 @@ class _StoreOwnerDashboardState extends State<StoreOwnerDashboard> {
         return ListenableBuilder(
           listenable: BackendIdentityController.instance,
           builder: (context, _) {
+            final role = (BackendIdentityController.instance.me?.role ?? '').trim().toLowerCase();
+            final canAccess = role == 'store_owner' || role == 'admin';
             final storeId = BackendIdentityController.instance.me?.storeId?.trim();
-        if (storeId == null || storeId.isEmpty) {
+        if (!canAccess || storeId == null || storeId.isEmpty) {
           return Scaffold(
             appBar: AppBar(
               backgroundColor: AppColors.primaryOrange,
@@ -253,7 +255,9 @@ class _StoreOwnerDashboardState extends State<StoreOwnerDashboard> {
               child: Padding(
                 padding: const EdgeInsets.all(24),
                 child: Text(
-                  'لم يُعثر على متجر مرتبط بحسابك.',
+                  !canAccess
+                      ? 'لا تملك صلاحية الوصول إلى لوحة المتجر.'
+                      : 'لم يُعثر على متجر مرتبط بحسابك.',
                   textAlign: TextAlign.center,
                   style: GoogleFonts.tajawal(color: AppColors.textSecondary),
                 ),

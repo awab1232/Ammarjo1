@@ -338,6 +338,16 @@ export class TendersService {
         if (actorOffer.rows.length === 0) {
           throw new ForbiddenException('forbidden');
         }
+        const ownOffers = await client.query(
+          `SELECT id::text, tender_id::text, store_id, store_name, store_owner_uid,
+                  price, note, status, created_at, updated_at
+           FROM tender_offers
+           WHERE tender_id = $1::uuid
+             AND store_owner_uid = $2
+           ORDER BY created_at ASC`,
+          [tenderId.trim(), actor],
+        );
+        return { items: (ownOffers.rows as Record<string, unknown>[]).map((r) => this.rowToOffer(r)) };
       }
       const q = await client.query(
         `SELECT id::text, tender_id::text, store_id, store_name, store_owner_uid,

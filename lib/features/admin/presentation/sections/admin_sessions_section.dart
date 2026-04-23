@@ -6,6 +6,7 @@ import 'package:http/http.dart' as http;
 import 'package:ammar_store/core/session/user_session.dart';
 
 import '../../../../core/config/backend_orders_config.dart';
+import '../../../../core/services/firebase_auth_header_provider.dart';
 import '../../../../core/theme/app_colors.dart';
 
 /// Admin section: View and manage active user sessions (device tracking).
@@ -30,11 +31,15 @@ class _AdminSessionsSectionState extends State<AdminSessionsSection> {
     _load();
   }
 
-  Future<String?> _token() async {
+  Future<Map<String, String>?> _headers() async {
     if (!UserSession.isLoggedIn) return null;
-    final token = (UserSession.authToken ?? '').trim();
-    if (token.isEmpty) return null;
-    return token;
+    try {
+      return await FirebaseAuthHeaderProvider.requireAuthHeaders(
+        reason: 'admin_sessions_section',
+      );
+    } on Object {
+      return null;
+    }
   }
 
   Future<void> _load() async {
@@ -43,11 +48,11 @@ class _AdminSessionsSectionState extends State<AdminSessionsSection> {
       _error = null;
     });
     try {
-      final token = await _token();
-      if (token == null) throw Exception('not authenticated');
+      final headers = await _headers();
+      if (headers == null) throw Exception('not authenticated');
       final base = BackendOrdersConfig.baseUrl.replaceAll(RegExp(r'/$'), '');
       final uri = Uri.parse('$base/admin/rest/sessions?limit=$_limit&offset=$_offset');
-      final res = await http.get(uri, headers: {'Authorization': 'Bearer $token'}).timeout(const Duration(seconds: 20));
+      final res = await http.get(uri, headers: headers).timeout(const Duration(seconds: 20));
       if (res.statusCode != 200) throw Exception('HTTP ${res.statusCode}');
       final body = jsonDecode(res.body) as Map<String, dynamic>;
       final rows = body['rows'] as List? ?? const <dynamic>[];
@@ -67,11 +72,11 @@ class _AdminSessionsSectionState extends State<AdminSessionsSection> {
   Future<void> _deleteSession(String id) async {
     setState(() => _loading = true);
     try {
-      final token = await _token();
-      if (token == null) throw Exception('not authenticated');
+      final headers = await _headers();
+      if (headers == null) throw Exception('not authenticated');
       final base = BackendOrdersConfig.baseUrl.replaceAll(RegExp(r'/$'), '');
       final uri = Uri.parse('$base/admin/rest/sessions/$id');
-      await http.delete(uri, headers: {'Authorization': 'Bearer $token'}).timeout(const Duration(seconds: 15));
+      await http.delete(uri, headers: headers).timeout(const Duration(seconds: 15));
     } on Object {
       // ignore, will reload
     }
@@ -98,11 +103,11 @@ class _AdminSessionsSectionState extends State<AdminSessionsSection> {
 
     setState(() => _loading = true);
     try {
-      final token = await _token();
-      if (token == null) throw Exception('not authenticated');
+      final headers = await _headers();
+      if (headers == null) throw Exception('not authenticated');
       final base = BackendOrdersConfig.baseUrl.replaceAll(RegExp(r'/$'), '');
       final uri = Uri.parse('$base/admin/rest/sessions/user/$firebaseUid');
-      await http.delete(uri, headers: {'Authorization': 'Bearer $token'}).timeout(const Duration(seconds: 15));
+      await http.delete(uri, headers: headers).timeout(const Duration(seconds: 15));
     } on Object {
       // ignore
     }

@@ -44,20 +44,7 @@ export class AuthController {
       throw new UnauthorizedException('Not authenticated');
     }
     if (!snap?.uid) {
-      // Graceful fallback for newly created Firebase users whose backend row/tenant
-      // snapshot is not materialized yet. Keep the session usable as customer.
-      return {
-        id: req.firebaseUid,
-        role: 'customer',
-        storeId: undefined,
-        storeType: undefined,
-        userId: null,
-        firebaseUid: req.firebaseUid,
-        email: req.firebaseDecoded?.email ?? null,
-        tenantId: null,
-        wholesalerId: null,
-        permissions: [] as string[],
-      };
+      throw new UnauthorizedException('tenant context unavailable');
     }
     const persisted = apiRoleFromPersisted(snap.persistedRole);
     const role = apiMeRole(persisted);
