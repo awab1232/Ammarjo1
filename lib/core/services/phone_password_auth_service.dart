@@ -39,11 +39,15 @@ class PhonePasswordAuthService {
 
   /// Registration after OTP verification: sends Firebase ID token + phone + password to backend.
   static Future<void> registerAfterOtp({
-    required User firebaseUser,
+    User? firebaseUser,
     required String phone,
     required String password,
   }) async {
-    final firebaseToken = await firebaseUser.getIdToken(true);
+    final user = firebaseUser ?? FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      throw const PhonePasswordAuthException('missing_firebase_session', 'جلسة التحقق غير متاحة.');
+    }
+    final firebaseToken = await user.getIdToken(true);
     if (firebaseToken == null || firebaseToken.trim().isEmpty) {
       throw const PhonePasswordAuthException('missing_firebase_token', 'تعذر استخراج رمز التحقق من Firebase.');
     }
@@ -77,7 +81,7 @@ class PhonePasswordAuthService {
       throw const PhonePasswordAuthException('register_failed', 'تعذر تسجيل الحساب على الخادم.');
     }
     try {
-      await FirebaseBackendSessionService.syncWithBackend(firebaseUser: firebaseUser);
+      await FirebaseBackendSessionService.syncWithBackend(firebaseUser: user);
     } on Object {
       // best effort
     }

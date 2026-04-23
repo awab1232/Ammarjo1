@@ -1,9 +1,9 @@
 import 'dart:convert';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:http/http.dart' as http;
+import 'package:ammar_store/core/session/user_session.dart';
 
 import '../../../../core/config/backend_orders_config.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -17,7 +17,7 @@ class AdminSessionsSection extends StatefulWidget {
 }
 
 class _AdminSessionsSectionState extends State<AdminSessionsSection> {
-  List<Map<String, dynamic>> _sessions = [];
+  List<Map<String, dynamic>> _sessions = List<Map<String, dynamic>>.empty(growable: true);
   bool _loading = false;
   String? _error;
   int _total = 0;
@@ -31,9 +31,10 @@ class _AdminSessionsSectionState extends State<AdminSessionsSection> {
   }
 
   Future<String?> _token() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return null;
-    return user.getIdToken();
+    if (!UserSession.isLoggedIn) return null;
+    final token = (UserSession.authToken ?? '').trim();
+    if (token.isEmpty) return null;
+    return token;
   }
 
   Future<void> _load() async {

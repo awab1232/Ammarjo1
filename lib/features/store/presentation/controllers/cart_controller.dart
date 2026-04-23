@@ -1,6 +1,6 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
+import 'package:ammar_store/core/session/user_session.dart';
 
 import '../../../../core/config/backend_orders_config.dart';
 import '../../../../core/contracts/feature_state.dart';
@@ -36,9 +36,9 @@ class CartController extends ChangeNotifier {
   int get cartItemCount => cart.fold(0, (total, item) => total + item.quantity);
 
   bool get _useServerCartLines {
-    final u = FirebaseAuth.instance.currentUser;
+    final uid = UserSession.currentUid;
     return BackendOrdersConfig.useBackendCart &&
-        u != null &&
+        uid.isNotEmpty &&
         BackendOrdersConfig.baseUrl.trim().isNotEmpty;
   }
 

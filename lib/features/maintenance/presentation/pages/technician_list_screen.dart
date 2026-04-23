@@ -1,11 +1,11 @@
 ﻿import 'dart:typed_data';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:ammar_store/core/session/user_session.dart';
 
 import '../../../../core/firebase/user_notifications_repository.dart';
 import '../../../../core/utils/jordan_phone.dart';
@@ -153,8 +153,8 @@ class TechnicianListScreen extends StatelessWidget {
       await ServiceRequestsRepository.instance.attachChatIdToRequest(requestId, chatId);
       final uname = store.profile?.fullName?.trim().isNotEmpty == true
           ? store.profile!.fullName!.trim()
-          : (FirebaseAuth.instance.currentUser?.displayName?.trim().isNotEmpty == true
-              ? FirebaseAuth.instance.currentUser!.displayName!.trim()
+          : (UserSession.currentDisplayName.isNotEmpty
+              ? UserSession.currentDisplayName
               : email.split('@').first);
       await UserNotificationsRepository.notifyServiceRequestToTechnician(
         technicianEmail: techEmail,

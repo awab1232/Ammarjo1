@@ -1,12 +1,12 @@
 import 'dart:convert';
 
 import 'package:csv/csv.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show compute, debugPrint;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ammar_store/core/session/user_session.dart';
 
 import '../../../../core/constants/admin_list_constants.dart';
 import '../../../../core/constants/order_status.dart';
@@ -53,19 +53,19 @@ class _AdminOrdersSectionState extends State<AdminOrdersSection> with SingleTick
   late TabController _tabController;
   String _quickFilterKey = 'all';
   final TextEditingController _searchCtrl = TextEditingController();
-  final List<_OrderRow> _extraOrderRows = [];
+  final List<_OrderRow> _extraOrderRows = List<_OrderRow>.empty(growable: true);
   bool _loadingMoreOrders = false;
   bool _hasMoreOrders = true;
   bool _exporting = false;
   bool _loading = true;
   String? _loadError;
 
-  List<_SavedOrderFilter> _savedFilters = [];
+  List<_SavedOrderFilter> _savedFilters = List<_SavedOrderFilter>.empty(growable: true);
   String? _selectedSavedFilterId;
   bool _prefsLoaded = false;
   bool _loggedClientSearchHint = false;
 
-  List<_OrderRow> _firstPageRows = [];
+  List<_OrderRow> _firstPageRows = List<_OrderRow>.empty(growable: true);
 
   static const _prefsKeyPrefix = 'admin_orders_saved_filters_v1_';
 
@@ -103,7 +103,7 @@ class _AdminOrdersSectionState extends State<AdminOrdersSection> with SingleTick
     setState(() {
       _loading = true;
       _loadError = null;
-      _firstPageRows = [];
+      _firstPageRows = List<_OrderRow>.empty(growable: true);
       _extraOrderRows.clear();
       _hasMoreOrders = true;
     });
@@ -169,8 +169,8 @@ class _AdminOrdersSectionState extends State<AdminOrdersSection> with SingleTick
   }
 
   Future<void> _loadSavedFilters() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) {
+    final uid = UserSession.currentUid;
+    if (uid.isEmpty) {
       setState(() => _prefsLoaded = true);
       return;
     }
@@ -193,8 +193,8 @@ class _AdminOrdersSectionState extends State<AdminOrdersSection> with SingleTick
   }
 
   Future<void> _persistSavedFilters() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
+    final uid = UserSession.currentUid;
+    if (uid.isEmpty) return;
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(
@@ -853,11 +853,12 @@ class _OrdersListView extends StatelessWidget {
                             debugPrint('[AdminOrdersSection] email notification failed');
                           }
                         }
-                        final actor = FirebaseAuth.instance.currentUser;
-                        if (actor != null) {
+                        final actorUid = UserSession.currentUid;
+                        final actorEmail = UserSession.currentEmail;
+                        if (actorUid.isNotEmpty) {
                           await AuditRepository.logAction(
-                            userId: actor.uid,
-                            userEmail: actor.email ?? (throw StateError('NULL_RESPONSE')),
+                            userId: actorUid,
+                            userEmail: actorEmail,
                             action: 'order.status_change',
                             targetType: 'order',
                             targetId: id,

@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../features/admin/presentation/pages/admin_dashboard_screen.dart';
@@ -10,7 +9,7 @@ import '../services/device_session_service.dart';
 import '../services/permission_service.dart';
 
 /// يحدد الشاشة الرئيسية بعد تسجيل الدخول اعتماداً على `/auth/me` فقط (بدون مسارات احتياطية).
-Future<Widget> resolveHomeForSignedInUser(User user) async {
+Future<Widget> resolveHomeForSignedInUser() async {
   await BackendIdentityController.instance.refresh();
   // Best-effort device session registration (non-blocking).
   DeviceSessionService.instance.registerSession().ignore();

@@ -23,6 +23,11 @@ abstract final class AccountPasswordService {
     return u.providerData.any((p) => p.providerId == _passwordProviderId);
   }
 
+  /// Helper for UI layers to avoid reading FirebaseAuth directly.
+  static bool currentUserHasPasswordLinked() {
+    return userHasPasswordLinked(FirebaseAuth.instance.currentUser);
+  }
+
   /// إعادة المصادقة بكلمة المرور الحالية ثم [User.updatePassword].
   static Future<void> changePassword({
     required String currentPassword,

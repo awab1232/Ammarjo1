@@ -1,8 +1,8 @@
 import 'dart:async';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:ammar_store/core/session/user_session.dart';
 
 import '../../../../core/contracts/feature_state.dart';
 import '../../../../core/session/backend_identity_controller.dart';
@@ -81,8 +81,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   Future<void> _checkUserRole() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
+    if (!UserSession.isLoggedIn || UserSession.currentUid.isEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         Navigator.of(context).pushAndRemoveUntil(
@@ -118,8 +117,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   /// لوحة الإدارة **كاملة** — يُسمح بالوصول للمستخدمين ذوي الدور `admin` أو `system_internal` فقط من `/auth/me`.
-  bool _canAccessAdminDashboard(Map<String, dynamic>? data, User? user) {
-    if (user == null) return false;
+  bool _canAccessAdminDashboard(Map<String, dynamic>? data, String uid) {
+    if (uid.isEmpty) return false;
     if (!BackendIdentityController.instance.isBackendFullAdmin) return false;
     final role = BackendIdentityController.instance.me?.role;
     final normalized = PermissionService.normalizeRole(role);
@@ -599,7 +598,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     return ListenableBuilder(
       listenable: BackendIdentityController.instance,
       builder: (context, _) {
-        final authUser = FirebaseAuth.instance.currentUser;
+        final authUid = UserSession.currentUid;
         final me = BackendIdentityController.instance.me;
         final data = me == null
             ? null
@@ -607,7 +606,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
                 'role': me.role,
                 'email': me.email,
               };
-        if (!_canAccessAdminDashboard(data, authUser)) {
+        if (!_canAccessAdminDashboard(data, authUid)) {
               return Scaffold(
                 backgroundColor: AppColors.background,
                 appBar: AppBar(
@@ -639,7 +638,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
             final navGroups = _filteredNavGroups(role);
 
             _maybeScheduleNavSync(
-              uid: authUser?.uid,
+              uid: authUid,
               userData: data,
               role: role,
             );

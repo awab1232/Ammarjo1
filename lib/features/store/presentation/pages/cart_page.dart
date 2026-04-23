@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -66,7 +65,7 @@ class _CartPageState extends State<CartPage> {
     List<CartItem> items,
   ) async {
     if (items.isEmpty) return;
-    if (!UserSession.isLoggedIn && FirebaseAuth.instance.currentUser == null) {
+    if (!UserSession.isLoggedIn) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(

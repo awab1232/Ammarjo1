@@ -1,7 +1,7 @@
-﻿import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:ammar_store/core/session/user_session.dart';
 
 import '../../../core/theme/app_colors.dart';
 import '../../../core/widgets/app_bar_back_button.dart';
@@ -96,8 +96,8 @@ class _SupportChatPageState extends State<SupportChatPage> {
     final t = _textCtrl.text.trim();
     if (t.isEmpty) return;
     final store = context.read<StoreController>();
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    final uid = UserSession.currentUid;
+    if (!UserSession.isLoggedIn || uid.isEmpty) return;
 
     String senderName;
     if (widget.isAdmin) {
@@ -233,7 +233,7 @@ class _SupportChatPageState extends State<SupportChatPage> {
         ),
       );
     }
-    final myUid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final myUid = UserSession.currentUid;
     return ListView.builder(
       controller: _scroll,
       padding: const EdgeInsets.fromLTRB(12, 12, 12, 12),

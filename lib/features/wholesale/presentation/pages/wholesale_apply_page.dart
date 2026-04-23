@@ -1,7 +1,7 @@
-﻿import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:ammar_store/core/session/user_session.dart';
 
 import '../../../../core/firebase/user_notifications_repository.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -32,8 +32,8 @@ class _WholesaleApplyPageState extends State<WholesaleApplyPage> {
   @override
   void initState() {
     super.initState();
-    final u = FirebaseAuth.instance.currentUser?.email?.trim();
-    if (u != null && u.isNotEmpty) {
+    final u = UserSession.currentEmail;
+    if (u.isNotEmpty) {
       _emailCtrl.text = u;
     }
   }
@@ -334,15 +334,15 @@ class _WholesaleApplyPageState extends State<WholesaleApplyPage> {
     setState(() => _isLoading = true);
 
     try {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) throw StateError('يجب تسجيل الدخول أولاً');
+      final uid = UserSession.currentUid;
+      if (!UserSession.isLoggedIn || uid.isEmpty) throw StateError('يجب تسجيل الدخول أولاً');
 
       final profile = context.read<StoreController>().profile;
       final fn = profile?.fullName?.trim();
       final nameHint = (fn != null && fn.isNotEmpty) ? fn : _storeNameCtrl.text.trim();
 
       await WholesaleRepository.instance.submitWholesalerJoinRequest(
-        applicantId: user.uid,
+        applicantId: uid,
         applicantEmail: _emailCtrl.text.trim(),
         applicantPhone: _phoneCtrl.text.trim(),
         wholesalerName: _storeNameCtrl.text.trim(),

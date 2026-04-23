@@ -1,9 +1,10 @@
 import 'dart:async';
 
-import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart' show FirebaseException;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:ammar_store/core/session/user_session.dart';
 
 import '../../../../core/constants/order_status.dart';
 import '../../../../core/contracts/feature_state.dart';
@@ -99,8 +100,8 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
       ),
     );
     if (ok != true || !context.mounted) return;
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
+    final uid = UserSession.currentUid;
+    if (uid.isEmpty) return;
     final cancelled = await CustomerOpsRepository.instance.cancelFirebaseOrderForCustomer(
       uid: uid,
       userOrderDocId: o.id,
@@ -118,8 +119,8 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   }
 
   Future<void> _rateDeliveredOrder(BuildContext context, TrackOrderItem order) async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return;
+    final uid = UserSession.currentUid;
+    if (uid.isEmpty) return;
     double overall = 5;
     double delivery = 5;
     double quality = 5;
@@ -189,8 +190,8 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
     final state = await ReviewsRepository.instance.createReview(
       targetId: (order.firebaseOrderId ?? order.id).trim(),
       targetType: 'order',
-      userId: user.uid,
-      userName: user.displayName?.trim().isNotEmpty == true ? user.displayName!.trim() : 'مستخدم',
+      userId: uid,
+      userName: UserSession.currentDisplayName.isNotEmpty ? UserSession.currentDisplayName : 'مستخدم',
       rating: overall,
       comment: comment,
       orderId: (order.firebaseOrderId ?? order.id).trim(),
@@ -217,10 +218,9 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
         leading: const AppBarBackButton(),
         title: Text(widget.appBarTitle, style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
       ),
-      body: StreamBuilder<User?>(
-        stream: FirebaseAuth.instance.authStateChanges(),
-        builder: (context, authSnap) {
-          final authEmail = FirebaseAuth.instance.currentUser?.email?.trim() ?? '';
+      body: Builder(
+        builder: (context) {
+          final authEmail = UserSession.currentEmail;
           final email = authEmail.isNotEmpty ? authEmail : profileEmail;
           if (email.isEmpty) {
             return Center(

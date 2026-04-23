@@ -10,6 +10,18 @@ class UserSession {
   static Map<String, dynamic>? user;
   static bool isLoggedIn = false;
   static String? authToken;
+  static String get currentUid {
+    final u = user;
+    if (u == null) return '';
+    final firebaseUid = (u['firebaseUid'] ?? u['uid'] ?? '').toString().trim();
+    if (firebaseUid.isNotEmpty) return firebaseUid;
+    return '';
+  }
+
+  static String get currentEmail => (user?['email'] ?? '').toString().trim();
+  static String get currentPhone => (user?['phone'] ?? '').toString().trim();
+  static String get currentDisplayName =>
+      (user?['fullName'] ?? user?['displayName'] ?? user?['name'] ?? '').toString().trim();
 
   static void setUser(Map<String, dynamic> u) {
     user = Map<String, dynamic>.from(u);

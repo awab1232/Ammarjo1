@@ -249,5 +249,9 @@ abstract final class PhoneAuthService {
     }
     return d.isNotEmpty ? d : '';
   }
+
+  static String? currentJordanUsername() {
+    return jordanUsernameFromFirebaseUser(FirebaseAuth.instance.currentUser);
+  }
 }
 

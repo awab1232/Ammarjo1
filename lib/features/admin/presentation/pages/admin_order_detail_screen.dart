@@ -1,7 +1,7 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:ammar_store/core/session/user_session.dart';
 
 import '../../../../core/config/backend_orders_config.dart';
 import '../../../../core/constants/order_status.dart';
@@ -74,7 +74,7 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = UserSession.currentUid;
     return Scaffold(
       appBar: AppBar(
         leading: const AppBarBackButton(),
@@ -106,7 +106,9 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
               ),
             );
           }
-          final items = (o['items'] as List<dynamic>?) ?? const [];
+          final items = o['items'] is List<dynamic>
+              ? (o['items'] as List<dynamic>)
+              : List<dynamic>.empty(growable: false);
           final billing = o['billing'] is Map ? Map<String, dynamic>.from(o['billing'] as Map) : <String, dynamic>{};
           final pair = _deliveryLatLng(o);
           final lat = pair?.$1;
@@ -153,7 +155,7 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
                   label: Text('عرض الموقع على الخريطة', style: GoogleFonts.tajawal()),
                 ),
               ],
-              if (showShip && customerUid.isNotEmpty && uid != null) ...[
+              if (showShip && customerUid.isNotEmpty && uid.isNotEmpty) ...[
                 const SizedBox(height: 20),
                 _ShippingTrackingBlock(
                   key: ValueKey<Object?>(o['updatedAt']),
@@ -172,7 +174,9 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
                 final name = m['name']?.toString() ?? (throw StateError('NULL_RESPONSE'));
                 final qty = (m['quantity'] as num?)?.toInt() ?? (throw StateError('INVALID_NUMERIC_DATA'));
                 final price = m['price']?.toString() ?? (throw StateError('NULL_RESPONSE'));
-                final imgs = (m['images'] as List<dynamic>?) ?? const [];
+                final imgs = m['images'] is List<dynamic>
+                    ? (m['images'] as List<dynamic>)
+                    : List<dynamic>.empty(growable: false);
                 final img = imgs.isNotEmpty ? imgs.first.toString() : '';
                 final unit = double.tryParse(price.replaceAll(RegExp(r'[^\d.]'), '')) ??
                     (throw StateError('INVALID_NUMERIC_DATA'));

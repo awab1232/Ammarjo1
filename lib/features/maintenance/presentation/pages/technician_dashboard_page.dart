@@ -1,6 +1,6 @@
-﻿import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:ammar_store/core/session/user_session.dart';
 
 import '../../../../core/contracts/feature_state.dart';
 import '../../../../core/services/permission_service.dart';
@@ -33,16 +33,16 @@ class _TechnicianDashboardPageState extends State<TechnicianDashboardPage> {
   @override
   void initState() {
     super.initState();
-    if (FirebaseAuth.instance.currentUser != null) {
+    if (UserSession.isLoggedIn && UserSession.currentUid.isNotEmpty) {
       _loading = true;
     }
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final user = FirebaseAuth.instance.currentUser;
-      if (user == null) {
+      final uid = UserSession.currentUid;
+      if (uid.isEmpty) {
         if (mounted) setState(() => _loading = false);
         return;
       }
-      await _loadRequests(user.uid);
+      await _loadRequests(uid);
     });
   }
 
@@ -124,7 +124,7 @@ class _TechnicianDashboardPageState extends State<TechnicianDashboardPage> {
         ),
       );
     }
-    final user = FirebaseAuth.instance.currentUser;
+    final uid = UserSession.currentUid;
     final incoming = _requests.where((r) => r.status == 'pending').toList();
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -140,7 +140,7 @@ class _TechnicianDashboardPageState extends State<TechnicianDashboardPage> {
             icon: const Icon(Icons.support_agent, color: Colors.white),
             onPressed: () => openSupportChat(context),
           ),
-          if (user != null)
+          if (uid.isNotEmpty)
             Stack(
               alignment: Alignment.center,
               children: [
@@ -163,7 +163,7 @@ class _TechnicianDashboardPageState extends State<TechnicianDashboardPage> {
             ),
         ],
       ),
-      body: user == null
+      body: uid.isEmpty
           ? Center(
               child: Padding(
                 padding: const EdgeInsets.all(24),
@@ -176,7 +176,7 @@ class _TechnicianDashboardPageState extends State<TechnicianDashboardPage> {
             )
           : RefreshIndicator(
               color: AppColors.primaryOrange,
-              onRefresh: () => _loadRequests(user.uid),
+              onRefresh: () => _loadRequests(uid),
               child: _loading
                   ? ListView(
                       physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
@@ -202,7 +202,7 @@ class _TechnicianDashboardPageState extends State<TechnicianDashboardPage> {
                             const SizedBox(height: 20),
                             Center(
                               child: FilledButton(
-                                onPressed: () => _loadRequests(user.uid),
+                                onPressed: () => _loadRequests(uid),
                                 child: Text('إعادة المحاولة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
                               ),
                             ),
@@ -341,7 +341,7 @@ class _TechnicianDashboardPageState extends State<TechnicianDashboardPage> {
                                                 );
                                               }
                                               if (!mounted) return;
-                                              await _loadRequests(user.uid);
+                                              await _loadRequests(uid);
                                             } on Object {
                                               debugPrint('TechnicianDashboardPage: update request status failed.');
                                               if (!mounted) return;

@@ -1,4 +1,3 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -47,7 +46,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (!mounted) return;
-      if (!UserSession.isLoggedIn && FirebaseAuth.instance.currentUser == null) {
+      if (!UserSession.isLoggedIn) {
         if (!mounted) return;
         await Navigator.of(context).pushReplacement<void, void>(
           MaterialPageRoute<void>(builder: (_) => const LoginPage()),
@@ -107,7 +106,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
           payload: <String, Object?>{
             'items': (widget.checkoutLines ?? store.cart).length,
           },
-          dedupKey: FirebaseAuth.instance.currentUser?.uid ?? 'guest',
+          dedupKey: UserSession.currentUid.isNotEmpty ? UserSession.currentUid : 'guest',
           dedupWindow: const Duration(minutes: 1),
         );
       }
@@ -199,8 +198,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                           const SizedBox(width: 8),
             FilledButton(
                             onPressed: () async {
-                              final uid = FirebaseAuth.instance.currentUser?.uid;
-                              if (uid == null) return;
+                              final uid = UserSession.currentUid;
+                              if (uid.isEmpty) return;
                               final ok = await context
                                   .read<StoreController>()
                                   .applyCoupon(_couponCtrl.text, uid, lines: lines);
@@ -235,8 +234,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
                       const SizedBox(height: 6),
                       FilledButton.tonal(
                         onPressed: () async {
-                          final uid = FirebaseAuth.instance.currentUser?.uid;
-                          if (uid == null) return;
+                          final uid = UserSession.currentUid;
+                          if (uid.isEmpty) return;
                               final ok = await context
                                   .read<StoreController>()
                                   .applyPromotions(uid, lines: lines);
@@ -439,8 +438,8 @@ class _CheckoutPageState extends State<CheckoutPage> {
   }
 
   Future<void> _showShareReferralPrompt(BuildContext context) async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null || uid.trim().isEmpty) return;
+    final uid = UserSession.currentUid;
+    if (uid.trim().isEmpty) return;
     final referralCode = _buildReferralCode(uid);
     await showModalBottomSheet<void>(
       context: context,
@@ -507,7 +506,7 @@ class _CheckoutPageState extends State<CheckoutPage> {
     required List<CartItem> lines,
     required double subtotal,
   }) {
-    final uid = FirebaseAuth.instance.currentUser?.uid ?? '';
+    final uid = UserSession.currentUid;
     final city = (_selectedCity ?? '').trim();
     final summaryKey = Object.hashAll(<Object?>[
       city,

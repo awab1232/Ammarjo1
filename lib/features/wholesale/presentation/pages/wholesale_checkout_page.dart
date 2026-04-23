@@ -1,7 +1,7 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:ammar_store/core/session/user_session.dart';
 
 import '../../../../core/contracts/feature_state.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -43,8 +43,8 @@ class _WholesaleCheckoutPageState extends State<WholesaleCheckoutPage> {
   }
 
   Future<void> _confirm() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null || _items.isEmpty) return;
+    final uid = UserSession.currentUid;
+    if (!UserSession.isLoggedIn || uid.isEmpty || _items.isEmpty) return;
     setState(() => _submitting = true);
     try {
       final store = context.read<StoreController>();

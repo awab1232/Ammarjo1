@@ -1,6 +1,6 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:ammar_store/core/session/user_session.dart';
 
 import '../../../../core/session/backend_identity_controller.dart';
 import '../../../../core/services/permission_service.dart';
@@ -19,7 +19,7 @@ class AdminUsersSection extends StatefulWidget {
 
 class _AdminUsersSectionState extends State<AdminUsersSection> {
   static const int _pageSize = 20;
-  final List<Map<String, dynamic>> _users = [];
+  final List<Map<String, dynamic>> _users = List<Map<String, dynamic>>.empty(growable: true);
   int? _nextOffset;
   bool _hasMore = true;
   bool _isLoading = false;
@@ -103,8 +103,9 @@ class _AdminUsersSectionState extends State<AdminUsersSection> {
     required String targetEmail,
     required Map<String, dynamic> userData,
   }) async {
-    final actor = FirebaseAuth.instance.currentUser;
-    if (actor == null) return;
+    final actorUid = UserSession.currentUid;
+    if (actorUid.isEmpty) return;
+    final actorEmail = UserSession.currentEmail;
 
     final oldRoleStr =
         PermissionService.staffRoleFromUserData(userData) ?? (userData['role'] as String? ?? '');
@@ -162,8 +163,8 @@ class _AdminUsersSectionState extends State<AdminUsersSection> {
     try {
       await AdminRepository.instance.setUserStaffRole(uid: userPatchId, newRole: selected);
       await AuditRepository.logAction(
-        userId: actor.uid,
-        userEmail: actor.email ?? '',
+        userId: actorUid,
+        userEmail: actorEmail,
         action: 'user.role_change',
         targetType: 'user',
         targetId: userPatchId,
@@ -171,7 +172,7 @@ class _AdminUsersSectionState extends State<AdminUsersSection> {
           'oldRole': oldRoleStr,
           'newRole': selected,
           'targetUserEmail': targetEmail,
-          'changedBy': actor.email ?? '',
+          'changedBy': actorEmail,
         },
       );
       if (context.mounted) {
@@ -199,7 +200,7 @@ class _AdminUsersSectionState extends State<AdminUsersSection> {
         final meData = me == null ? null : <String, dynamic>{'role': me.role, 'email': me.email};
         final myRole = PermissionService.staffRoleFromUserData(meData);
         final canChangeRoles = myRole == PermissionService.roleAdmin || myRole == PermissionService.roleSystemInternal;
-        final currentUid = FirebaseAuth.instance.currentUser?.uid;
+        final currentUid = UserSession.currentUid;
 
         if (_hasError) {
           return Center(
@@ -283,7 +284,7 @@ class _AdminUsersSectionState extends State<AdminUsersSection> {
                           trailing: Wrap(
                             spacing: 4,
                             children: [
-                              if (canChangeRoles && currentUid != null && rowKey != currentUid && patchId.isNotEmpty)
+                              if (canChangeRoles && currentUid.isNotEmpty && rowKey != currentUid && patchId.isNotEmpty)
                                 TextButton(
                                   onPressed: () => _changeUserRole(
                                     context: context,
@@ -316,11 +317,11 @@ class _AdminUsersSectionState extends State<AdminUsersSection> {
                                     if (ok == true && context.mounted) {
                                       try {
                                         await AdminRepository.instance.setUserBanned(patchId, true);
-                                        final actor = FirebaseAuth.instance.currentUser;
-                                        if (actor != null) {
+                                        final actorUid = UserSession.currentUid;
+                                        if (actorUid.isNotEmpty) {
                                           await AuditRepository.logAction(
-                                            userId: actor.uid,
-                                            userEmail: actor.email ?? '',
+                                            userId: actorUid,
+                                            userEmail: UserSession.currentEmail,
                                             action: 'user.ban',
                                             targetType: 'user',
                                             targetId: patchId,
@@ -350,11 +351,11 @@ class _AdminUsersSectionState extends State<AdminUsersSection> {
                                   onPressed: () async {
                                     try {
                                       await AdminRepository.instance.setUserBanned(patchId, false);
-                                      final actor = FirebaseAuth.instance.currentUser;
-                                      if (actor != null) {
+                                      final actorUid = UserSession.currentUid;
+                                      if (actorUid.isNotEmpty) {
                                         await AuditRepository.logAction(
-                                          userId: actor.uid,
-                                          userEmail: actor.email ?? '',
+                                          userId: actorUid,
+                                          userEmail: UserSession.currentEmail,
                                           action: 'user.unban',
                                           targetType: 'user',
                                           targetId: patchId,
@@ -401,11 +402,11 @@ class _AdminUsersSectionState extends State<AdminUsersSection> {
                                     );
                                     if (ok == true && context.mounted) {
                                       await AdminRepository.instance.deleteUserDocument(patchId);
-                                      final actor = FirebaseAuth.instance.currentUser;
-                                      if (actor != null) {
+                                      final actorUid = UserSession.currentUid;
+                                      if (actorUid.isNotEmpty) {
                                         await AuditRepository.logAction(
-                                          userId: actor.uid,
-                                          userEmail: actor.email ?? '',
+                                          userId: actorUid,
+                                          userEmail: UserSession.currentEmail,
                                           action: 'user.delete_document',
                                           targetType: 'user',
                                           targetId: patchId,

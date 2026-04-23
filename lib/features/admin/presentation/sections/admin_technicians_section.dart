@@ -1,6 +1,6 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:ammar_store/core/session/user_session.dart';
 
 import '../../../../core/contracts/feature_state.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -374,7 +374,9 @@ class _JoinTabState extends State<_JoinTab> {
                                     try {
                                       final result = await AdminRepository.instance.approveTechnicianRequest(
                                         r,
-                                        reviewedBy: FirebaseAuth.instance.currentUser?.uid ??
+                                        reviewedBy: UserSession.currentUid.isNotEmpty
+                                            ? UserSession.currentUid
+                                            :
                                             (throw StateError('NULL_RESPONSE')),
                                       );
                                       if (result is FeatureFailure<void>) return;
@@ -401,7 +403,9 @@ class _JoinTabState extends State<_JoinTab> {
                                     try {
                                       final result = await AdminRepository.instance.rejectTechnicianRequest(
                                         r,
-                                        reviewedBy: FirebaseAuth.instance.currentUser?.uid ??
+                                        reviewedBy: UserSession.currentUid.isNotEmpty
+                                            ? UserSession.currentUid
+                                            :
                                             (throw StateError('NULL_RESPONSE')),
                                         rejectionReason: reason,
                                       );

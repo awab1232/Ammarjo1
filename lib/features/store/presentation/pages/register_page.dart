@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:ammar_store/core/session/user_session.dart';
 
 import '../../../admin/data/admin_notification_repository.dart';
 import '../../../../core/routing/role_home_resolver.dart';
@@ -173,15 +174,14 @@ class _RegisterPageState extends State<RegisterPage> {
   // ─── Save profile to backend ───────────────────────────────────────────────
 
   Future<void> _saveProfileAndNavigate() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
+    final uid = UserSession.currentUid;
+    if (uid.isEmpty) {
       setState(() {
         _error = 'تعذر الحصول على معلومات المستخدم.';
         _submitting = false;
       });
       return;
     }
-    final uid = user.uid;
     final fn = _firstName.text.trim();
     final ln = _lastName.text.trim();
     final fullName = '$fn $ln'.trim();
@@ -231,11 +231,10 @@ class _RegisterPageState extends State<RegisterPage> {
       // ignore: avoid_print
       print('🔥 phone: $phone');
       await PhonePasswordAuthService.registerAfterOtp(
-        firebaseUser: user,
         phone: phone,
         password: _password.text,
       );
-      debugPrint('[AUTH-AUDIT] registerAfterOtp success uid=${user.uid}');
+      debugPrint('[AUTH-AUDIT] registerAfterOtp success uid=$uid');
     } on FormatException catch (e, st) {
       // ignore: avoid_print
       print('ERROR TRIGGER LOCATION: register_page invalid phone before /auth/register: $e');
@@ -253,25 +252,10 @@ class _RegisterPageState extends State<RegisterPage> {
       postCreateWarning = 'تم التحقق من الهاتف، لكن تعذر حفظ الحساب على الخادم.';
     }
 
-    var sessionUser = FirebaseAuth.instance.currentUser;
-    if (sessionUser == null) {
-      if (mounted) {
-        setState(() {
-          _error = 'تعذر ربط الجلسة. أعد تسجيل الدخول.';
-          _submitting = false;
-        });
-      }
-      return;
-    }
     try {
-      try {
-        await sessionUser.getIdToken(true);
-      } on Object {
-        // best-effort refresh before session sync
-      }
       // ignore: avoid_print
       print('🔥 USER SIGNED IN');
-      await FirebaseBackendSessionService.syncWithBackend(firebaseUser: sessionUser);
+      await FirebaseBackendSessionService.syncWithBackend();
       // ignore: avoid_print
       print('🔥 BACKEND SYNC CALLED');
     } on FirebaseBackendSessionException catch (e, st) {
@@ -316,9 +300,7 @@ class _RegisterPageState extends State<RegisterPage> {
       return;
     }
 
-    sessionUser = FirebaseAuth.instance.currentUser;
-    if (sessionUser == null) return;
-    final Widget home = await resolveHomeForSignedInUser(sessionUser);
+    final Widget home = await resolveHomeForSignedInUser();
     if (!mounted) return;
     HapticFeedback.lightImpact();
     Navigator.of(context).pushAndRemoveUntil<void>(

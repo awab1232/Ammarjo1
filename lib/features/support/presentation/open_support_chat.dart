@@ -1,8 +1,8 @@
-﻿import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
+﻿import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:ammar_store/core/session/user_session.dart';
 
 import '../../../core/config/chat_feature_config.dart';
 import '../../../core/firebase/user_notifications_repository.dart';
@@ -35,8 +35,8 @@ Future<void> openSupportChat(BuildContext context) async {
     );
     return;
   }
-  final user = FirebaseAuth.instance.currentUser;
-  if (user == null) {
+  final uid = UserSession.currentUid;
+  if (!UserSession.isLoggedIn || uid.isEmpty) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text('سجّل الدخول لفتح محادثة الدعم.', style: GoogleFonts.tajawal()),
@@ -54,7 +54,7 @@ Future<void> openSupportChat(BuildContext context) async {
 
   try {
     final result = await SupportChatRepository.instance.findOrCreateOpenChat(
-      uid: user.uid,
+      uid: uid,
       userName: name,
     );
     if (result.created) {

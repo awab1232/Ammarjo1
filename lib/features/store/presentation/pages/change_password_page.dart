@@ -1,4 +1,3 @@
-﻿import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -34,8 +33,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
   Future<void> _submit() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
-    final user = FirebaseAuth.instance.currentUser;
-    final hasPassword = AccountPasswordService.userHasPasswordLinked(user);
+    final hasPassword = AccountPasswordService.currentUserHasPasswordLinked();
 
     setState(() => _loading = true);
     try {
@@ -59,13 +57,6 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
         ),
       );
       Navigator.of(context).pop();
-    } on FirebaseAuthException {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('تعذر تغيير كلمة المرور.', textAlign: TextAlign.right, style: GoogleFonts.tajawal()),
-        ),
-      );
     } on Object {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -80,8 +71,7 @@ class _ChangePasswordPageState extends State<ChangePasswordPage> {
 
   @override
   Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
-    final hasPassword = AccountPasswordService.userHasPasswordLinked(user);
+    final hasPassword = AccountPasswordService.currentUserHasPasswordLinked();
 
     return Scaffold(
       backgroundColor: AppColors.background,

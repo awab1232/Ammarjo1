@@ -1,12 +1,11 @@
-﻿import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
+﻿import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
+import 'package:ammar_store/core/session/user_session.dart';
 
 import '../../../../core/contracts/feature_state.dart';
-import '../../../../core/contracts/feature_unit.dart';
 import '../../../../core/services/chat_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_bar_back_button.dart';
@@ -280,9 +279,9 @@ class _TechnicianUserRatingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = UserSession.currentUid;
     final store = context.read<StoreController>();
-    if (uid == null) {
+    if (!UserSession.isLoggedIn || uid.isEmpty) {
       return TextButton(
         onPressed: () {
           ScaffoldMessenger.of(context).showSnackBar(

@@ -46,7 +46,7 @@ class StoreController extends ChangeNotifier {
 
   StreamSubscription<FeatureState<List<FavoriteProduct>>>? _favoritesSub;
   StreamSubscription<User?>? _authSub;
-  bool _isLoggedIn = Firebase.apps.isNotEmpty && FirebaseAuth.instance.currentUser != null;
+  bool _isLoggedIn = UserSession.isLoggedIn;
 
   StoreController() {
     catalog = CatalogController();
@@ -264,8 +264,8 @@ class StoreController extends ChangeNotifier {
   /// مزامنة المفضلة المحلية مع السحابة ثم الاشتراك في التحديثات.
   Future<void> _syncFavoritesAfterAuth() async {
     if (!Firebase.apps.isNotEmpty) return;
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) {
+    final uid = UserSession.currentUid;
+    if (uid.isEmpty) {
       _detachFavoritesListener();
       return;
     }
@@ -306,8 +306,8 @@ class StoreController extends ChangeNotifier {
     favoriteProductIds = next;
     await _local.saveFavoriteIds(favoriteProductIds);
 
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid != null && Firebase.apps.isNotEmpty) {
+    final uid = UserSession.currentUid;
+    if (uid.isNotEmpty && Firebase.apps.isNotEmpty) {
       try {
         final pid = productId.toString();
         if (wasFavorite) {
@@ -338,8 +338,8 @@ class StoreController extends ChangeNotifier {
     if (!favoriteProductIds.contains(productId)) return;
     favoriteProductIds = Set<int>.from(favoriteProductIds)..remove(productId);
     await _local.saveFavoriteIds(favoriteProductIds);
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid != null && Firebase.apps.isNotEmpty) {
+    final uid = UserSession.currentUid;
+    if (uid.isNotEmpty && Firebase.apps.isNotEmpty) {
       try {
         await UsersRepository.removeFromFavorites(uid, productId.toString());
       } on Object {
@@ -401,7 +401,7 @@ class StoreController extends ChangeNotifier {
       }
       await loadStoreCurrency();
       if (profile != null && Firebase.apps.isNotEmpty) {
-        if (FirebaseAuth.instance.currentUser == null) {
+        if (!UserSession.isLoggedIn) {
           final bypass = await _local.getLocalBypassSession();
           if (!bypass) {
             await syncChatFirebaseIdentity(profile);
@@ -413,7 +413,7 @@ class StoreController extends ChangeNotifier {
         }
       }
       if (Firebase.apps.isNotEmpty) {
-        if (FirebaseAuth.instance.currentUser != null) {
+        if (UserSession.isLoggedIn) {
           await _syncFavoritesAfterAuth();
         } else {
           _detachFavoritesListener();
@@ -506,14 +506,9 @@ class StoreController extends ChangeNotifier {
       notifyListeners();
       return false;
     }
-    final u = FirebaseAuth.instance.currentUser;
-    if (u == null) {
+    final uname = PhoneAuthService.currentJordanUsername() ?? '';
+    if (uname.isEmpty) {
       errorMessage = 'أكمل التحقق من الهاتف أولاً.';
-      return false;
-    }
-    final uname = PhoneAuthService.jordanUsernameFromFirebaseUser(u);
-    if (uname == null) {
-      errorMessage = 'رقم الهاتف غير متاح من الجلسة.';
       return false;
     }
     final phone = '+$uname';
@@ -521,7 +516,6 @@ class StoreController extends ChangeNotifier {
     final displayName = '$fn $ln'.trim();
     try {
       await PhonePasswordAuthService.registerAfterOtp(
-        firebaseUser: u,
         phone: phone,
         password: password,
       );
@@ -538,18 +532,13 @@ class StoreController extends ChangeNotifier {
     try {
       // ignore: avoid_print
       print('🔥 USER SIGNED IN');
-      await FirebaseBackendSessionService.syncWithBackend(firebaseUser: u);
+      await FirebaseBackendSessionService.syncWithBackend();
       // ignore: avoid_print
       print('🔥 BACKEND SYNC CALLED');
     } on Object catch (e) {
       debugPrint('[StoreController] linkPasswordAndSaveRegistration syncWithBackend: $e');
       // ignore: avoid_print
       print('🔥 BACKEND SYNC FAILED (linkPassword): $e');
-    }
-    try {
-      await u.updateDisplayName(displayName);
-    } on Object {
-      debugPrint('[StoreController] updateDisplayName skipped');
     }
     final pts = await _local.loyaltyPointsForEmail(syntheticEmailForPhone(uname));
     profile = CustomerProfile(
@@ -618,19 +607,16 @@ class StoreController extends ChangeNotifier {
       notifyListeners();
       await AccountPasswordService.setPasswordAfterPhoneOtpRecovery(newPassword);
       await _local.setLocalBypassSession(false);
-      final cu = FirebaseAuth.instance.currentUser;
-      if (cu != null) {
-        try {
-          // ignore: avoid_print
-          print('🔥 USER SIGNED IN');
-          await FirebaseBackendSessionService.syncWithBackend(firebaseUser: cu);
-          // ignore: avoid_print
-          print('🔥 BACKEND SYNC CALLED');
-        } on Object catch (e) {
-          debugPrint('[StoreController] finishForgotPassword syncWithBackend: $e');
-          // ignore: avoid_print
-          print('🔥 BACKEND SYNC FAILED (forgotPassword): $e');
-        }
+      try {
+        // ignore: avoid_print
+        print('🔥 USER SIGNED IN');
+        await FirebaseBackendSessionService.syncWithBackend();
+        // ignore: avoid_print
+        print('🔥 BACKEND SYNC CALLED');
+      } on Object catch (e) {
+        debugPrint('[StoreController] finishForgotPassword syncWithBackend: $e');
+        // ignore: avoid_print
+        print('🔥 BACKEND SYNC FAILED (forgotPassword): $e');
       }
       await syncLocalProfileWithFirebaseSession();
       return true;
@@ -811,14 +797,9 @@ class StoreController extends ChangeNotifier {
     String? firstName,
     String? lastName,
   }) async {
-    final u = FirebaseAuth.instance.currentUser;
-    if (u == null) {
+    final uname = PhoneAuthService.currentJordanUsername() ?? '';
+    if (uname.isEmpty) {
       errorMessage = 'تعذر إنشاء الجلسة.';
-      return false;
-    }
-    final uname = PhoneAuthService.jordanUsernameFromFirebaseUser(u);
-    if (uname == null) {
-      errorMessage = 'رقم الهاتف غير متاح من الحساب.';
       return false;
     }
     final email = syntheticEmailForPhone(uname);
@@ -846,7 +827,7 @@ class StoreController extends ChangeNotifier {
     try {
       // ignore: avoid_print
       print('🔥 USER SIGNED IN');
-      await FirebaseBackendSessionService.syncWithBackend(firebaseUser: u);
+      await FirebaseBackendSessionService.syncWithBackend();
       // ignore: avoid_print
       print('🔥 BACKEND SYNC CALLED');
     } on Object catch (e) {
@@ -1021,7 +1002,7 @@ class StoreController extends ChangeNotifier {
       notifyListeners();
       return false;
     }
-    if (FirebaseAuth.instance.currentUser == null) {
+    if (!UserSession.isLoggedIn) {
       errorMessage = 'يجب تسجيل الدخول لإتمام الطلب.';
       notifyListeners();
       return false;
@@ -1051,9 +1032,8 @@ class StoreController extends ChangeNotifier {
         orderEmail = profile?.email.trim() ?? '';
       }
       if (orderEmail.isEmpty) {
-        final u = FirebaseAuth.instance.currentUser;
-        final un = PhoneAuthService.jordanUsernameFromFirebaseUser(u);
-        if (un != null) {
+        final un = PhoneAuthService.currentJordanUsername() ?? '';
+        if (un.isNotEmpty) {
           orderEmail = syntheticEmailForPhone(un);
         }
       }
@@ -1063,8 +1043,8 @@ class StoreController extends ChangeNotifier {
         notifyListeners();
         return false;
       }
-      final uid = FirebaseAuth.instance.currentUser?.uid;
-      if (uid == null) {
+      final uid = UserSession.currentUid;
+      if (uid.isEmpty) {
         errorMessage = 'انتهت الجلسة. سجّل الدخول مرة أخرى.';
         return false;
       }

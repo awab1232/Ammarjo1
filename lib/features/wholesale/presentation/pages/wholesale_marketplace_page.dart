@@ -1,7 +1,7 @@
-﻿import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+﻿import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:ammar_store/core/session/user_session.dart';
 
 import '../../../../core/contracts/feature_state.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -113,8 +113,8 @@ class _WholesaleMarketplacePageState extends State<WholesaleMarketplacePage> {
 
   @override
   Widget build(BuildContext context) {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) {
+    final uid = UserSession.currentUid;
+    if (!UserSession.isLoggedIn || uid.isEmpty) {
       return Scaffold(
         appBar: AppBar(title: Text('سوق الجملة', style: GoogleFonts.tajawal())),
         body: Center(child: Text('سجّل الدخول كصاحب متجر', style: GoogleFonts.tajawal())),

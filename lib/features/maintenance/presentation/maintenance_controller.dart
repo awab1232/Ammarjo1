@@ -1,6 +1,6 @@
 import 'package:flutter/foundation.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:ammar_store/core/session/user_session.dart';
 
 import '../data/service_requests_repository.dart';
 import '../../../core/services/backend_orders_client.dart';
@@ -41,7 +41,7 @@ class MaintenanceController extends ChangeNotifier {
   }) async {
     final desc = (experienceDescription ?? '').trim();
     final ids = specialtyIds.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
-    final applicantId = FirebaseAuth.instance.currentUser?.uid.trim() ?? '';
+    final applicantId = UserSession.currentUid.trim();
     if (applicantId.isEmpty) throw StateError('INVALID_ID');
     await BackendOrdersClient.instance.submitStoreApplication({
       'kind': 'technician_request',

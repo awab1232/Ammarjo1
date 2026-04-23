@@ -1,4 +1,4 @@
-import 'dart:async';
+﻿import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -7,8 +7,8 @@ import 'package:flutter/foundation.dart' show ChangeNotifier;
 import '../../../../core/data/repositories/user_repository.dart';
 import '../../../../core/firebase/chat_firebase_sync.dart';
 import '../../../../core/utils/jordan_phone.dart';
-import '../../../../core/firebase/phone_auth_service.dart';
 import '../../../../core/firebase/users_repository.dart';
+import '../../../../core/session/user_session.dart';
 import '../../data/local_storage_service.dart';
 import '../../domain/models.dart';
 
@@ -28,8 +28,8 @@ class UserController extends ChangeNotifier {
 
   Future<bool> isUserBannedInFirestore() async {
     if (!Firebase.apps.isNotEmpty) return false;
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return false;
+    final uid = UserSession.currentUid;
+    if (uid.isEmpty) return false;
     try {
       return await BackendUserRepository.instance.isUserBanned(uid);
     } on Object {
@@ -67,14 +67,14 @@ class UserController extends ChangeNotifier {
   }
 
   Future<void> syncLocalProfileWithFirebaseSession() async {
-    final u = FirebaseAuth.instance.currentUser;
-    if (u == null) return;
+    final uid = UserSession.currentUid;
+    if (uid.isEmpty) return;
 
-    final authEmail = u.email?.trim() ?? '';
+    final authEmail = UserSession.currentEmail;
     if (authEmail.isNotEmpty && !authEmail.endsWith('@phone.ammarjo.app')) {
       final saved = await _local.getProfile();
       final pts = await _local.loyaltyPointsForEmail(authEmail);
-      final remote = await UsersRepository.fetchProfileDocument(u.uid);
+      final remote = await UsersRepository.fetchProfileDocument(uid);
       if (remote != null) {
         profile = remote.copyWith(
           loyaltyPoints: pts,
@@ -105,19 +105,22 @@ class UserController extends ChangeNotifier {
       await _local.saveProfile(profile!);
       await syncChatFirebaseIdentity(profile);
       notifyListeners();
-      attachUserBannedListener(u.uid);
+      attachUserBannedListener(uid);
       return;
     }
 
-    var uname = PhoneAuthService.jordanUsernameFromFirebaseUser(u);
-    if (uname == null || uname.isEmpty) {
-      uname = _jordanUsernameFromSyntheticEmail(u.email);
+    var uname = normalizeJordanPhoneForUsername(UserSession.currentPhone);
+    if (uname.isEmpty || !uname.startsWith('962')) {
+      uname = '';
     }
-    if (uname == null || uname.isEmpty) return;
+    if (uname.isEmpty) {
+      uname = _jordanUsernameFromSyntheticEmail(authEmail) ?? '';
+    }
+    if (uname.isEmpty) return;
     final email = syntheticEmailForPhone(uname);
     final saved = await _local.getProfile();
     final pts = await _local.loyaltyPointsForEmail(email);
-    final remote = await UsersRepository.fetchProfileDocument(u.uid);
+    final remote = await UsersRepository.fetchProfileDocument(uid);
     if (remote != null) {
       profile = remote.copyWith(
         loyaltyPoints: pts,
@@ -147,7 +150,7 @@ class UserController extends ChangeNotifier {
     }
     await _local.saveProfile(profile!);
     await syncChatFirebaseIdentity(profile);
-    attachUserBannedListener(u.uid);
+    attachUserBannedListener(uid);
     notifyListeners();
   }
 

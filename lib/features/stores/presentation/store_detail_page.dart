@@ -1,4 +1,3 @@
-﻿import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
@@ -91,8 +90,8 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
   }
 
   bool _isOwnStore() {
-    final u = FirebaseAuth.instance.currentUser;
-    return u != null && u.uid == store.ownerId;
+    final uid = UserSession.currentUid;
+    return uid.isNotEmpty && uid == store.ownerId;
   }
 
   Future<void> _openChat(BuildContext context) async {
@@ -118,7 +117,7 @@ class _StoreDetailPageState extends State<StoreDetailPage> {
       return;
     }
 
-    if (!UserSession.isLoggedIn && FirebaseAuth.instance.currentUser == null) {
+    if (!UserSession.isLoggedIn) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('يرجى تسجيل الدخول أولاً', style: GoogleFonts.tajawal())),
       );

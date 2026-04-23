@@ -1,7 +1,7 @@
-﻿import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
+﻿import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:ammar_store/core/session/user_session.dart';
 
 import '../../../../core/contracts/feature_state.dart';
 import '../../../../core/theme/app_colors.dart';
@@ -35,8 +35,8 @@ class _WholesaleCartPageState extends State<WholesaleCartPage> {
     };
     var merged = local;
     if (Firebase.apps.isNotEmpty) {
-      final uid = FirebaseAuth.instance.currentUser?.uid;
-      if (uid != null) {
+      final uid = UserSession.currentUid;
+      if (uid.isNotEmpty) {
         final cloudState = await WholesaleCartStorage.loadCartFromFirestore(uid);
         final cloud = switch (cloudState) {
           FeatureSuccess(:final data) => data,
@@ -62,8 +62,8 @@ class _WholesaleCartPageState extends State<WholesaleCartPage> {
 
   Future<void> _syncToCloud() async {
     if (!Firebase.apps.isNotEmpty) return;
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) {
+    final uid = UserSession.currentUid;
+    if (!UserSession.isLoggedIn || uid.isEmpty) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('سجّل الدخول لحفظ السلة في السحابة.', style: GoogleFonts.tajawal())),
@@ -113,7 +113,7 @@ class _WholesaleCartPageState extends State<WholesaleCartPage> {
       appBar: AppBar(
         title: Text('سلة الجملة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
         actions: [
-          if (Firebase.apps.isNotEmpty && FirebaseAuth.instance.currentUser != null)
+          if (Firebase.apps.isNotEmpty && UserSession.isLoggedIn && UserSession.currentUid.isNotEmpty)
             IconButton(
               tooltip: 'حفظ السلة في السحابة',
               onPressed: _syncing ? null : _syncToCloud,

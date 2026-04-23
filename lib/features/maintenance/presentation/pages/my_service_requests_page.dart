@@ -1,7 +1,7 @@
-﻿import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:shimmer/shimmer.dart';
+import 'package:ammar_store/core/session/user_session.dart';
 
 import '../../../../core/contracts/feature_state.dart';
 import '../../../../core/session/backend_identity_controller.dart';
@@ -62,8 +62,8 @@ class _MyServiceRequestsPageState extends State<MyServiceRequestsPage> {
 
   Future<void> _loadInitial() async {
     if (_isLoading) return;
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null || uid.isEmpty) return;
+    final uid = UserSession.currentUid;
+    if (uid.isEmpty) return;
     setState(() {
       _isLoading = true;
       _hasError = false;
@@ -245,7 +245,7 @@ class _MyServiceRequestsPageState extends State<MyServiceRequestsPage> {
 
   @override
   Widget build(BuildContext context) {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
+    final uid = UserSession.currentUid;
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -253,7 +253,7 @@ class _MyServiceRequestsPageState extends State<MyServiceRequestsPage> {
         leading: const AppBarBackButton(),
         title: Text('طلبات الخدمة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
       ),
-      body: uid == null
+      body: uid.isEmpty
           ? Center(child: Text('سجّل الدخول لعرض طلباتك.', style: GoogleFonts.tajawal(color: AppColors.textSecondary)))
           : Builder(
               builder: (context) {

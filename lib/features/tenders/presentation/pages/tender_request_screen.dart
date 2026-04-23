@@ -1,10 +1,10 @@
-﻿import 'dart:typed_data';
+import 'dart:typed_data';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
+import 'package:ammar_store/core/session/user_session.dart';
 
 import '../../../../core/contracts/feature_state.dart';
 import '../../../store/presentation/store_controller.dart';
@@ -245,8 +245,7 @@ class _TenderRequestScreenState extends State<TenderRequestScreen> {
       return;
     }
 
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
+    if (!UserSession.isLoggedIn) {
       _showError('يرجى تسجيل الدخول أولاً');
       return;
     }
@@ -257,7 +256,8 @@ class _TenderRequestScreenState extends State<TenderRequestScreen> {
       final city = profile?.city?.trim().isNotEmpty == true
           ? profile!.city!.trim()
           : (profile?.addressLine?.trim().isNotEmpty == true ? profile!.addressLine!.trim() : 'عمّان');
-      final userName = profile?.displayName ?? user.email ?? 'مستخدم';
+      final userName = profile?.displayName ??
+          (UserSession.currentEmail.isNotEmpty ? UserSession.currentEmail : 'مستخدم');
 
       final tenderId = await TenderRepository.instance.createTender(
         imageBytes: _imageBytes!,
@@ -301,7 +301,7 @@ Widget buildTenderFab(BuildContext context) {
       style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.bold),
     ),
     onPressed: () {
-      if (FirebaseAuth.instance.currentUser == null) {
+      if (!UserSession.isLoggedIn) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('يرجى تسجيل الدخول أولاً', style: GoogleFonts.tajawal()),
