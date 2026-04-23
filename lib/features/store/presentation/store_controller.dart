@@ -450,11 +450,15 @@ class StoreController extends ChangeNotifier {
       notifyListeners();
       final email = phoneToEmail(localNineDigits);
       final cred = await FirebaseAuth.instance.signInWithEmailAndPassword(email: email, password: password);
+      // ignore: avoid_print
+      print('🔥 USER SIGNED IN');
       await FirebaseAuthHeaderProvider.requireIdToken(
         reason: 'store_controller_signin_phone_password',
       );
       debugPrint('[AUTH-HEADER] login_phone uid=${cred.user?.uid}');
       await FirebaseBackendSessionService.syncWithBackend();
+      // ignore: avoid_print
+      print('🔥 BACKEND SYNC CALLED');
       await _local.setLocalBypassSession(false);
       await syncLocalProfileWithFirebaseSession();
       if (await user.isUserBannedInFirestore()) {
@@ -494,9 +498,13 @@ class StoreController extends ChangeNotifier {
         email: email.trim(),
         password: password,
       );
+      // ignore: avoid_print
+      print('🔥 USER SIGNED IN');
       await FirebaseAuthHeaderProvider.requireIdToken(reason: 'store_controller_signin_email_password');
       debugPrint('[AUTH-HEADER] login_email uid=${cred.user?.uid}');
       await FirebaseBackendSessionService.syncWithBackend();
+      // ignore: avoid_print
+      print('🔥 BACKEND SYNC CALLED');
       await _local.setLocalBypassSession(false);
       await syncLocalProfileWithFirebaseSession();
       if (await user.isUserBannedInFirestore()) {
@@ -563,9 +571,15 @@ class StoreController extends ChangeNotifier {
     }
     await FirebaseAuthHeaderProvider.requireIdToken(reason: 'store_controller_signup_link_password');
     try {
+      // ignore: avoid_print
+      print('🔥 USER SIGNED IN');
       await FirebaseBackendSessionService.syncWithBackend(firebaseUser: u);
+      // ignore: avoid_print
+      print('🔥 BACKEND SYNC CALLED');
     } on Object catch (e) {
       debugPrint('[StoreController] linkPasswordAndSaveRegistration syncWithBackend: $e');
+      // ignore: avoid_print
+      print('🔥 BACKEND SYNC FAILED (linkPassword): $e');
     }
     try {
       await u.updateDisplayName(displayName);
@@ -642,9 +656,15 @@ class StoreController extends ChangeNotifier {
       final cu = FirebaseAuth.instance.currentUser;
       if (cu != null) {
         try {
+          // ignore: avoid_print
+          print('🔥 USER SIGNED IN');
           await FirebaseBackendSessionService.syncWithBackend(firebaseUser: cu);
+          // ignore: avoid_print
+          print('🔥 BACKEND SYNC CALLED');
         } on Object catch (e) {
           debugPrint('[StoreController] finishForgotPassword syncWithBackend: $e');
+          // ignore: avoid_print
+          print('🔥 BACKEND SYNC FAILED (forgotPassword): $e');
         }
       }
       await syncLocalProfileWithFirebaseSession();
@@ -859,9 +879,15 @@ class StoreController extends ChangeNotifier {
     // _api.setJwtToken(null); // LEGACY Woo JWT
     await _local.setLocalBypassSession(false);
     try {
+      // ignore: avoid_print
+      print('🔥 USER SIGNED IN');
       await FirebaseBackendSessionService.syncWithBackend(firebaseUser: u);
+      // ignore: avoid_print
+      print('🔥 BACKEND SYNC CALLED');
     } on Object catch (e) {
       debugPrint('[StoreController] _finalizePhoneSession syncWithBackend: $e');
+      // ignore: avoid_print
+      print('🔥 BACKEND SYNC FAILED (_finalizePhoneSession): $e');
     }
     await syncChatFirebaseIdentity(profile);
     if (await user.isUserBannedInFirestore()) {

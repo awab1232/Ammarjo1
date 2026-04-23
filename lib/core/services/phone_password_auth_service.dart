@@ -47,9 +47,13 @@ class PhonePasswordAuthService {
       );
     }
 
+    // ignore: avoid_print
+    print('🔥 USER SIGNED IN');
     try {
       await FirebaseAuthHeaderProvider.requireIdToken(reason: 'phone_password_service_signin');
       final res = await FirebaseBackendSessionService.syncWithBackend(firebaseUser: credential.user);
+      // ignore: avoid_print
+      print('🔥 BACKEND SYNC CALLED');
       // ignore: avoid_print
       print('LOGIN SUCCESS');
       // ignore: avoid_print

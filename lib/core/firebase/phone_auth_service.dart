@@ -40,10 +40,16 @@ abstract final class PhoneAuthService {
           await auth.signInWithCredential(credential);
           final signed = auth.currentUser;
           if (signed != null) {
+            // ignore: avoid_print
+            print('🔥 USER SIGNED IN');
             try {
               await FirebaseBackendSessionService.syncWithBackend(firebaseUser: signed);
+              // ignore: avoid_print
+              print('🔥 BACKEND SYNC CALLED');
             } on Object catch (e) {
               debugPrint('[PhoneAuthService] auto-verify syncWithBackend: $e');
+              // ignore: avoid_print
+              print('🔥 BACKEND SYNC FAILED (auto-verify): $e');
             }
           }
           if (!completer.isCompleted) {
@@ -172,10 +178,16 @@ abstract final class PhoneAuthService {
 
   static Future<void> _syncBackendAfterOtp(User? u) async {
     if (u == null) return;
+    // ignore: avoid_print
+    print('🔥 USER SIGNED IN');
     try {
       await FirebaseBackendSessionService.syncWithBackend(firebaseUser: u);
+      // ignore: avoid_print
+      print('🔥 BACKEND SYNC CALLED');
     } on Object catch (e) {
       debugPrint('[PhoneAuthService] OTP sign-in syncWithBackend: $e');
+      // ignore: avoid_print
+      print('🔥 BACKEND SYNC FAILED (OTP): $e');
     }
   }
 

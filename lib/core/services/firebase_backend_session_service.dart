@@ -35,22 +35,17 @@ abstract final class FirebaseBackendSessionService {
     if (idToken == null || idToken.isEmpty) {
       throw const FirebaseBackendSessionException('Missing Firebase ID token.');
     }
-    if (kDebugMode) {
-      // Provisions `users` row: NestJS [POST /auth/firebase-login] + Bearer ID token
-      // ignore: avoid_print
-      print('🔥 FIREBASE TOKEN: $idToken');
-    }
     final base = BackendOrdersConfig.baseUrl.trim().replaceAll(RegExp(r'/$'), '');
     if (base.isEmpty) {
       throw const FirebaseBackendSessionException('Backend base URL missing.');
     }
     final uri = Uri.parse('$base/auth/firebase-login');
-    if (kDebugMode) {
-      // ignore: avoid_print
-      print('🔥 REQUEST: POST $uri');
-      // ignore: avoid_print
-      print('🔥 HEADERS: { Authorization: Bearer <idToken>, Content-Type: application/json, Accept: application/json }');
-    }
+    // ignore: avoid_print
+    print('🔥 INSIDE SYNC');
+    // ignore: avoid_print
+    print('🔥 TOKEN: $idToken');
+    // ignore: avoid_print
+    print('🔥 REQUEST: POST $uri');
     final res = await http
         .post(
           uri,
@@ -61,6 +56,8 @@ abstract final class FirebaseBackendSessionService {
           },
         )
         .timeout(const Duration(seconds: 20));
+    // ignore: avoid_print
+    print('🔥 HTTP POST EXECUTED status=${res.statusCode} bodyLen=${res.body.length}');
     debugPrint('[AUTH-AUDIT] Backend status: ${res.statusCode}');
     debugPrint('[AUTH-AUDIT] Backend body: ${res.body}');
     FirebaseAuthHeaderProvider.logDebugResponse('POST /auth/firebase-login', res.statusCode, res.body);

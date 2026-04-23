@@ -212,10 +212,16 @@ Future<void> _appMain() async {
     FirebaseAuth.instance.authStateChanges().listen((User? u) async {
       final c = BackendIdentityController.instance;
       if (u != null) {
+        // ignore: avoid_print
+        print('🔥 USER SIGNED IN');
         try {
           await FirebaseBackendSessionService.syncWithBackend(firebaseUser: u);
-        } on Object {
+          // ignore: avoid_print
+          print('🔥 BACKEND SYNC CALLED');
+        } on Object catch (e) {
           // Best effort: keep Firebase session alive even if backend sync is temporarily down.
+          // ignore: avoid_print
+          print('🔥 BACKEND SYNC FAILED (authState listener): $e');
         }
         await c.refresh();
       } else {

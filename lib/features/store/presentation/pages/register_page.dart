@@ -278,7 +278,11 @@ class _RegisterPageState extends State<RegisterPage> {
       } on Object {
         // best-effort refresh before session sync
       }
+      // ignore: avoid_print
+      print('🔥 USER SIGNED IN');
       await FirebaseBackendSessionService.syncWithBackend(firebaseUser: sessionUser);
+      // ignore: avoid_print
+      print('🔥 BACKEND SYNC CALLED');
     } on FirebaseBackendSessionException catch (e, st) {
       // Only the explicit backend rejection path — not arbitrary throws (avoids false warnings after good login).
       // ignore: avoid_print
