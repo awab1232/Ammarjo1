@@ -177,10 +177,20 @@ export class OrdersPgService implements OnModuleDestroy {
       }
     }
     if (this.usingRouter()) {
-      return this.dbRouter!.getWriteClient();
+      try {
+        return await this.dbRouter!.getWriteClient();
+      } catch (e) {
+        this.logOrdersReadSqlError('getWriteClient/dbRouter', e);
+        return null;
+      }
     }
     if (!this.pool) return null;
-    return this.pool.connect();
+    try {
+      return await this.pool.connect();
+    } catch (e) {
+      this.logOrdersReadSqlError('getWriteClient/pool.connect', e);
+      return null;
+    }
   }
 
   /** Read paths may use replica when DB read routing is enabled. */
@@ -211,7 +221,12 @@ export class OrdersPgService implements OnModuleDestroy {
       }
     }
     if (this.usingRouter()) {
-      return this.dbRouter!.getReadClient();
+      try {
+        return await this.dbRouter!.getReadClient();
+      } catch (e) {
+        this.logOrdersReadSqlError('getReadClient/dbRouter', e);
+        return null;
+      }
     }
     return this.getWriteClient();
   }
@@ -222,8 +237,28 @@ export class OrdersPgService implements OnModuleDestroy {
 
   private logOrdersReadSqlError(scope: string, error: unknown): void {
     const message = error instanceof Error ? error.message : String(error);
-    console.error(`[OrdersPgService] ${scope} SQL error: ${message}`);
+    console.error(`ORDERS QUERY FAILED [${scope}]: ${message}`);
+    console.error(`ORDERS QUERY FAILED [${scope}] full:`, error);
     console.error(`[OrdersPgService] ${scope} SQL safe: ${safeErrorMessage(error)}`);
+  }
+
+  /** Keyset cursor encoding must never throw (invalid dates from DB → null cursor). */
+  private safeEncodeListCursor(createdAt: unknown, orderId: string, scope: string): string | null {
+    try {
+      const d =
+        createdAt instanceof Date ? createdAt : new Date(createdAt as string | number | Date);
+      if (Number.isNaN(d.getTime())) {
+        return null;
+      }
+      const oid = String(orderId ?? '').trim();
+      if (!oid) {
+        return null;
+      }
+      return encodeOrderListCursor(d, oid);
+    } catch (e) {
+      this.logOrdersReadSqlError(`${scope}/encode_cursor`, e);
+      return null;
+    }
   }
 
   /**
@@ -408,15 +443,20 @@ export class OrdersPgService implements OnModuleDestroy {
         );
       } catch (e) {
         this.logOrdersReadSqlError('findPayloadById/full', e);
-        r = await client.query<{
-          payload: unknown;
-          created_at: Date;
-        }>(
-          `SELECT o.payload, o.created_at
-           FROM orders o
-           WHERE o.order_id = $1`,
-          [orderId.trim()],
-        );
+        try {
+          r = await client.query<{
+            payload: unknown;
+            created_at: Date;
+          }>(
+            `SELECT o.payload, o.created_at
+             FROM orders o
+             WHERE o.order_id = $1`,
+            [orderId.trim()],
+          );
+        } catch (e2) {
+          this.logOrdersReadSqlError('findPayloadById/compact', e2);
+          return null;
+        }
       }
       if (r.rows.length === 0) return null;
       const row = r.rows[0];
@@ -533,7 +573,12 @@ export class OrdersPgService implements OnModuleDestroy {
       } catch (e) {
         // Some production DBs may lag on delivery columns; fallback to core order columns.
         this.logOrdersReadSqlError('findPayloadsByUserIdPaginated/full', e);
-        r = await runQuery(true);
+        try {
+          r = await runQuery(true);
+        } catch (e2) {
+          this.logOrdersReadSqlError('findPayloadsByUserIdPaginated/compact', e2);
+          r = { rows: [] };
+        }
       }
       const rows = r.rows;
       const hasMore = rows.length > lim;
@@ -568,7 +613,7 @@ export class OrdersPgService implements OnModuleDestroy {
       let nextCursor: string | null = null;
       if (hasMore && slice.length > 0) {
         const last = slice[slice.length - 1];
-        nextCursor = encodeOrderListCursor(new Date(last.created_at), last.order_id);
+        nextCursor = this.safeEncodeListCursor(last.created_at, last.order_id, 'findPayloadsByUserIdPaginated');
       }
       return { items, nextCursor, hasMore };
     } catch (e) {
@@ -667,7 +712,12 @@ export class OrdersPgService implements OnModuleDestroy {
         r = await runQuery(false);
       } catch (e) {
         this.logOrdersReadSqlError('findPayloadsByStoreIdPaginated/full', e);
-        r = await runQuery(true);
+        try {
+          r = await runQuery(true);
+        } catch (e2) {
+          this.logOrdersReadSqlError('findPayloadsByStoreIdPaginated/compact', e2);
+          r = { rows: [] };
+        }
       }
       const rows = r.rows;
       const hasMore = rows.length > lim;
@@ -702,7 +752,7 @@ export class OrdersPgService implements OnModuleDestroy {
       let nextCursor: string | null = null;
       if (hasMore && slice.length > 0) {
         const last = slice[slice.length - 1];
-        nextCursor = encodeOrderListCursor(new Date(last.created_at), last.order_id);
+        nextCursor = this.safeEncodeListCursor(last.created_at, last.order_id, 'findPayloadsByStoreIdPaginated');
       }
       return { items, nextCursor, hasMore };
     } catch (e) {
