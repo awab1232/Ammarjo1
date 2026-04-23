@@ -20,7 +20,31 @@ class MyTendersScreen extends StatelessWidget {
       body: StreamBuilder<FeatureState<List<TenderModel>>>(
         stream: TenderRepository.instance.watchMyTenders(),
         builder: (context, snap) {
-          final tenders = switch (snap.data) {
+          if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
+            return const Center(child: CircularProgressIndicator(color: Color(0xFFFF6B00)));
+          }
+          final state = snap.data;
+          if (state is FeatureFailure<List<TenderModel>>) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(state.message, style: GoogleFonts.cairo()),
+                    const SizedBox(height: 12),
+                    FilledButton(
+                      onPressed: () => Navigator.of(context).pushReplacement(
+                        MaterialPageRoute<void>(builder: (_) => const MyTendersScreen()),
+                      ),
+                      child: Text('إعادة المحاولة', style: GoogleFonts.cairo(color: Colors.white)),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+          final tenders = switch (state) {
             FeatureSuccess(:final data) => data,
             _ => <TenderModel>[],
           };

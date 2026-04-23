@@ -108,17 +108,7 @@ class StoresRepository {
             <Map<String, dynamic>>[];
       } on Object catch (e) {
         debugPrint('[StoresRepository] fetchStores (protected) failed: $e');
-        debugPrint('[StoresRepository] fallback endpoint=/stores/public tokenExists=$tokenExists');
-        try {
-          backend = await BackendOrdersClient.instance.fetchStoresPublic(
-                category: category,
-                limit: fetchLimit,
-              ) ??
-              <Map<String, dynamic>>[];
-        } on Object catch (fallbackError) {
-          debugPrint('[StoresRepository] fetchStoresPublic fallback failed: $fallbackError');
-          backend = <Map<String, dynamic>>[];
-        }
+        return FeatureState.failure('تعذر تحميل المتاجر للمستخدم الحالي.', e);
       }
     } else {
       debugPrint('[StoresRepository] endpoint=/stores/public tokenExists=$tokenExists');
@@ -130,7 +120,7 @@ class StoresRepository {
             <Map<String, dynamic>>[];
       } on Object catch (e) {
         debugPrint('[StoresRepository] fetchStoresPublic failed: $e');
-        backend = <Map<String, dynamic>>[];
+        return FeatureState.failure('تعذر تحميل المتاجر العامة.', e);
       }
     }
     if (backend.isEmpty) {
@@ -310,19 +300,18 @@ class StoresRepository {
 
   Future<FeatureState<List<StoreShelfProduct>>> fetchStoreShelfProducts(String storeId) async {
     debugPrint('[StoresRepository] fetchStoreShelfProducts storeId=${storeId.trim()}');
-    List<Map<String, dynamic>> items;
-    try {
-      items = await BackendOrdersClient.instance.fetchProductsByStore(storeId: storeId, limit: 200) ?? <Map<String, dynamic>>[];
-    } on Object {
-      items = <Map<String, dynamic>>[];
+    final items = await BackendOrdersClient.instance.fetchProductsByStore(storeId: storeId, limit: 200);
+    if (items == null) {
+      return FeatureState.failure('Failed to load store products.');
     }
     final catRows = await BackendOrdersClient.instance.fetchStoreCategories(storeId);
+    if (catRows == null) {
+      return FeatureState.failure('Failed to load store categories.');
+    }
     final idToName = <String, String>{};
-    if (catRows != null) {
-      for (final c in catRows) {
-        final id = c['id']?.toString() ?? '';
-        if (id.isNotEmpty) idToName[id] = c['name']?.toString() ?? '';
-      }
+    for (final c in catRows) {
+      final id = c['id']?.toString() ?? '';
+      if (id.isNotEmpty) idToName[id] = c['name']?.toString() ?? '';
     }
     final out = items.map((row) {
       final cid = row['categoryId']?.toString();

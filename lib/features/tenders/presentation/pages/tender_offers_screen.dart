@@ -24,13 +24,39 @@ class TenderOffersScreen extends StatelessWidget {
       body: FutureBuilder<Map<String, dynamic>?>(
         future: TenderRepository.instance.fetchTenderDocument(tenderId),
         builder: (ctx, tenderSnap) {
-          if (!tenderSnap.hasData) {
+          if (tenderSnap.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator(color: Color(0xFFFF6B00)));
+          }
+          if (tenderSnap.hasError) {
+            final msg = tenderSnap.error?.toString().trim();
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(20),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(msg == null || msg.isEmpty ? 'تعذر تحميل المناقصة.' : msg, style: GoogleFonts.cairo()),
+                    const SizedBox(height: 12),
+                    FilledButton(
+                      onPressed: () => Navigator.of(context).pushReplacement(
+                        MaterialPageRoute<void>(builder: (_) => TenderOffersScreen(tenderId: tenderId)),
+                      ),
+                      child: Text('إعادة المحاولة', style: GoogleFonts.cairo(color: Colors.white)),
+                    ),
+                  ],
+                ),
+              ),
+            );
           }
           if (tenderSnap.data == null) {
             return Center(child: Text('المناقصة غير موجودة', style: GoogleFonts.cairo()));
           }
-          final tender = TenderModel.fromMap(tenderId, tenderSnap.data!);
+          TenderModel tender;
+          try {
+            tender = TenderModel.fromMap(tenderId, tenderSnap.data!);
+          } on Object {
+            return Center(child: Text('بيانات المناقصة غير صالحة.', style: GoogleFonts.cairo()));
+          }
           return Column(
             children: [
               ListTile(
@@ -68,7 +94,31 @@ class TenderOffersScreen extends StatelessWidget {
                 child: StreamBuilder<FeatureState<List<TenderOffer>>>(
                   stream: TenderRepository.instance.watchOffers(tenderId),
                   builder: (ctx, snap) {
-                    final offers = switch (snap.data) {
+                    if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
+                      return const Center(child: CircularProgressIndicator(color: Color(0xFFFF6B00)));
+                    }
+                    final state = snap.data;
+                    if (state is FeatureFailure<List<TenderOffer>>) {
+                      return Center(
+                        child: Padding(
+                          padding: const EdgeInsets.all(20),
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(state.message, style: GoogleFonts.cairo()),
+                              const SizedBox(height: 12),
+                              FilledButton(
+                                onPressed: () => Navigator.of(context).pushReplacement(
+                                  MaterialPageRoute<void>(builder: (_) => TenderOffersScreen(tenderId: tenderId)),
+                                ),
+                                child: Text('إعادة المحاولة', style: GoogleFonts.cairo(color: Colors.white)),
+                              ),
+                            ],
+                          ),
+                        ),
+                      );
+                    }
+                    final offers = switch (state) {
                       FeatureSuccess(:final data) => data,
                       _ => <TenderOffer>[],
                     };

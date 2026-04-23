@@ -75,15 +75,16 @@ class StoresHomeSectionsCardsStrip extends StatelessWidget {
   const StoresHomeSectionsCardsStrip({super.key});
 
   Future<FeatureState<List<HomeSection>>> _safeHomeSections() async {
-    try {
-      final state = await HomeRepository.instance.getSections();
-      return switch (state) {
-        FeatureSuccess<List<HomeSection>>(:final data) => FeatureState.success(data),
-        _ => FeatureState.success(const <HomeSection>[]),
-      };
-    } on Object {
-      return FeatureState.success(const <HomeSection>[]);
-    }
+    final state = await HomeRepository.instance.getSections();
+    return switch (state) {
+      FeatureSuccess<List<HomeSection>>(:final data) => FeatureState.success(data),
+      FeatureFailure(:final message, :final cause) => FeatureState.failure(message, cause),
+      FeatureMissingBackend(:final featureName) => FeatureState.failure('Missing backend: $featureName'),
+      FeatureAdminNotWired(:final featureName) => FeatureState.failure('Feature not wired: $featureName'),
+      FeatureAdminMissingEndpoint(:final featureName) => FeatureState.failure('Missing endpoint: $featureName'),
+      FeatureCriticalPublicDataFailure(:final featureName, :final cause) =>
+        FeatureState.failure('Critical failure: $featureName', cause),
+    };
   }
 
   @override
@@ -92,8 +93,14 @@ class StoresHomeSectionsCardsStrip extends StatelessWidget {
       future: _safeHomeSections(),
       builder: (context, snap) {
         if (snap.hasError) {
-          debugPrint('HOME ERROR: ${snap.error}');
-          return const SizedBox.shrink();
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text(
+              'تعذر تحميل أقسام الصفحة الرئيسية.',
+              textAlign: TextAlign.right,
+              style: GoogleFonts.tajawal(color: Colors.red.shade700, fontSize: 13),
+            ),
+          );
         }
         if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
           return const HomeHorizontalCardsSkeleton(height: 148, cardWidth: 158, count: 5, spacing: 12);
@@ -103,6 +110,16 @@ class StoresHomeSectionsCardsStrip extends StatelessWidget {
         }
         debugPrint('HOME DATA LOADED');
         final state = snap.data;
+        if (state is FeatureFailure<List<HomeSection>>) {
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+            child: Text(
+              state.message,
+              textAlign: TextAlign.right,
+              style: GoogleFonts.tajawal(color: Colors.red.shade700, fontSize: 13),
+            ),
+          );
+        }
         final sections = switch (state) {
           FeatureSuccess<List<HomeSection>>(:final data) => data,
           _ => const <HomeSection>[],
@@ -244,13 +261,8 @@ class _OfferTile extends StatelessWidget {
 class StoresHomeOffersStrip extends StatelessWidget {
   const StoresHomeOffersStrip({super.key});
 
-  Future<Map<String, dynamic>> _safeHomeCms() async {
-    try {
-      final cms = await BackendOrdersClient.instance.fetchHomeCms();
-      return cms ?? <String, dynamic>{};
-    } on Object {
-      return <String, dynamic>{};
-    }
+  Future<Map<String, dynamic>?> _safeHomeCms() {
+    return BackendOrdersClient.instance.fetchHomeCms();
   }
 
   static List<Map<String, dynamic>> _parseOffers(Map<String, dynamic>? cms) {
@@ -269,8 +281,14 @@ class StoresHomeOffersStrip extends StatelessWidget {
       future: _safeHomeCms(),
       builder: (context, snap) {
         if (snap.hasError) {
-          debugPrint('HOME ERROR: ${snap.error}');
-          return const SizedBox.shrink();
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'تعذر تحميل العروض. أعد المحاولة.',
+              textAlign: TextAlign.right,
+              style: GoogleFonts.tajawal(color: Colors.red.shade700),
+            ),
+          );
         }
         if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
           return const HomeOffersStripSkeleton();
@@ -427,13 +445,8 @@ class StoresHomeMostRequestedStrip extends StatelessWidget {
 class StoresHomeBottomMarketingBanner extends StatelessWidget {
   const StoresHomeBottomMarketingBanner({super.key});
 
-  Future<Map<String, dynamic>> _safeHomeCms() async {
-    try {
-      final cms = await BackendOrdersClient.instance.fetchHomeCms();
-      return cms ?? <String, dynamic>{};
-    } on Object {
-      return <String, dynamic>{};
-    }
+  Future<Map<String, dynamic>?> _safeHomeCms() {
+    return BackendOrdersClient.instance.fetchHomeCms();
   }
 
   @override
@@ -442,8 +455,14 @@ class StoresHomeBottomMarketingBanner extends StatelessWidget {
       future: _safeHomeCms(),
       builder: (context, snap) {
         if (snap.hasError) {
-          debugPrint('HOME ERROR: ${snap.error}');
-          return const SizedBox.shrink();
+          return Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Text(
+              'تعذر تحميل البنر التسويقي.',
+              textAlign: TextAlign.right,
+              style: GoogleFonts.tajawal(color: Colors.red.shade700),
+            ),
+          );
         }
         if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
           return const HomeBottomBannerSkeleton();

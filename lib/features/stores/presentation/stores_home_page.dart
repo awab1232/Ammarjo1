@@ -793,16 +793,16 @@ class _StoresHomePageBannerCarouselState extends State<_StoresHomePageBannerCaro
   int _autoScheduledForCount = -1;
 
   Future<FeatureState<List<WpHomeBannerSlide>>> _safeFetchBanners({bool forceRefresh = false}) async {
-    try {
-      final state = await context.read<ProductRepository>().fetchHomeBanners(forceRefresh: forceRefresh);
-      return switch (state) {
-        FeatureSuccess<List<WpHomeBannerSlide>>(:final data) => FeatureState.success(data),
-        _ => FeatureState.success(const <WpHomeBannerSlide>[]),
-      };
-    } on Object catch (e) {
-      debugPrint('[StoresHomePageBannerCarousel] safe fetch failed: $e');
-      return FeatureState.success(const <WpHomeBannerSlide>[]);
-    }
+    final state = await context.read<ProductRepository>().fetchHomeBanners(forceRefresh: forceRefresh);
+    return switch (state) {
+      FeatureSuccess<List<WpHomeBannerSlide>>(:final data) => FeatureState.success(data),
+      FeatureFailure(:final message, :final cause) => FeatureState.failure(message, cause),
+      FeatureMissingBackend(:final featureName) => FeatureState.failure('Missing backend: $featureName'),
+      FeatureAdminNotWired(:final featureName) => FeatureState.failure('Feature not wired: $featureName'),
+      FeatureAdminMissingEndpoint(:final featureName) => FeatureState.failure('Missing endpoint: $featureName'),
+      FeatureCriticalPublicDataFailure(:final featureName, :final cause) =>
+        FeatureState.failure('Critical failure: $featureName', cause),
+    };
   }
 
   @override

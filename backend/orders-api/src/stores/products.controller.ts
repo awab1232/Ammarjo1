@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, InternalServerErrorException, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { ApiPolicy } from '../gateway/api-policy.decorator';
 import { ApiPolicyGuard } from '../gateway/api-policy.guard';
@@ -152,34 +152,32 @@ export class ProductsFilterPublicController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
-    try {
-      if (subCategoryId || storeId || sectionId || search || minPrice || maxPrice || limit || offset) {
-        const out = await this.products.filterProducts({
-          subCategoryId,
-          storeId,
-          sectionId,
-          search,
-          minPrice: minPrice != null ? Number(minPrice) : undefined,
-          maxPrice: maxPrice != null ? Number(maxPrice) : undefined,
-          limit: limit != null ? Number(limit) : undefined,
-          offset: offset != null ? Number(offset) : undefined,
-        });
-        return Array.isArray(out.items) ? out.items : [];
+    if (subCategoryId || storeId || sectionId || search || minPrice || maxPrice || limit || offset) {
+      const out = await this.products.filterProducts({
+        subCategoryId,
+        storeId,
+        sectionId,
+        search,
+        minPrice: minPrice != null ? Number(minPrice) : undefined,
+        maxPrice: maxPrice != null ? Number(maxPrice) : undefined,
+        limit: limit != null ? Number(limit) : undefined,
+        offset: offset != null ? Number(offset) : undefined,
+      });
+      if (!Array.isArray(out.items)) {
+        throw new InternalServerErrorException('Invalid products payload');
       }
-      const data = await this.products.listPublic(200);
-      return Array.isArray(data.items) ? data.items : [];
-    } catch {
-      return [];
+      return out.items;
     }
+    const data = await this.products.listPublic(200);
+    if (!Array.isArray(data.items)) {
+      throw new InternalServerErrorException('Invalid products payload');
+    }
+    return data.items;
   }
 
   @Get(':id')
   async getById(@Param('id') id: string) {
-    try {
-      return await this.products.getPublicById(id);
-    } catch {
-      return [];
-    }
+    return this.products.getPublicById(id);
   }
 
   @Get('filter')
@@ -193,20 +191,19 @@ export class ProductsFilterPublicController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
-    try {
-      const out = await this.products.filterProducts({
-        subCategoryId,
-        storeId,
-        sectionId,
-        search,
-        minPrice: minPrice != null ? Number(minPrice) : undefined,
-        maxPrice: maxPrice != null ? Number(maxPrice) : undefined,
-        limit: limit != null ? Number(limit) : undefined,
-        offset: offset != null ? Number(offset) : undefined,
-      });
-      return { items: Array.isArray(out.items) ? out.items : [], total: Number(out.total) || 0 };
-    } catch {
-      return { items: [], total: 0 };
+    const out = await this.products.filterProducts({
+      subCategoryId,
+      storeId,
+      sectionId,
+      search,
+      minPrice: minPrice != null ? Number(minPrice) : undefined,
+      maxPrice: maxPrice != null ? Number(maxPrice) : undefined,
+      limit: limit != null ? Number(limit) : undefined,
+      offset: offset != null ? Number(offset) : undefined,
+    });
+    if (!Array.isArray(out.items)) {
+      throw new InternalServerErrorException('Invalid products payload');
     }
+    return { items: out.items, total: Number(out.total) || 0 };
   }
 }

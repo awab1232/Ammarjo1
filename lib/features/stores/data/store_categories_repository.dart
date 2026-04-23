@@ -51,15 +51,7 @@ Future<FeatureState<List<StoreCategoryEntry>>> fetchStoreCategoriesFromFirestore
     stores = await BackendOrdersClient.instance.fetchStores(limit: 200);
   } on Object catch (e) {
     debugPrint('[StoreCategories] authed /stores failed: $e');
-    stores = null;
-  }
-  if (stores == null || stores.isEmpty) {
-    try {
-      stores = await BackendOrdersClient.instance.fetchStoresPublic(limit: 200);
-    } on Object catch (e) {
-      debugPrint('[StoreCategories] public /stores/public failed: $e');
-      stores = null;
-    }
+    return FeatureState.failure('تعذر تحميل تصنيفات المتاجر.', e);
   }
   if (stores == null || stores.isEmpty) {
     return FeatureState.success(const <StoreCategoryEntry>[]);

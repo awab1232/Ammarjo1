@@ -33,13 +33,9 @@ class _AdminSessionsSectionState extends State<AdminSessionsSection> {
 
   Future<Map<String, String>?> _headers() async {
     if (!UserSession.isLoggedIn) return null;
-    try {
-      return await FirebaseAuthHeaderProvider.requireAuthHeaders(
-        reason: 'admin_sessions_section',
-      );
-    } on Object {
-      return null;
-    }
+    return FirebaseAuthHeaderProvider.requireAuthHeaders(
+      reason: 'admin_sessions_section',
+    );
   }
 
   Future<void> _load() async {
@@ -77,8 +73,12 @@ class _AdminSessionsSectionState extends State<AdminSessionsSection> {
       final base = BackendOrdersConfig.baseUrl.replaceAll(RegExp(r'/$'), '');
       final uri = Uri.parse('$base/admin/rest/sessions/$id');
       await http.delete(uri, headers: headers).timeout(const Duration(seconds: 15));
-    } on Object {
-      // ignore, will reload
+    } on Object catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'تعذر حذف الجلسة: $e';
+        });
+      }
     }
     await _load();
   }
@@ -108,8 +108,12 @@ class _AdminSessionsSectionState extends State<AdminSessionsSection> {
       final base = BackendOrdersConfig.baseUrl.replaceAll(RegExp(r'/$'), '');
       final uri = Uri.parse('$base/admin/rest/sessions/user/$firebaseUid');
       await http.delete(uri, headers: headers).timeout(const Duration(seconds: 15));
-    } on Object {
-      // ignore
+    } on Object catch (e) {
+      if (mounted) {
+        setState(() {
+          _error = 'تعذر حذف كل جلسات المستخدم: $e';
+        });
+      }
     }
     await _load();
   }

@@ -11,6 +11,7 @@ import 'package:flutter/foundation.dart' show defaultTargetPlatform, kDebugMode,
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'core/config/backend_orders_config.dart';
+import 'core/config/chat_feature_config.dart';
 import 'core/contracts/feature_contract_validator.dart';
 import 'core/security/build_integrity_marker.dart';
 import 'core/security/firestore_killer.dart';
@@ -280,8 +281,10 @@ Future<void> _appMain() async {
           });
         }
       });
-      await LocalChatNotificationService.init();
-      LocalChatNotificationService.bindAuthState();
+      if (kChatFeatureEnabled) {
+        await LocalChatNotificationService.init();
+        LocalChatNotificationService.bindAuthState();
+      }
     }
   } on Object {
     if (kDebugMode) {

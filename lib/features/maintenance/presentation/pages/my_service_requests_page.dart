@@ -123,6 +123,11 @@ class _MyServiceRequestsPageState extends State<MyServiceRequestsPage> {
         );
     } on Object {
       debugPrint('[MyServiceRequestsPage] load technicians failed.');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر تحميل بيانات الفنيين.', style: GoogleFonts.tajawal())),
+        );
+      }
     } finally {
       _techLoading = false;
     }

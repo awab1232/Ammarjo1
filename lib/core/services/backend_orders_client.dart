@@ -347,31 +347,24 @@ final class BackendOrdersClient {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return false;
     final String? token = await _idToken(user);
-    if (token == null || token.isEmpty) return false;
+    if (token == null || token.isEmpty) throw StateError('NULL_RESPONSE');
 
     final uri = Uri.parse(
       '${base.replaceAll(RegExp(r'/$'), '')}/orders/${Uri.encodeComponent(orderId)}/retry-assignment',
     );
     final Duration t = BackendOrdersConfig.backendOrdersWriteTimeout;
-    try {
-      final res = await http
-          .post(
-            uri,
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': 'Bearer $token',
-            },
-            body: '{}',
-          )
-          .timeout(t);
-      FirebaseAuthHeaderProvider.logDebugResponse('POST /orders/$orderId/retry-assignment', res.statusCode, res.body);
-      return res.statusCode >= 200 && res.statusCode < 300;
-    } on Object {
-      if (kDebugMode) {
-        debugPrint('BackendOrders: POST retry-assignment error for $orderId');
-      }
-      return false;
-    }
+    final res = await http
+        .post(
+          uri,
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': 'Bearer $token',
+          },
+          body: '{}',
+        )
+        .timeout(t);
+    FirebaseAuthHeaderProvider.logDebugResponse('POST /orders/$orderId/retry-assignment', res.statusCode, res.body);
+    return res.statusCode >= 200 && res.statusCode < 300;
   }
 
   /// `PATCH /orders/:id/status` — عميل (إلغاء)، متجر، أو مسار مرخّص.
@@ -380,17 +373,12 @@ final class BackendOrdersClient {
     required String statusEnglish,
   }) async {
     final path = '/orders/${Uri.encodeComponent(orderId.trim())}/status';
-    try {
-      await _authedPatchJson(
-        path,
-        body: <String, dynamic>{'status': statusEnglish.trim().toLowerCase()},
-        flow: 'orders_patch_status',
-      );
-      return true;
-    } on Object catch (e) {
-      if (kDebugMode) debugPrint('BackendOrders: patchOrderStatus failed: $e');
-      return false;
-    }
+    await _authedPatchJson(
+      path,
+      body: <String, dynamic>{'status': statusEnglish.trim().toLowerCase()},
+      flow: 'orders_patch_status',
+    );
+    return true;
   }
 
   Future<JsonList?> fetchOrdersForCurrentUser({
@@ -879,13 +867,11 @@ final class BackendOrdersClient {
 
   Future<VersionedJsonList> fetchStoreTypesVersioned() async {
     try {
-      final body = await _publicGetJsonOrNull('/stores/store-types', flow: 'stores_types_public');
-      if (body == null) {
-        debugPrint('[BackendOrdersClient] store-types: no body');
-        return (items: <Map<String, dynamic>>[], version: 1);
-      }
+      final body = await _publicGetJson('/stores/store-types', flow: 'stores_types_public');
+      if (body == null) throw StateError('NULL_RESPONSE');
       final raw = body['data'] ?? body['items'];
-      final items = raw is List ? raw : <dynamic>[];
+      if (raw is! List) throw StateError('NULL_RESPONSE');
+      final items = raw;
       final list = items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
       final version = (body['version'] as num?)?.toInt() ?? 1;
       return (items: list, version: version);
@@ -894,7 +880,7 @@ final class BackendOrdersClient {
       if (kDebugMode) {
         debugPrint('$st');
       }
-      return (items: <Map<String, dynamic>>[], version: 1);
+      throw StateError('NULL_RESPONSE');
     }
   }
 
@@ -936,32 +922,17 @@ final class BackendOrdersClient {
   }
 
   Future<JsonList?> fetchStoreCategories(String storeId) async {
-    try {
-      final body = await _publicGetJsonOrNull(
-        '/stores/${Uri.encodeComponent(storeId.trim())}/categories',
-        flow: 'store_categories',
-      );
-      if (body == null) {
-        debugPrint('EMPTY RESPONSE');
-        return const <Map<String, dynamic>>[];
-      }
-      final items = body['items'];
-      if (items is List) {
-        if (items.isEmpty) {
-          debugPrint('EMPTY RESPONSE');
-        }
-        return items
-            .whereType<Map>()
-            .map((e) => Map<String, dynamic>.from(e))
-            .toList();
-      }
-      debugPrint('EMPTY RESPONSE');
-      return const <Map<String, dynamic>>[];
-    } on Object catch (e) {
-      debugPrint('[BackendOrdersClient] store_categories failed: $e');
-      debugPrint('EMPTY RESPONSE');
-      return const <Map<String, dynamic>>[];
-    }
+    final body = await _publicGetJson(
+      '/stores/${Uri.encodeComponent(storeId.trim())}/categories',
+      flow: 'store_categories',
+    );
+    if (body == null) throw StateError('NULL_RESPONSE');
+    final items = body['items'];
+    if (items is! List) throw StateError('NULL_RESPONSE');
+    return items
+        .whereType<Map>()
+        .map((e) => Map<String, dynamic>.from(e))
+        .toList();
   }
 
   Future<JsonList?> fetchProductsByStore({
@@ -969,49 +940,23 @@ final class BackendOrdersClient {
     int limit = 100,
     String? cursor,
   }) async {
-    try {
-      // Public GET only — storefront must work without Firebase login.
-      debugPrint('STORE ID: $storeId');
-      debugPrint('FETCHING PRODUCTS...');
-      final url = '/products?storeId=${Uri.encodeQueryComponent(storeId.trim())}&limit=$limit'
-          '${(cursor != null && cursor.trim().isNotEmpty) ? '&cursor=${Uri.encodeQueryComponent(cursor.trim())}' : ''}';
-      debugPrint('FETCH PRODUCTS URL: $url');
-      final dynamic json = await _publicGetJsonOrNull(
-        '/products',
-        query: {
-          'storeId': storeId.trim(),
-          'limit': '$limit',
-          if (cursor != null && cursor.trim().isNotEmpty) 'cursor': cursor.trim(),
-        },
-        flow: 'products_by_store_public',
-        logApiResponse: kDebugMode,
-      );
-      debugPrint('RAW JSON: $json');
-      debugPrint('RAW PRODUCTS JSON TYPE: ${json.runtimeType}');
-      debugPrint('[BackendOrdersClient] products_by_store_public storeId=${storeId.trim()} limit=$limit');
-      if (json == null) {
-        debugPrint(
-          '[BackendOrdersClient] fetchProductsByStore: null response storeId=$storeId',
-        );
-        return <Map<String, dynamic>>[];
-      }
-      final List<dynamic> rows = json is List
-          ? json
-          : (json is Map && json['items'] is List
-              ? json['items'] as List<dynamic>
-              : (json is Map && json['data'] is List ? json['data'] as List<dynamic> : <dynamic>[]));
-      if (rows.isEmpty) {
-        debugPrint('NO PRODUCTS FROM API');
-      }
-      debugPrint('PRODUCT COUNT: ${rows.length}');
-      return rows.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
-    } on Object catch (e, st) {
-      debugPrint('[BackendOrdersClient] fetchProductsByStore failed: $e');
-      if (kDebugMode) {
-        debugPrint('$st');
-      }
-      return <Map<String, dynamic>>[];
-    }
+    final dynamic json = await _publicGetJson(
+      '/products',
+      query: {
+        'storeId': storeId.trim(),
+        'limit': '$limit',
+        if (cursor != null && cursor.trim().isNotEmpty) 'cursor': cursor.trim(),
+      },
+      flow: 'products_by_store_public',
+    );
+    if (json == null) throw StateError('NULL_RESPONSE');
+    final List<dynamic> rows = json is List
+        ? json
+        : (json is Map && json['items'] is List
+            ? json['items'] as List<dynamic>
+            : (json is Map && json['data'] is List ? json['data'] as List<dynamic> : <dynamic>[]));
+    if (rows.isEmpty && json is! Map) throw StateError('NULL_RESPONSE');
+    return rows.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
   }
 
   Future<Map<String, dynamic>?> upsertAdminProduct({
@@ -1041,16 +986,14 @@ final class BackendOrdersClient {
   }
 
   Future<JsonList?> fetchPublicProducts({int limit = 400}) async {
-    final body = await _publicGetJsonOrNull(
+    final body = await _publicGetJson(
       '/products',
       query: {'limit': '$limit'},
       flow: 'products_public_list',
     );
-    if (body == null) {
-      debugPrint('[BackendOrdersClient] fetchPublicProducts: null body');
-      return <Map<String, dynamic>>[];
-    }
+    if (body == null) throw StateError('NULL_RESPONSE');
     final rows = _storeRowsFromResponseJson(body, 'fetchPublicProducts');
+    if (rows.isEmpty) throw StateError('NULL_RESPONSE');
     return rows.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
   }
 
@@ -1458,29 +1401,22 @@ final class BackendOrdersClient {
     required String storeId,
     required String storeName,
   }) async {
-    if (!BackendOrdersConfig.useBackendCart) return false;
-    try {
-      final body = await _authedPostJson(
-        '/cart/items',
-        body: <String, dynamic>{
-          'productId': productId,
-          if (variantId != null && variantId.trim().isNotEmpty) 'variantId': variantId.trim(),
-          'quantity': quantity,
-          'priceSnapshot': priceSnapshot,
-          'productName': productName,
-          if (imageUrl != null && imageUrl.trim().isNotEmpty) 'imageUrl': imageUrl.trim(),
-          'storeId': storeId,
-          'storeName': storeName,
-        },
-        flow: 'cart_add',
-      );
-      return body != null;
-    } on Object catch (e) {
-      if (kDebugMode) {
-        debugPrint('[BackendOrdersClient] cart_add failed safely: $e');
-      }
-      return false;
-    }
+    if (!BackendOrdersConfig.useBackendCart) throw StateError('NULL_RESPONSE');
+    final body = await _authedPostJson(
+      '/cart/items',
+      body: <String, dynamic>{
+        'productId': productId,
+        if (variantId != null && variantId.trim().isNotEmpty) 'variantId': variantId.trim(),
+        'quantity': quantity,
+        'priceSnapshot': priceSnapshot,
+        'productName': productName,
+        if (imageUrl != null && imageUrl.trim().isNotEmpty) 'imageUrl': imageUrl.trim(),
+        'storeId': storeId,
+        'storeName': storeName,
+      },
+      flow: 'cart_add',
+    );
+    return body != null;
   }
 
   Future<bool> patchCartItemQuantity({required String lineId, required int quantity}) async {
@@ -1670,15 +1606,14 @@ final class BackendOrdersClient {
 
   Future<({FeatureState<List<HomeSection>> state, int version})> fetchHomeSectionsVersioned() async {
     try {
-      final res = await _publicGetJsonOrNull('/home/sections', flow: 'home_sections_list');
-      final items = _homeSectionItemsFromEnvelope(res);
-      if (items.isEmpty) {
-        debugPrint('home sections empty');
+      final res = await _publicGetJson('/home/sections', flow: 'home_sections_list');
+      if (res == null) {
         return (
-          state: FeatureState.success(<HomeSection>[]),
-          version: (res?['version'] as num?)?.toInt() ?? 1,
+          state: FeatureState.failure<List<HomeSection>>('FAILED_TO_LOAD_HOME_SECTIONS'),
+          version: 1,
         );
       }
+      final items = _homeSectionItemsFromEnvelope(res);
       final out = <HomeSection>[];
       for (final raw in items) {
         if (raw is! Map) continue;
@@ -1693,15 +1628,15 @@ final class BackendOrdersClient {
       }
       return (
         state: FeatureState.success(out),
-        version: (res?['version'] as num?)?.toInt() ?? 1,
+        version: (res['version'] as num?)?.toInt() ?? 1,
       );
     } on Object catch (e, st) {
-      debugPrint('home sections empty');
+      debugPrint('home sections failed');
       if (kDebugMode) {
         debugPrint('$e\n$st');
       }
       return (
-        state: FeatureState.success(<HomeSection>[]),
+        state: FeatureState.failure<List<HomeSection>>('FAILED_TO_LOAD_HOME_SECTIONS', e),
         version: 1,
       );
     }
@@ -1779,8 +1714,8 @@ final class BackendOrdersClient {
         }
       }
       return FeatureState.success(out);
-    } on Object {
-      return FeatureState.success(const <StoreModel>[]);
+    } on Object catch (e) {
+      return FeatureState.failure('FAILED_TO_LOAD_STORES_BY_SUBCATEGORY', e);
     }
   }
 

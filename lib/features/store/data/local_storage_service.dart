@@ -70,7 +70,7 @@ class LocalStorageService {
         final pts = prefs.getInt(_loyaltyKey(p.email)) ?? 0;
         return p.copyWith(loyaltyPoints: pts);
       } on Object {
-        return null;
+        throw StateError('INVALID_PROFILE_CACHE');
       }
     }
     final email = prefs.getString(_emailKey);

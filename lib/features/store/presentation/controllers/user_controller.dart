@@ -5,6 +5,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart' show ChangeNotifier;
 
 import '../../../../core/data/repositories/user_repository.dart';
+import '../../../../core/config/chat_feature_config.dart';
 import '../../../../core/firebase/chat_firebase_sync.dart';
 import '../../../../core/utils/jordan_phone.dart';
 import '../../../../core/firebase/users_repository.dart';
@@ -103,7 +104,9 @@ class UserController extends ChangeNotifier {
         );
       }
       await _local.saveProfile(profile!);
-      await syncChatFirebaseIdentity(profile);
+      if (kChatFeatureEnabled) {
+        await syncChatFirebaseIdentity(profile);
+      }
       notifyListeners();
       attachUserBannedListener(uid);
       return;
@@ -149,7 +152,9 @@ class UserController extends ChangeNotifier {
       );
     }
     await _local.saveProfile(profile!);
-    await syncChatFirebaseIdentity(profile);
+    if (kChatFeatureEnabled) {
+      await syncChatFirebaseIdentity(profile);
+    }
     attachUserBannedListener(uid);
     notifyListeners();
   }
@@ -172,7 +177,9 @@ class UserController extends ChangeNotifier {
       contactEmail: remote.contactEmail?.trim().isNotEmpty == true ? remote.contactEmail : saved?.contactEmail,
     );
     await _local.saveProfile(profile!);
-    await syncChatFirebaseIdentity(profile);
+    if (kChatFeatureEnabled) {
+      await syncChatFirebaseIdentity(profile);
+    }
     notifyListeners();
   }
 

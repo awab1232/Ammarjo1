@@ -377,9 +377,8 @@ export class OrdersPgService implements OnModuleDestroy {
         `SELECT o.payload, o.created_at, o.driver_id, o.delivery_status, o.delivery_lat, o.delivery_lng, o.eta_minutes, o.assigned_at,
                 o.delivery_on_the_way_at, o.delivery_delivered_at,
                 o.delivery_manual_retries,
-                d.name AS driver_name, d.phone AS driver_phone
+                NULL::text AS driver_name, NULL::text AS driver_phone
          FROM orders o
-         LEFT JOIN drivers d ON d.id = o.driver_id
          WHERE o.order_id = $1`,
         [orderId.trim()],
       );
@@ -446,9 +445,8 @@ export class OrdersPgService implements OnModuleDestroy {
                   o.driver_id, o.delivery_status, o.delivery_lat, o.delivery_lng, o.eta_minutes, o.assigned_at,
                   o.delivery_on_the_way_at, o.delivery_delivered_at,
                   o.delivery_manual_retries,
-                  d.name AS driver_name, d.phone AS driver_phone
+                  NULL::text AS driver_name, NULL::text AS driver_phone
            FROM orders o
-           LEFT JOIN drivers d ON d.id = o.driver_id
            WHERE o.user_id = $1
            ORDER BY o.created_at DESC, o.order_id DESC
            LIMIT $2`,
@@ -460,9 +458,8 @@ export class OrdersPgService implements OnModuleDestroy {
                   o.driver_id, o.delivery_status, o.delivery_lat, o.delivery_lng, o.eta_minutes, o.assigned_at,
                   o.delivery_on_the_way_at, o.delivery_delivered_at,
                   o.delivery_manual_retries,
-                  d.name AS driver_name, d.phone AS driver_phone
+                  NULL::text AS driver_name, NULL::text AS driver_phone
            FROM orders o
-           LEFT JOIN drivers d ON d.id = o.driver_id
            WHERE o.user_id = $1
              AND (o.created_at, o.order_id) < ($2::timestamptz, $3::text)
            ORDER BY o.created_at DESC, o.order_id DESC
@@ -551,9 +548,8 @@ export class OrdersPgService implements OnModuleDestroy {
                   o.driver_id, o.delivery_status, o.delivery_lat, o.delivery_lng, o.eta_minutes, o.assigned_at,
                   o.delivery_on_the_way_at, o.delivery_delivered_at,
                   o.delivery_manual_retries,
-                  d.name AS driver_name, d.phone AS driver_phone
+                  NULL::text AS driver_name, NULL::text AS driver_phone
            FROM orders o
-           LEFT JOIN drivers d ON d.id = o.driver_id
            WHERE o.store_id = $1
            ORDER BY o.created_at DESC, o.order_id DESC
            LIMIT $2`,
@@ -565,9 +561,8 @@ export class OrdersPgService implements OnModuleDestroy {
                   o.driver_id, o.delivery_status, o.delivery_lat, o.delivery_lng, o.eta_minutes, o.assigned_at,
                   o.delivery_on_the_way_at, o.delivery_delivered_at,
                   o.delivery_manual_retries,
-                  d.name AS driver_name, d.phone AS driver_phone
+                  NULL::text AS driver_name, NULL::text AS driver_phone
            FROM orders o
-           LEFT JOIN drivers d ON d.id = o.driver_id
            WHERE o.store_id = $1
              AND (o.created_at, o.order_id) < ($2::timestamptz, $3::text)
            ORDER BY o.created_at DESC, o.order_id DESC

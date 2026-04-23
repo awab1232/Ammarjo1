@@ -230,34 +230,13 @@ class BackendProductRepository implements ProductRepository {
   Future<FeatureState<List<WpHomeBannerSlide>>> _fetchHomeBannersUncached() async {
     try {
       final rows = await BackendOrdersClient.instance.fetchBanners();
-      if (rows == null || rows.isEmpty) {
-        return FeatureState.success(const <WpHomeBannerSlide>[
-          WpHomeBannerSlide(
-            imageUrl: _kBannerPlaceholderImage,
-            title: 'عرض خاص',
-            linkUrl: null,
-          ),
-        ]);
-      }
+      if (rows == null) return FeatureState.failure('Failed to load home banners.');
+      if (rows.isEmpty) return FeatureState.success(const <WpHomeBannerSlide>[]);
       final slides = rows.map(_bannerFromBackendRow).toList();
-      if (slides.isEmpty) {
-        return FeatureState.success(const <WpHomeBannerSlide>[
-          WpHomeBannerSlide(
-            imageUrl: _kBannerPlaceholderImage,
-            title: 'عرض خاص',
-            linkUrl: null,
-          ),
-        ]);
-      }
+      if (slides.isEmpty) return FeatureState.failure('Invalid home banners payload.');
       return FeatureState.success(slides);
-    } on Object {
-      return FeatureState.success(const <WpHomeBannerSlide>[
-        WpHomeBannerSlide(
-          imageUrl: _kBannerPlaceholderImage,
-          title: 'عرض خاص',
-          linkUrl: null,
-        ),
-      ]);
+    } on Object catch (e) {
+      return FeatureState.failure('Failed to load home banners.', e);
     }
   }
 

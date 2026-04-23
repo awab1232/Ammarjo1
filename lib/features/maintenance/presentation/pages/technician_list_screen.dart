@@ -272,6 +272,11 @@ class _TechnicianListBodyState extends State<_TechnicianListBody> {
       });
     } on Object {
       debugPrint('TechnicianListScreen: technicians load more failed.');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر تحميل المزيد. حاول مجدداً.', style: GoogleFonts.tajawal())),
+        );
+      }
     } finally {
       if (mounted) setState(() => _loadingMore = false);
     }

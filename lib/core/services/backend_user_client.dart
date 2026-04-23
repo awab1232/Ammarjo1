@@ -32,49 +32,27 @@ final class BackendUserClient {
 
   Future<bool> patchUser(String uid, Map<String, dynamic> fields) async {
     final id = uid.trim();
-    if (id.isEmpty || fields.isEmpty) return false;
-    try {
-      final body = await _authedPatch('/users/${Uri.encodeComponent(id)}', fields);
-      return body != null;
-    } on Object {
-      return false;
-    }
+    if (id.isEmpty || fields.isEmpty) throw StateError('NULL_RESPONSE');
+    final body = await _authedPatch('/users/${Uri.encodeComponent(id)}', fields);
+    return body != null;
   }
 
   Future<FeatureState<List<Map<String, dynamic>>>> fetchTechSpecialties() async {
-    final body = await _authedGet('/tech-specialties');
-    final items = body?['items'];
-    if (items is! List) return FeatureState.failure('Invalid specialties payload.');
-    return FeatureState.success(items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList());
+    return FeatureState.failure('Tech specialties endpoint is not wired on backend.');
   }
 
   Future<FeatureState<List<Map<String, dynamic>>>> fetchUserFavorites(String uid) async {
     final id = uid.trim();
     if (id.isEmpty) return FeatureState.failure('User id is required.');
-    try {
-      final body = await _authedGet('/users/${Uri.encodeComponent(id)}/favorites');
-      final items = body?['items'];
-      if (items is! List) return FeatureState.failure('Invalid favorites payload.');
-      return FeatureState.success(items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList());
-    } on Object {
-      return FeatureState.success(const <Map<String, dynamic>>[]);
-    }
+    return FeatureState.failure('Favorites endpoint is not wired on backend.');
   }
 
   Future<bool> putUserFavorite(String uid, Map<String, dynamic> payload) async {
-    final id = uid.trim();
-    final pid = payload['productId']?.toString().trim() ?? '';
-    if (id.isEmpty || pid.isEmpty) return false;
-    final body = await _authedPatch('/users/${Uri.encodeComponent(id)}/favorites/${Uri.encodeComponent(pid)}', payload);
-    return body != null;
+    throw StateError('Favorites endpoint is not wired on backend.');
   }
 
   Future<bool> deleteUserFavorite(String uid, String productId) async {
-    final id = uid.trim();
-    final pid = productId.trim();
-    if (id.isEmpty || pid.isEmpty) return false;
-    final ok = await _authedDelete('/users/${Uri.encodeComponent(id)}/favorites/${Uri.encodeComponent(pid)}');
-    return ok;
+    throw StateError('Favorites endpoint is not wired on backend.');
   }
 
   Future<Map<String, dynamic>?> _authedGet(String path) async {
@@ -101,14 +79,6 @@ final class BackendUserClient {
     if (decoded is Map<String, dynamic>) return decoded;
     if (decoded is Map) return Map<String, dynamic>.from(decoded);
     return <String, dynamic>{};
-  }
-
-  Future<bool> _authedDelete(String path) async {
-    final req = await _request(path);
-    if (req == null) return false;
-    final res = await http.delete(req.$1, headers: req.$2);
-    FirebaseAuthHeaderProvider.logDebugResponse('BackendUserClient DELETE $path', res.statusCode, res.body);
-    return res.statusCode >= 200 && res.statusCode < 300;
   }
 
   Future<(Uri, Map<String, String>)?> _request(String path) async {

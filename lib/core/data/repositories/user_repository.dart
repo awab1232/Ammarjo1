@@ -146,30 +146,26 @@ class BackendUserRepository implements UserRepository {
 
   @override
   Stream<FeatureState<List<FavoriteProduct>>> watchFavorites(String userId) async* {
-    while (true) {
-      try {
-        final rowsState = await BackendUserClient.instance.fetchUserFavorites(userId);
-        if (rowsState is! FeatureSuccess<List<Map<String, dynamic>>>) {
-          yield switch (rowsState) {
-            FeatureFailure(:final message, :final cause) => FeatureState.failure(message, cause),
-            _ => FeatureState.failure('Failed to load favorites.'),
-          };
-          await Future<void>.delayed(const Duration(seconds: 4));
-          continue;
-        }
-        final rows = rowsState.data;
-        yield FeatureState.success(
-          rows
-              .map((e) => FavoriteProduct.fromMap(
-                    e['productId']?.toString() ?? '',
-                    Map<String, dynamic>.from(e),
-                  ))
-              .toList(),
-        );
-      } on Object {
-        yield FeatureState.failure('Failed to load favorites.');
+    try {
+      final rowsState = await BackendUserClient.instance.fetchUserFavorites(userId);
+      if (rowsState is! FeatureSuccess<List<Map<String, dynamic>>>) {
+        yield switch (rowsState) {
+          FeatureFailure(:final message, :final cause) => FeatureState.failure(message, cause),
+          _ => FeatureState.failure('Failed to load favorites.'),
+        };
+        return;
       }
-      await Future<void>.delayed(const Duration(seconds: 4));
+      final rows = rowsState.data;
+      yield FeatureState.success(
+        rows
+            .map((e) => FavoriteProduct.fromMap(
+                  e['productId']?.toString() ?? '',
+                  Map<String, dynamic>.from(e),
+                ))
+            .toList(),
+      );
+    } on Object {
+      yield FeatureState.failure('Failed to load favorites.');
     }
   }
 

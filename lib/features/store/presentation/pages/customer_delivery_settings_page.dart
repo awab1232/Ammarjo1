@@ -69,7 +69,13 @@ class _CustomerDeliverySettingsPageState extends State<CustomerDeliverySettingsP
           }
         }
       } on Object {
-        // Keep the page usable with empty defaults instead of endless loader.
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('تعذر تحميل بيانات التوصيل. يمكنك إعادة المحاولة من زر الحفظ.', style: GoogleFonts.tajawal()),
+            ),
+          );
+        }
       } finally {
         if (mounted) {
           setState(() => _loading = false);
@@ -94,7 +100,11 @@ class _CustomerDeliverySettingsPageState extends State<CustomerDeliverySettingsP
         });
       }
     } on Object {
-      // Optional info only.
+      if (mounted) {
+        setState(() {
+          _locationText = 'تعذر تحميل الموقع المحفوظ.';
+        });
+      }
     }
   }
 
