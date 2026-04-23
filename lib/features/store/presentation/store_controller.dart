@@ -1019,17 +1019,14 @@ class StoreController extends ChangeNotifier {
       isLoading = true;
       errorMessage = null;
       notifyListeners();
-      final subtotal = lines.fold<double>(0, (s, e) => s + e.totalPrice);
-      final shipping = await computeShippingForCartLines(lines, userCity: city);
-      if (shipping.uncoveredStoreNames.isNotEmpty) {
-        errorMessage = 'بعض المتاجر لا تغطي منطقتك: ${shipping.uncoveredStoreNames.join('، ')}';
+      final grouped = <String, List<CartItem>>{};
+      for (final line in lines) {
+        grouped.putIfAbsent(line.storeId, () => <CartItem>[]).add(line);
+      }
+      if (grouped.isEmpty) {
+        errorMessage = 'السلة فارغة.';
         return false;
       }
-      final ship = shipping.totalShipping;
-      final couponCode = cartState.appliedCoupon?.code;
-      final discount = cartState.discountAmount + cartState.promotionsDiscountAmount;
-      final beforeDiscountTotal = subtotal + ship;
-      final grandTotal = (beforeDiscountTotal - discount) < 0 ? 0.0 : (beforeDiscountTotal - discount);
       var orderEmail = email.trim();
       if (orderEmail.isEmpty) {
         orderEmail = profile?.email.trim() ?? '';
@@ -1056,38 +1053,55 @@ class StoreController extends ChangeNotifier {
             .saveUserLocation(lat: latitude, lng: longitude)
             .onError((_, _) => false);
       }
-      final orderState = await BackendOrderRepository.instance.createOrderFromCart(
-        cart: lines,
-        cartSubtotal: subtotal,
-        shippingFee: ship,
-        shippingByStore: {
-          for (final s in shipping.lines) s.storeId: s.shippingCost,
-        },
-        orderTotal: grandTotal,
-        couponCode: couponCode,
-        discountAmount: discount > 0 ? discount : 0.0,
-        promotionIds: cartState.appliedPromotions.map((e) => e.id).toList(),
-        customerUid: uid,
-        customerEmail: orderEmail,
-        firstName: firstName,
-        lastName: lastName,
-        email: orderEmail,
-        phone: phone,
-        address1: address1,
-        city: city,
-        country: country,
-        latitude: latitude,
-        longitude: longitude,
-      );
-      final orderId = switch (orderState) {
-        FeatureSuccess(:final data) => data,
-        FeatureFailure() => '',
-        _ => '',
-      };
-      if (orderState case FeatureFailure(:final message)) {
-        errorMessage = message;
+      final createdOrderIds = <String>[];
+      for (final entry in grouped.entries) {
+        final storeLines = entry.value;
+        final subtotal = storeLines.fold<double>(0, (s, e) => s + e.totalPrice);
+        final shipping = await computeShippingForCartLines(storeLines, userCity: city);
+        if (shipping.uncoveredStoreNames.isNotEmpty) {
+          errorMessage = 'بعض المتاجر لا تغطي منطقتك: ${shipping.uncoveredStoreNames.join('، ')}';
+          return false;
+        }
+        final ship = shipping.totalShipping;
+        final grandTotal = subtotal + ship;
+        final orderState = await BackendOrderRepository.instance.createOrderFromCart(
+          cart: storeLines,
+          cartSubtotal: subtotal,
+          shippingFee: ship,
+          shippingByStore: {
+            for (final s in shipping.lines) s.storeId: s.shippingCost,
+          },
+          orderTotal: grandTotal,
+          couponCode: null,
+          discountAmount: 0.0,
+          promotionIds: const <String>[],
+          customerUid: uid,
+          customerEmail: orderEmail,
+          firstName: firstName,
+          lastName: lastName,
+          email: orderEmail,
+          phone: phone,
+          address1: address1,
+          city: city,
+          country: country,
+          latitude: latitude,
+          longitude: longitude,
+        );
+        final orderId = switch (orderState) {
+          FeatureSuccess(:final data) => data,
+          FeatureFailure() => '',
+          _ => '',
+        };
+        if (orderState case FeatureFailure(:final message)) {
+          errorMessage = message;
+        }
+        if (orderId.trim().isEmpty) {
+          errorMessage = 'تعذّر إتمام الطلب. تحقق من الاتصال وحاول لاحقاً.';
+          return false;
+        }
+        createdOrderIds.add(orderId.trim());
       }
-      if (orderId.trim().isEmpty) {
+      if (createdOrderIds.isEmpty) {
         errorMessage = 'تعذّر إتمام الطلب. تحقق من الاتصال وحاول لاحقاً.';
         return false;
       }

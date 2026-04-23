@@ -55,32 +55,28 @@ class TenderRepository {
       BackendTenderClient.instance.fetchTender(tenderId.trim());
 
   Stream<FeatureState<List<TenderModel>>> watchMyTenders() async* {
-    while (true) {
-      try {
-        final rowsState = await BackendTenderClient.instance.fetchMyTenders();
-        if (rowsState is! FeatureSuccess<List<Map<String, dynamic>>>) {
-          yield switch (rowsState) {
-            FeatureFailure(:final message, :final cause) => FeatureState.failure(message, cause),
-            _ => FeatureState.failure('Failed to load tenders.'),
-          };
-          await Future<void>.delayed(const Duration(seconds: 4));
+    try {
+      final rowsState = await BackendTenderClient.instance.fetchMyTenders();
+      if (rowsState is! FeatureSuccess<List<Map<String, dynamic>>>) {
+        yield switch (rowsState) {
+          FeatureFailure(:final message, :final cause) => FeatureState.failure(message, cause),
+          _ => FeatureState.failure('Failed to load tenders.'),
+        };
+        return;
+      }
+      final items = <TenderModel>[];
+      for (final row in rowsState.data) {
+        try {
+          final id = row['id']?.toString() ?? '';
+          if (id.trim().isEmpty) continue;
+          items.add(TenderModel.fromMap(id, row));
+        } on Object {
           continue;
         }
-        final items = <TenderModel>[];
-        for (final row in rowsState.data) {
-          try {
-            final id = row['id']?.toString() ?? '';
-            if (id.trim().isEmpty) continue;
-            items.add(TenderModel.fromMap(id, row));
-          } on Object {
-            continue;
-          }
-        }
-        yield FeatureState.success(items);
-      } on Object {
-        yield FeatureState.failure('Failed to load tenders.');
       }
-      await Future<void>.delayed(const Duration(seconds: 4));
+      yield FeatureState.success(items);
+    } on Object {
+      yield FeatureState.failure('Failed to load tenders.');
     }
   }
 
@@ -93,39 +89,35 @@ class TenderRepository {
     String? storeTypeId,
     String? storeTypeKey,
   }) async* {
-    while (true) {
-      try {
-        final rowsState = await BackendTenderClient.instance.fetchOpenTendersForStore(
-          storeTypeId: storeTypeId,
-          storeTypeKey: storeTypeKey,
-          city: city.trim().isEmpty ? null : city.trim(),
-        );
-        if (rowsState is! FeatureSuccess<List<Map<String, dynamic>>>) {
-          yield switch (rowsState) {
-            FeatureFailure(:final message, :final cause) => FeatureState.failure(message, cause),
-            _ => FeatureState.failure('Failed to load store tenders.'),
-          };
-          await Future<void>.delayed(const Duration(seconds: 4));
+    try {
+      final rowsState = await BackendTenderClient.instance.fetchOpenTendersForStore(
+        storeTypeId: storeTypeId,
+        storeTypeKey: storeTypeKey,
+        city: city.trim().isEmpty ? null : city.trim(),
+      );
+      if (rowsState is! FeatureSuccess<List<Map<String, dynamic>>>) {
+        yield switch (rowsState) {
+          FeatureFailure(:final message, :final cause) => FeatureState.failure(message, cause),
+          _ => FeatureState.failure('Failed to load store tenders.'),
+        };
+        return;
+      }
+      var list = <TenderModel>[];
+      for (final row in rowsState.data) {
+        try {
+          final id = row['id']?.toString() ?? '';
+          if (id.trim().isEmpty) continue;
+          list.add(TenderModel.fromMap(id, row));
+        } on Object {
           continue;
         }
-        var list = <TenderModel>[];
-        for (final row in rowsState.data) {
-          try {
-            final id = row['id']?.toString() ?? '';
-            if (id.trim().isEmpty) continue;
-            list.add(TenderModel.fromMap(id, row));
-          } on Object {
-            continue;
-          }
-        }
-        if (category.trim().isNotEmpty) {
-          list = list.where((e) => e.category == category.trim()).toList();
-        }
-        yield FeatureState.success(list);
-      } on Object {
-        yield FeatureState.failure('Failed to load store tenders.');
       }
-      await Future<void>.delayed(const Duration(seconds: 4));
+      if (category.trim().isNotEmpty) {
+        list = list.where((e) => e.category == category.trim()).toList();
+      }
+      yield FeatureState.success(list);
+    } on Object {
+      yield FeatureState.failure('Failed to load store tenders.');
     }
   }
 
@@ -137,32 +129,28 @@ class TenderRepository {
   }
 
   Stream<FeatureState<List<TenderOffer>>> watchOffers(String tenderId) async* {
-    while (true) {
-      try {
-        final rowsState = await BackendTenderClient.instance.fetchTenderOffers(tenderId);
-        if (rowsState is! FeatureSuccess<List<Map<String, dynamic>>>) {
-          yield switch (rowsState) {
-            FeatureFailure(:final message, :final cause) => FeatureState.failure(message, cause),
-            _ => FeatureState.failure('Failed to load tender offers.'),
-          };
-          await Future<void>.delayed(const Duration(seconds: 4));
+    try {
+      final rowsState = await BackendTenderClient.instance.fetchTenderOffers(tenderId);
+      if (rowsState is! FeatureSuccess<List<Map<String, dynamic>>>) {
+        yield switch (rowsState) {
+          FeatureFailure(:final message, :final cause) => FeatureState.failure(message, cause),
+          _ => FeatureState.failure('Failed to load tender offers.'),
+        };
+        return;
+      }
+      final items = <TenderOffer>[];
+      for (final row in rowsState.data) {
+        try {
+          final id = row['id']?.toString() ?? '';
+          if (id.trim().isEmpty) continue;
+          items.add(TenderOffer.fromMap(id, row));
+        } on Object {
           continue;
         }
-        final items = <TenderOffer>[];
-        for (final row in rowsState.data) {
-          try {
-            final id = row['id']?.toString() ?? '';
-            if (id.trim().isEmpty) continue;
-            items.add(TenderOffer.fromMap(id, row));
-          } on Object {
-            continue;
-          }
-        }
-        yield FeatureState.success(items);
-      } on Object {
-        yield FeatureState.failure('Failed to load tender offers.');
       }
-      await Future<void>.delayed(const Duration(seconds: 4));
+      yield FeatureState.success(items);
+    } on Object {
+      yield FeatureState.failure('Failed to load tender offers.');
     }
   }
 

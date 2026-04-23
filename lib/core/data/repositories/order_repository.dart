@@ -291,19 +291,16 @@ class BackendOrderRepository implements OrderRepository {
 
   @override
   Stream<FeatureState<List<TrackOrderItem>>> watchOrders(String email, {int limit = 20}) async* {
-    while (true) {
-      final rows = await BackendOrdersClient.instance.fetchOrdersForCurrentUser(limit: limit);
-      if (rows != null) {
-        yield FeatureState.success(rows.map(_trackOrderFromBackend).toList());
-      } else {
-        _logJson({
-          'kind': 'backend_orders_list_degraded',
-          'endpoint': 'GET /users/:id/orders',
-        });
-        yield FeatureState.failure('Failed to load orders list.');
-      }
-      await Future<void>.delayed(const Duration(seconds: 3));
+    final rows = await BackendOrdersClient.instance.fetchOrdersForCurrentUser(limit: limit);
+    if (rows != null) {
+      yield FeatureState.success(rows.map(_trackOrderFromBackend).toList());
+      return;
     }
+    _logJson({
+      'kind': 'backend_orders_list_degraded',
+      'endpoint': 'GET /users/:id/orders',
+    });
+    yield FeatureState.failure('Failed to load orders list.');
   }
 
   @override
@@ -343,10 +340,7 @@ class BackendOrderRepository implements OrderRepository {
 
   @override
   Stream<OrderRootSnapshot> watchOrderDocument(String orderId) async* {
-    while (true) {
-      yield await fetchOrderRootSnapshot(orderId);
-      await Future<void>.delayed(const Duration(seconds: 2));
-    }
+    yield await fetchOrderRootSnapshot(orderId);
   }
 }
 
