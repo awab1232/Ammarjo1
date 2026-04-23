@@ -252,10 +252,12 @@ export class PhonePasswordService {
     role: string;
     userId: string;
   }> {
+    console.log('LOGIN HIT');
     const phone = PhonePasswordService.normalizePhone(phoneRaw ?? '');
     if (!phone) throw new BadRequestException('invalid_phone');
     const pwd = String(password ?? '');
     if (pwd.length === 0) throw new BadRequestException('password_required');
+    const phoneDigits = phone.replace(/\D/g, '');
 
     await this.ensureSchema();
 
@@ -264,8 +266,9 @@ export class PhonePasswordService {
         `SELECT id, firebase_uid, password_hash, role, is_active
          FROM users
          WHERE phone = $1
+            OR regexp_replace(COALESCE(phone, ''), '\D', '', 'g') = $2
          LIMIT 1`,
-        [phone],
+        [phone, phoneDigits],
       );
       return r.rows[0] as
         | { id: string; firebase_uid: string; password_hash: string | null; role: string; is_active: boolean }
@@ -274,7 +277,7 @@ export class PhonePasswordService {
 
     if (!row) {
       // Intentionally generic to avoid user enumeration.
-      throw new UnauthorizedException('invalid_credentials');
+      throw new UnauthorizedException('INVALID PHONE OR PASSWORD');
     }
     if (!row.is_active) {
       throw new UnauthorizedException('account_disabled');
@@ -283,9 +286,12 @@ export class PhonePasswordService {
       throw new UnauthorizedException('password_not_set');
     }
 
+    console.log('INPUT PASSWORD:', pwd);
+    console.log('HASH FROM DB:', row.password_hash);
     const ok = await bcrypt.compare(pwd, row.password_hash);
+    console.log('COMPARE RESULT:', ok);
     if (!ok) {
-      throw new UnauthorizedException('invalid_credentials');
+      throw new UnauthorizedException('INVALID PHONE OR PASSWORD');
     }
 
     const firebaseUid = String(row.firebase_uid ?? '').trim();
