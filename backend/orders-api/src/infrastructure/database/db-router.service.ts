@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
 import { Pool, type PoolClient } from 'pg';
 import { databaseReadReplicaUrl, isDbReadRoutingEnabled } from './db-router.config';
+import { buildPgPoolConfig } from './pg-ssl';
 
 /**
  * Primary + optional read replica pools for orders-style workloads.
@@ -23,11 +24,12 @@ export class DbRouterService implements OnModuleDestroy {
       return;
     }
     try {
-      this.primaryPool = new Pool({
-        connectionString: url,
-        max: Number(process.env.ORDERS_PG_POOL_MAX || 10),
-        idleTimeoutMillis: 30_000,
-      });
+      this.primaryPool = new Pool(
+        buildPgPoolConfig(url, {
+          max: Number(process.env.ORDERS_PG_POOL_MAX || 10),
+          idleTimeoutMillis: 30_000,
+        }),
+      );
       // Ensure every pooled connection speaks UTF-8 so Arabic text is stored/read without mojibake.
       this.primaryPool.on('connect', (c) => {
         void c.query("SET client_encoding TO 'UTF8'").catch(() => undefined);
@@ -39,11 +41,12 @@ export class DbRouterService implements OnModuleDestroy {
     const replicaUrl = databaseReadReplicaUrl();
     if (replicaUrl) {
       try {
-        this.replicaPool = new Pool({
-          connectionString: replicaUrl,
-          max: Number(process.env.DB_READ_REPLICA_POOL_MAX || 8),
-          idleTimeoutMillis: 30_000,
-        });
+        this.replicaPool = new Pool(
+          buildPgPoolConfig(replicaUrl, {
+            max: Number(process.env.DB_READ_REPLICA_POOL_MAX || 8),
+            idleTimeoutMillis: 30_000,
+          }),
+        );
         this.replicaPool.on('connect', (c) => {
           void c.query("SET client_encoding TO 'UTF8'").catch(() => undefined);
         });

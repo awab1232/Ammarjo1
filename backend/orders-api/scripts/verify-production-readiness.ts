@@ -1,6 +1,7 @@
 import { Client } from 'pg';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
+import { buildPgClientConfig } from '../src/infrastructure/database/pg-ssl';
 
 type Check = {
   name: string;
@@ -43,7 +44,7 @@ async function verifyDb(): Promise<Check> {
   if (!connectionString) {
     return { name: 'database_connection', ok: false, reason: 'DATABASE_URL/ORDERS_DATABASE_URL missing' };
   }
-  const client = new Client({ connectionString });
+  const client = new Client(buildPgClientConfig(connectionString));
   try {
     await client.connect();
     await client.query('SELECT 1');

@@ -9,6 +9,7 @@ import {
 import { ConsistencyPolicyService } from '../architecture/consistency/consistency-policy.service';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
+import { buildPgPoolConfig } from '../infrastructure/database/pg-ssl';
 import type { OrderComputed } from './order-computed';
 import { computeOrderServiceFields } from './order-computed';
 import { decodeOrderListCursor, type OrderListCursorPayload } from './order-cursor';
@@ -81,7 +82,14 @@ export class OrdersService implements IOrderService {
     @Optional() private readonly storeCommissions?: StoreCommissionsService,
   ) {
     const url = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
-    this.pool = url ? new Pool({ connectionString: url, max: 4, idleTimeoutMillis: 30_000 }) : null;
+    this.pool = url
+      ? new Pool(
+          buildPgPoolConfig(url, {
+            max: 4,
+            idleTimeoutMillis: 30_000,
+          }),
+        )
+      : null;
   }
 
   private ensureDbPool(): void {

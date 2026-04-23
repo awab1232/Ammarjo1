@@ -1,6 +1,7 @@
 import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { Pool, type PoolClient } from 'pg';
+import { buildPgPoolConfig } from '../infrastructure/database/pg-ssl';
 import { normalizeDbRoleToAppRole } from '../identity/db-user-role.util';
 import { permissionsForRole, type AppRole } from '../identity/rbac-roles.config';
 import type { TenantContextSnapshot } from '../identity/tenant-context.types';
@@ -32,11 +33,12 @@ export class UsersService {
   constructor() {
     const url = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
     this.pool = url
-      ? new Pool({
-          connectionString: url,
-          max: Number(process.env.USERS_PG_POOL_MAX || 6),
-          idleTimeoutMillis: 30_000,
-        })
+      ? new Pool(
+          buildPgPoolConfig(url, {
+            max: Number(process.env.USERS_PG_POOL_MAX || 6),
+            idleTimeoutMillis: 30_000,
+          }),
+        )
       : null;
   }
 

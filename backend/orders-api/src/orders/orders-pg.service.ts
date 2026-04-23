@@ -1,6 +1,7 @@
 import { Injectable, OnModuleDestroy, Optional } from '@nestjs/common';
 import { Pool, type PoolClient } from 'pg';
 import { DbRouterService } from '../infrastructure/database/db-router.service';
+import { buildPgPoolConfig } from '../infrastructure/database/pg-ssl';
 import { DataRoutingService } from '../infrastructure/routing/data-routing.service';
 import { isMultiRegionRoutingEnabled } from '../infrastructure/routing/routing.config';
 import { safeErrorMessage } from '../config/safe-log';
@@ -36,11 +37,12 @@ export class OrdersPgService implements OnModuleDestroy {
       return;
     }
     try {
-      this.pool = new Pool({
-        connectionString: url,
-        max: Number(process.env.ORDERS_PG_POOL_MAX || 10),
-        idleTimeoutMillis: 30_000,
-      });
+      this.pool = new Pool(
+        buildPgPoolConfig(url, {
+          max: Number(process.env.ORDERS_PG_POOL_MAX || 10),
+          idleTimeoutMillis: 30_000,
+        }),
+      );
       this.pool.on('connect', (c) => {
         void c.query("SET client_encoding TO 'UTF8'").catch(() => undefined);
       });
@@ -58,11 +60,12 @@ export class OrdersPgService implements OnModuleDestroy {
 
     const addPrimary = (url: string, key: string) => {
       try {
-        const p = new Pool({
-          connectionString: url,
-          max: Number(process.env.ORDERS_PG_POOL_MAX || 10),
-          idleTimeoutMillis: 30_000,
-        });
+        const p = new Pool(
+          buildPgPoolConfig(url, {
+            max: Number(process.env.ORDERS_PG_POOL_MAX || 10),
+            idleTimeoutMillis: 30_000,
+          }),
+        );
         this.countryPrimaryPools.set(key, p);
       } catch (e) {
         console.error(`[OrdersPgService] pool ${key} init failed:`, safeErrorMessage(e));
@@ -97,11 +100,12 @@ export class OrdersPgService implements OnModuleDestroy {
 
     const addReplica = (url: string, key: string) => {
       try {
-        const p = new Pool({
-          connectionString: url,
-          max: Number(process.env.DB_READ_REPLICA_POOL_MAX || 8),
-          idleTimeoutMillis: 30_000,
-        });
+        const p = new Pool(
+          buildPgPoolConfig(url, {
+            max: Number(process.env.DB_READ_REPLICA_POOL_MAX || 8),
+            idleTimeoutMillis: 30_000,
+          }),
+        );
         this.countryReplicaPools.set(key, p);
       } catch (e) {
         console.error(`[OrdersPgService] replica ${key} init failed:`, safeErrorMessage(e));

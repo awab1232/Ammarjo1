@@ -8,6 +8,7 @@ import { AppModule } from './app.module';
 import { initFirebase } from './auth/firebase-admin';
 import { enforceProductionSafetyOrThrow, logProductionEnvWarnings } from './config/env.validation';
 import { SentryExceptionFilter } from './common/sentry-exception.filter';
+import { buildPgClientConfig } from './infrastructure/database/pg-ssl';
 
 function initSentry(): void {
   const dsn = process.env.SENTRY_DSN?.trim();
@@ -72,7 +73,7 @@ async function bootstrap() {
           user: parsed.username ? `${parsed.username.slice(0, 2)}***` : '',
         }),
       );
-      const dbClient = new Client({ connectionString: dbUrl });
+      const dbClient = new Client(buildPgClientConfig(dbUrl));
       await dbClient.connect();
       await dbClient.query('SELECT 1');
       await dbClient.end();

@@ -1,5 +1,6 @@
 import { Injectable, ServiceUnavailableException } from '@nestjs/common';
 import { Pool, type PoolClient } from 'pg';
+import { buildPgPoolConfig } from '../infrastructure/database/pg-ssl';
 
 export interface SessionRow {
   id: string;
@@ -22,7 +23,12 @@ export class SessionsService {
   constructor() {
     const url = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
     this.pool = url
-      ? new Pool({ connectionString: url, max: 4, idleTimeoutMillis: 30_000 })
+      ? new Pool(
+          buildPgPoolConfig(url, {
+            max: 4,
+            idleTimeoutMillis: 30_000,
+          }),
+        )
       : null;
   }
 
