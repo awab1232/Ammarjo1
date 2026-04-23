@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import { Pool, type PoolClient } from 'pg';
+import { buildPgPoolConfig } from '../infrastructure/database/pg-ssl';
 
 export type InboxRow = {
   id: string;
@@ -20,11 +21,12 @@ export class NotificationInboxService {
   constructor() {
     const url = process.env.DATABASE_URL?.trim() || process.env.ORDERS_DATABASE_URL?.trim();
     this.pool = url
-      ? new Pool({
-          connectionString: url,
-          max: Number(process.env.NOTIFICATIONS_INBOX_PG_POOL_MAX || 6),
-          idleTimeoutMillis: 30_000,
-        })
+      ? new Pool(
+          buildPgPoolConfig(url, {
+            max: Number(process.env.NOTIFICATIONS_INBOX_PG_POOL_MAX || 6),
+            idleTimeoutMillis: 30_000,
+          }),
+        )
       : null;
   }
 
