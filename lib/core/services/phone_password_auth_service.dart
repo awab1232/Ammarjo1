@@ -83,7 +83,7 @@ class PhonePasswordAuthService {
   }
 
   /// Sign in with phone+password via backend `/auth/login` (not Firebase email/password).
-  static Future<UserCredential> signInWithPhonePassword({
+  static Future<Map<String, dynamic>> signInWithPhonePassword({
     required String phone,
     required String password,
   }) async {
@@ -135,7 +135,10 @@ class PhonePasswordAuthService {
       // ignore: avoid_print
       print('🔥 BACKEND SYNC CALLED');
       debugPrint('[AUTH-AUDIT] login backend sync success for uid=${credential.user?.uid}');
-      return credential;
+      return <String, dynamic>{
+        'role': _lastRole ?? 'customer',
+        'userId': _lastUserId,
+      };
     } on FirebaseBackendSessionException catch (e, st) {
       debugPrint('[AUTH-AUDIT] login backend sync failed: $e\n$st');
       await FirebaseAuth.instance.signOut();

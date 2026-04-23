@@ -1,17 +1,11 @@
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-import '../../../../core/routing/role_home_resolver.dart';
 import '../../../../core/services/phone_password_auth_service.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/jordan_phone.dart';
 import '../../../../core/widgets/app_bar_back_button.dart';
-import '../../../admin/presentation/pages/admin_dashboard_screen.dart';
-import '../../../maintenance/presentation/pages/technician_dashboard_page.dart';
-import '../../../store_owner/presentation/store_owner_dashboard.dart';
-import 'main_navigation_page.dart';
 import 'register_page.dart';
 
 /// تسجيل الدخول برقم الهاتف + كلمة المرور.
@@ -67,12 +61,25 @@ class _PhoneOtpLoginPageState extends State<PhoneOtpLoginPage> {
       print('🔥 LOGIN BUTTON PRESSED');
       // ignore: avoid_print
       print('🔥 PHONE: $e164');
-      await PhonePasswordAuthService.signInWithPhonePassword(
+      final result = await PhonePasswordAuthService.signInWithPhonePassword(
         phone: e164,
         password: password,
       );
       if (!mounted) return;
-      await _navigateAfterLogin();
+      // ignore: avoid_print
+      print('🔥 LOGIN SUCCESS');
+      final role = (result['role'] ?? 'customer').toString().trim().toLowerCase();
+      // ignore: avoid_print
+      print('🔥 ROLE: $role');
+      if (role == 'admin' || role == 'system_internal') {
+        Navigator.pushReplacementNamed(context, '/admin');
+      } else if (role == 'store_owner') {
+        Navigator.pushReplacementNamed(context, '/store');
+      } else if (role == 'technician') {
+        Navigator.pushReplacementNamed(context, '/technician');
+      } else {
+        Navigator.pushReplacementNamed(context, '/home');
+      }
     } on PhonePasswordAuthException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -86,43 +93,6 @@ class _PhoneOtpLoginPageState extends State<PhoneOtpLoginPage> {
         _loading = false;
       });
     }
-  }
-
-  Future<void> _navigateAfterLogin() async {
-    final role = PhonePasswordAuthService.lastRole?.toLowerCase().trim() ?? '';
-    // ignore: avoid_print
-    print('🔥 USER ROLE: ${role.isEmpty ? 'customer' : role}');
-    if (!mounted) return;
-    if (role == 'admin' || role == 'system_internal') {
-      Navigator.of(context).pushAndRemoveUntil<void>(
-        MaterialPageRoute<void>(builder: (_) => const AdminDashboardScreen()),
-        (_) => false,
-      );
-      return;
-    }
-    if (role == 'store_owner') {
-      Navigator.of(context).pushAndRemoveUntil<void>(
-        MaterialPageRoute<void>(builder: (_) => const StoreOwnerDashboard()),
-        (_) => false,
-      );
-      return;
-    }
-    if (role == 'technician') {
-      Navigator.of(context).pushAndRemoveUntil<void>(
-        MaterialPageRoute<void>(builder: (_) => const TechnicianDashboardPage()),
-        (_) => false,
-      );
-      return;
-    }
-    final user = FirebaseAuth.instance.currentUser;
-    final Widget home =
-        user != null ? await resolveHomeForSignedInUser(user) : const MainNavigationPage();
-    if (!mounted) return;
-    HapticFeedback.lightImpact();
-    Navigator.of(context).pushAndRemoveUntil<void>(
-      MaterialPageRoute<void>(builder: (_) => home),
-      (_) => false,
-    );
   }
 
   void _goToRegister() {

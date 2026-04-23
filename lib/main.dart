@@ -47,6 +47,9 @@ import 'features/store/data/failed_mirror_orders_worker.dart';
 import 'features/store/domain/models.dart';
 import 'features/store/presentation/pages/product_details_page.dart';
 import 'features/store/presentation/store_controller.dart';
+import 'features/admin/presentation/pages/admin_dashboard_screen.dart';
+import 'features/maintenance/presentation/pages/technician_dashboard_page.dart';
+import 'features/store_owner/presentation/store_owner_dashboard.dart';
 import 'features/store/presentation/pages/main_navigation_page.dart';
 import 'features/stores/presentation/stores_list_page.dart';
 import 'core/monitoring/sentry_safe.dart';
@@ -376,6 +379,10 @@ class AmmarStoreApp extends StatelessWidget {
       },
       home: const AmmarJoSplashScreen(),
       routes: {
+        '/home': (_) => const MainNavigationPage(),
+        '/admin': (_) => const AdminDashboardScreen(),
+        '/store': (_) => const StoreOwnerDashboard(),
+        '/technician': (_) => const TechnicianDashboardPage(),
         '/main': (_) => const MainNavigationPage(),
         '/privacy': (_) => const PrivacyPolicyPage(),
         '/about': (_) => const AboutUsPage(),
