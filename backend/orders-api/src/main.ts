@@ -176,7 +176,27 @@ async function bootstrap() {
     origin: true,
     methods: ['GET', 'HEAD', 'PUT', 'PATCH', 'POST', 'DELETE', 'OPTIONS'],
     credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization', 'Accept', 'Accept-Language', 'x-internal-api-key'],
+    allowedHeaders: [
+      'Content-Type',
+      'Authorization',
+      'authorization',
+      'Accept',
+      'Accept-Language',
+      'Origin',
+      'X-Requested-With',
+      'x-request-id',
+      'X-Request-Id',
+      'x-trace-id',
+      'X-Trace-Id',
+      'x-country',
+      'X-Country',
+      'traceparent',
+      'x-internal-api-key',
+    ],
+    exposedHeaders: ['x-request-id', 'x-trace-id'],
+    maxAge: 86_400,
+    optionsSuccessStatus: 204,
+    preflightContinue: false,
   });
   const globalPrefix = process.env.GLOBAL_PREFIX?.trim() || process.env.API_PREFIX?.trim();
   if (globalPrefix) {

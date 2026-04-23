@@ -40,6 +40,10 @@ export class RbacGuard implements CanActivate {
   }
 
   canActivate(context: ExecutionContext): boolean {
+    const req = context.switchToHttp().getRequest<{ method?: string }>();
+    if (req.method === 'OPTIONS') {
+      return true;
+    }
     const required = this.reflector.getAllAndOverride<string[]>(PERMISSIONS_METADATA_KEY, [
       context.getHandler(),
       context.getClass(),

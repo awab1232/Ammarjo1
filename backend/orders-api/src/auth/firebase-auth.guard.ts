@@ -33,6 +33,10 @@ export class FirebaseAuthGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest<RequestWithFirebase>();
+    // CORS preflight: browsers send OPTIONS without Authorization; must not 401 before ACA headers.
+    if (req.method === 'OPTIONS') {
+      return true;
+    }
     const header = req.headers.authorization;
     if (!header || !header.startsWith('Bearer ')) {
       this.logAuthFailure(context, 'missing_or_invalid_authorization_header');

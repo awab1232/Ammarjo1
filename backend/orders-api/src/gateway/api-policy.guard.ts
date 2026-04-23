@@ -34,6 +34,10 @@ export class ApiPolicyGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const req = context.switchToHttp().getRequest<Request>();
+    // CORS preflight must not hit auth / permission policy (no Bearer on OPTIONS).
+    if (req.method === 'OPTIONS') {
+      return true;
+    }
     if (req.path.includes('/wholesale')) {
       assertWholesaleStoreTypeAccess();
     }

@@ -28,6 +28,14 @@ export class ApiPolicyEngineService {
     const hasBearer =
       typeof req.headers.authorization === 'string' && req.headers.authorization.startsWith('Bearer ');
 
+    if (req.method === 'OPTIONS') {
+      return {
+        decision: 'allow',
+        evaluatedPermissions,
+        skipped: false,
+      };
+    }
+
     if (policy.auth && !snap?.uid && !hasBearer) {
       return {
         decision: 'deny',
