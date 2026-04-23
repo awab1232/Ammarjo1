@@ -274,7 +274,7 @@ class _TechnicianRegistrationPageState extends State<TechnicianRegistrationPage>
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               ),
               icon: const Icon(Icons.work_rounded),
-              label: Text('تسجيل كفني', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+              label: Text('تقديم طلب كفني', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
             ),
           ],
         ),

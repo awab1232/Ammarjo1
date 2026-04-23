@@ -42,46 +42,59 @@ class _CustomerDeliverySettingsPageState extends State<CustomerDeliverySettingsP
     _address = TextEditingController();
     _country = TextEditingController(text: 'JO');
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      final store = context.read<StoreController>();
-      final saved = await store.getSavedCheckoutInfo();
-      final p = store.profile;
-      if (saved != null) {
-        _firstName.text = saved.firstName;
-        _lastName.text = saved.lastName;
-        _email.text = saved.email;
-        _phone.text = saved.phone;
-        _address.text = saved.address1;
-        _selectedCity = matchJordanRegion(saved.city);
-        _country.text = saved.country.isNotEmpty ? saved.country : 'JO';
-      }
-      if (p != null) {
-        if (_email.text.trim().isEmpty) _email.text = p.email;
-        if (_firstName.text.trim().isEmpty && (p.fullName ?? '').trim().isNotEmpty) {
-          final parts = p.fullName!.trim().split(RegExp(r'\s+'));
-          if (parts.isNotEmpty) _firstName.text = parts.first;
-          if (parts.length > 1) _lastName.text = parts.sublist(1).join(' ');
+      try {
+        final store = context.read<StoreController>();
+        final saved = await store
+            .getSavedCheckoutInfo()
+            .timeout(const Duration(seconds: 8), onTimeout: () => null);
+        final p = store.profile;
+        if (saved != null) {
+          _firstName.text = saved.firstName;
+          _lastName.text = saved.lastName;
+          _email.text = saved.email;
+          _phone.text = saved.phone;
+          _address.text = saved.address1;
+          _selectedCity = matchJordanRegion(saved.city);
+          _country.text = saved.country.isNotEmpty ? saved.country : 'JO';
         }
-        if (_selectedCity == null && p.city != null && p.city!.trim().isNotEmpty) {
-          _selectedCity = matchJordanRegion(p.city);
+        if (p != null) {
+          if (_email.text.trim().isEmpty) _email.text = p.email;
+          if (_firstName.text.trim().isEmpty && (p.fullName ?? '').trim().isNotEmpty) {
+            final parts = p.fullName!.trim().split(RegExp(r'\s+'));
+            if (parts.isNotEmpty) _firstName.text = parts.first;
+            if (parts.length > 1) _lastName.text = parts.sublist(1).join(' ');
+          }
+          if (_selectedCity == null && p.city != null && p.city!.trim().isNotEmpty) {
+            _selectedCity = matchJordanRegion(p.city);
+          }
         }
-      }
-      if (mounted) {
-        setState(() => _loading = false);
+      } on Object {
+        // Keep the page usable with empty defaults instead of endless loader.
+      } finally {
+        if (mounted) {
+          setState(() => _loading = false);
+        }
       }
     });
     _loadSavedGeo();
   }
 
   Future<void> _loadSavedGeo() async {
-    final uid = FirebaseAuth.instance.currentUser?.uid;
-    if (uid == null) return;
-    final doc = await BackendUserRepository.instance.fetchUserDocument(uid);
-    final lat = doc?['deliveryLat'];
-    final lng = doc?['deliveryLng'];
-    if (lat is num && lng is num && mounted) {
-      setState(() {
-        _locationText = '${lat.toStringAsFixed(5)}, ${lng.toStringAsFixed(5)}';
-      });
+    try {
+      final uid = FirebaseAuth.instance.currentUser?.uid;
+      if (uid == null) return;
+      final doc = await BackendUserRepository.instance
+          .fetchUserDocument(uid)
+          .timeout(const Duration(seconds: 8), onTimeout: () => null);
+      final lat = doc?['deliveryLat'];
+      final lng = doc?['deliveryLng'];
+      if (lat is num && lng is num && mounted) {
+        setState(() {
+          _locationText = '${lat.toStringAsFixed(5)}, ${lng.toStringAsFixed(5)}';
+        });
+      }
+    } on Object {
+      // Optional info only.
     }
   }
 

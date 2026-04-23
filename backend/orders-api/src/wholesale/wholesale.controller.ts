@@ -120,7 +120,7 @@ export class WholesaleController {
   }
 
   @Post('join-requests')
-  @RequirePermissions('orders.write')
+  @RequirePermissions('orders.read')
   joinRequest(@Body() body: WholesaleJoinRequestDto) {
     return this.wholesale.submitJoinRequest(body);
   }
