@@ -1,5 +1,4 @@
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:firebase_auth/firebase_auth.dart';
 
 import '../services/backend_user_client.dart';
 
@@ -60,18 +59,10 @@ class UserSession {
       if (profile != null) {
         setUser(profile);
       } else {
-        final firebaseUid = FirebaseAuth.instance.currentUser?.uid.trim() ?? '';
-        if (firebaseUid.isNotEmpty) {
-          setUser(<String, dynamic>{'firebaseUid': firebaseUid});
-        }
+        await clear();
       }
     } on Object {
-      // Keep persisted session token to avoid accidental logout during transient
-      // backend failures/navigation races. Profile will be refreshed later.
-      final firebaseUid = FirebaseAuth.instance.currentUser?.uid.trim() ?? '';
-      if (firebaseUid.isNotEmpty) {
-        setUser(<String, dynamic>{'firebaseUid': firebaseUid});
-      }
+      await clear();
     }
   }
 }

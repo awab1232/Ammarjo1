@@ -4,7 +4,6 @@ import 'package:ammar_store/core/session/user_session.dart';
 
 import '../../../../core/config/backend_orders_config.dart';
 import '../../../../core/contracts/feature_state.dart';
-import '../../../../core/data/repositories/product_repository.dart';
 import '../../../../core/network/network_errors.dart';
 import '../../../../core/services/backend_orders_client.dart';
 import '../../../coupons/data/coupon_repository.dart';
@@ -14,7 +13,7 @@ import '../../../promotions/domain/promotion_model.dart';
 import '../../data/local_storage_service.dart';
 import '../../domain/models.dart';
 
-/// سلة التسوق والمخزون المحلي.
+/// سلة تسوق تعتمد على الخادم فقط (Server-only).
 class CartController extends ChangeNotifier {
   CartController(this._local);
 
@@ -39,42 +38,30 @@ class CartController extends ChangeNotifier {
     final uid = UserSession.currentUid;
     return BackendOrdersConfig.useBackendCart &&
         uid.isNotEmpty &&
+        UserSession.isLoggedIn &&
         BackendOrdersConfig.baseUrl.trim().isNotEmpty;
   }
 
-  Future<void> _saveLocalSpecialLinesOnly() async {
-    final special = cart.where((e) => e.isTender || e.isWholesale).toList();
-    await _local.saveCart(special);
-  }
-
   Future<void> loadPersistedCart() async {
-    List<CartItem> localRaw;
-    try {
-      localRaw = await _local.getCart();
-    } on StateError {
-      // مفتاح السلة غير موجود أو فارغ — لا نرمي أثناء bootstrap
-      localRaw = <CartItem>[];
-    }
-    final localSpecial = localRaw.where((e) => e.isTender || e.isWholesale).toList();
-    if (_useServerCartLines) {
-      JsonList? rows;
-      try {
-        rows = await BackendOrdersClient.instance.fetchCart();
-      } on Object catch (e) {
-        if (kDebugMode) {
-          debugPrint('CartController.loadPersistedCart server fetch failed: $e');
-        }
-        rows = const <Map<String, dynamic>>[];
-      }
-      final server = rows == null
-          ? <CartItem>[]
-          : rows.map(CartItem.fromBackendCartRow).toList();
-      cart = <CartItem>[...server, ...localSpecial];
-      await _local.saveCart(localSpecial);
+    if (!_useServerCartLines) {
+      cart = <CartItem>[];
+      errorMessage = 'السلة تتطلب تسجيل الدخول والاتصال بالخادم.';
+      await _local.saveCart(const <CartItem>[]);
       notifyListeners();
       return;
     }
-    cart = List<CartItem>.from(localRaw);
+    JsonList? rows;
+    try {
+      rows = await BackendOrdersClient.instance.fetchCart();
+    } on Object catch (e) {
+      if (kDebugMode) {
+        debugPrint('CartController.loadPersistedCart server fetch failed: $e');
+      }
+      rows = const <Map<String, dynamic>>[];
+    }
+    cart = rows == null ? <CartItem>[] : rows.map(CartItem.fromBackendCartRow).toList();
+    errorMessage = null;
+    await _local.saveCart(const <CartItem>[]);
     notifyListeners();
   }
 
@@ -105,99 +92,73 @@ class CartController extends ChangeNotifier {
       return;
     }
 
-    if (_useServerCartLines && product.id > 0) {
-      final price = (selectedVariant?.price ?? product.price).trim();
-      final img = product.images.isNotEmpty ? product.images.first : '';
-      bool ok;
-      try {
-        ok = await BackendOrdersClient.instance.postCartItem(
-          productId: product.id,
-          variantId: selectedVariant?.id,
-          quantity: 1,
-          priceSnapshot: price,
-          productName: product.name,
-          imageUrl: img,
-          storeId: storeId,
-          storeName: storeName,
-        );
-      } on Object catch (e) {
-        if (kDebugMode) {
-          debugPrint('CartController.addToCart server add failed: $e');
-        }
-        ok = false;
-      }
-      if (!ok) {
-        errorMessage = 'تعذّر تحديث السلة.';
-      } else {
-        errorMessage = null;
-        _clearDiscounts();
-        await loadPersistedCart();
-      }
-      notifyListeners();
+    if (!_useServerCartLines || product.id <= 0) {
+      errorMessage = 'السلة تعمل عبر الخادم فقط.';
       return;
     }
-
-    final index = cart.indexWhere(
-      (item) =>
-          item.product.id == product.id &&
-          item.storeId == storeId &&
-          (item.selectedVariant?.id ?? '') == (selectedVariant?.id ?? ''),
-    );
-    if (index >= 0) {
-      cart[index].quantity += 1;
-    } else {
-      cart.add(
-        CartItem(
-          product: product,
-          quantity: 1,
-          storeId: storeId,
-          storeName: storeName,
-          selectedVariant: selectedVariant,
-        ),
+    final price = (selectedVariant?.price ?? product.price).trim();
+    final img = product.images.isNotEmpty ? product.images.first : '';
+    bool ok;
+    try {
+      ok = await BackendOrdersClient.instance.postCartItem(
+        productId: product.id,
+        variantId: selectedVariant?.id,
+        quantity: 1,
+        priceSnapshot: price,
+        productName: product.name,
+        imageUrl: img,
+        storeId: storeId,
+        storeName: storeName,
       );
+    } on Object catch (e) {
+      if (kDebugMode) {
+        debugPrint('CartController.addToCart server add failed: $e');
+      }
+      ok = false;
     }
-    await _local.saveCart(cart);
+    if (!ok) {
+      errorMessage = 'تعذّر تحديث السلة.';
+    } else {
+      errorMessage = null;
+      _clearDiscounts();
+      await loadPersistedCart();
+    }
     _clearDiscounts();
-    errorMessage = null;
     notifyListeners();
   }
 
   Future<void> addCartItem(CartItem item) async {
-    if (_useServerCartLines && item.product.id > 0 && !item.isTender && !item.isWholesale) {
-      final price = (item.selectedVariant?.price ?? item.product.price).trim();
-      bool ok;
-      try {
-        ok = await BackendOrdersClient.instance.postCartItem(
-          productId: item.product.id,
-          variantId: item.selectedVariant?.id,
-          quantity: item.quantity,
-          priceSnapshot: price,
-          productName: item.product.name,
-          imageUrl: item.imageUrl,
-          storeId: item.storeId,
-          storeName: item.storeName,
-        );
-      } on Object catch (e) {
-        if (kDebugMode) {
-          debugPrint('CartController.addCartItem server add failed: $e');
-        }
-        ok = false;
-      }
-      if (!ok) {
-        errorMessage = 'تعذّر تحديث السلة.';
-      } else {
-        errorMessage = null;
-        _clearDiscounts();
-        await loadPersistedCart();
-      }
+    if (!_useServerCartLines || item.product.id <= 0) {
+      errorMessage = 'السلة تعمل عبر الخادم فقط.';
       notifyListeners();
       return;
     }
-
-    cart.add(item);
-    await _local.saveCart(cart);
-    _clearDiscounts();
-    errorMessage = null;
+    final price = (item.selectedVariant?.price ?? item.product.price).trim();
+    bool ok;
+    try {
+      ok = await BackendOrdersClient.instance.postCartItem(
+        productId: item.product.id,
+        variantId: item.selectedVariant?.id,
+        quantity: item.quantity,
+        priceSnapshot: price,
+        productName: item.product.name,
+        imageUrl: item.imageUrl,
+        storeId: item.storeId,
+        storeName: item.storeName,
+      );
+    } on Object catch (e) {
+      if (kDebugMode) {
+        debugPrint('CartController.addCartItem server add failed: $e');
+      }
+      ok = false;
+    }
+    if (!ok) {
+      errorMessage = 'تعذّر تحديث السلة.';
+    } else {
+      errorMessage = null;
+      _clearDiscounts();
+      await loadPersistedCart();
+    }
     notifyListeners();
   }
 
@@ -212,28 +173,26 @@ class CartController extends ChangeNotifier {
     if (index == -1) return;
 
     final line = cart[index];
-    if (_useServerCartLines &&
-        line.backendLineId != null &&
-        line.backendLineId!.isNotEmpty &&
-        line.product.id > 0) {
-      final ok = await BackendOrdersClient.instance.patchCartItemQuantity(
-        lineId: line.backendLineId!,
-        quantity: quantity,
-      );
-      if (!ok) {
-        errorMessage = 'تعذّر تحديث السلة.';
-        notifyListeners();
-        return;
-      }
-      _clearDiscounts();
-      await loadPersistedCart();
+    if (!_useServerCartLines ||
+        line.backendLineId == null ||
+        line.backendLineId!.isEmpty ||
+        line.product.id <= 0) {
+      errorMessage = 'السلة تعمل عبر الخادم فقط.';
       notifyListeners();
       return;
     }
-
-    cart[index].quantity = quantity;
-    await _local.saveCart(cart);
+    final ok = await BackendOrdersClient.instance.patchCartItemQuantity(
+      lineId: line.backendLineId!,
+      quantity: quantity,
+    );
+    if (!ok) {
+      errorMessage = 'تعذّر تحديث السلة.';
+      notifyListeners();
+      return;
+    }
+    errorMessage = null;
     _clearDiscounts();
+    await loadPersistedCart();
     notifyListeners();
   }
 
@@ -252,27 +211,23 @@ class CartController extends ChangeNotifier {
     if (index < 0) return;
     final line = cart[index];
 
-    if (_useServerCartLines &&
-        line.backendLineId != null &&
-        line.backendLineId!.isNotEmpty &&
-        line.product.id > 0) {
-      final ok = await BackendOrdersClient.instance.deleteCartItem(line.backendLineId!);
-      if (!ok) {
-        errorMessage = 'تعذّر تحديث السلة.';
-        notifyListeners();
-        return;
-      }
-      _clearDiscounts();
-      await loadPersistedCart();
+    if (!_useServerCartLines ||
+        line.backendLineId == null ||
+        line.backendLineId!.isEmpty ||
+        line.product.id <= 0) {
+      errorMessage = 'السلة تعمل عبر الخادم فقط.';
       notifyListeners();
       return;
     }
-
-    cart.removeWhere(
-      (item) => item.product.id == productId && item.storeId == storeId,
-    );
-    await _local.saveCart(cart);
+    final ok = await BackendOrdersClient.instance.deleteCartItem(line.backendLineId!);
+    if (!ok) {
+      errorMessage = 'تعذّر تحديث السلة.';
+      notifyListeners();
+      return;
+    }
+    errorMessage = null;
     _clearDiscounts();
+    await loadPersistedCart();
     notifyListeners();
   }
 
@@ -281,21 +236,16 @@ class CartController extends ChangeNotifier {
   }
 
   Future<void> clearCart() async {
-    if (_useServerCartLines) {
-      await BackendOrdersClient.instance.deleteCartClear();
-      cart = cart.where((e) => e.isTender || e.isWholesale).toList();
-      await _saveLocalSpecialLinesOnly();
-      appliedCoupon = null;
-      discountAmount = 0;
-      appliedPromotions = <Promotion>[];
-      promotionsDiscountAmount = 0;
-      freeShippingByPromotion = false;
+    if (!_useServerCartLines) {
+      cart = <CartItem>[];
+      errorMessage = 'السلة تتطلب تسجيل الدخول والاتصال بالخادم.';
       notifyListeners();
       return;
     }
-
+    await BackendOrdersClient.instance.deleteCartClear();
     cart = <CartItem>[];
-    await _local.saveCart(cart);
+    await _local.saveCart(const <CartItem>[]);
+    errorMessage = null;
     appliedCoupon = null;
     discountAmount = 0;
     appliedPromotions = <Promotion>[];
@@ -433,49 +383,9 @@ class CartController extends ChangeNotifier {
   }
 
   Future<void> refreshCartFromCatalog() async {
-    if (cart.isEmpty || !Firebase.apps.isNotEmpty) return;
+    if (!Firebase.apps.isNotEmpty) return;
     try {
-      if (_useServerCartLines) {
-        await loadPersistedCart();
-        return;
-      }
-      final next = <CartItem>[];
-      for (final item in cart) {
-        if (item.isTender) {
-          next.add(item);
-          continue;
-        }
-        final state = await BackendProductRepository.instance.fetchProductByWooId(item.product.id);
-        switch (state) {
-          case FeatureSuccess(:final data):
-            final fresh = data;
-            if (fresh != null) {
-              final img = fresh.images.isNotEmpty ? fresh.images.first : item.imageUrl;
-              next.add(
-                CartItem(
-                  product: fresh,
-                  quantity: item.quantity,
-                  backendLineId: item.backendLineId,
-                  storeId: item.storeId,
-                  storeName: item.storeName,
-                  imageUrl: img.isNotEmpty ? img : CartItem.defaultImageUrlForProduct(fresh),
-                  selectedVariant: item.selectedVariant,
-                ),
-              );
-            } else {
-              next.add(item);
-            }
-          case FeatureMissingBackend():
-          case FeatureAdminNotWired():
-          case FeatureAdminMissingEndpoint():
-          case FeatureCriticalPublicDataFailure():
-          case FeatureFailure():
-            errorMessage = errorMessage ?? 'تعذّر تحديث السلة من الخادم.';
-            next.add(item);
-        }
-      }
-      cart = next;
-      await _local.saveCart(cart);
+      await loadPersistedCart();
       notifyListeners();
     } on Object {
       final net = networkUserMessage('unexpected error');

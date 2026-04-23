@@ -148,10 +148,18 @@ class PhonePasswordAuthService {
         if (profile != null) {
           UserSession.setUser(profile);
         } else {
-          UserSession.isLoggedIn = true;
+          await UserSession.clear();
+          throw const PhonePasswordAuthException(
+            'backend_profile_missing',
+            'تم تسجيل الدخول لكن تعذر تحميل ملف المستخدم من الخادم.',
+          );
         }
       } on Object {
-        UserSession.isLoggedIn = true;
+        await UserSession.clear();
+        throw const PhonePasswordAuthException(
+          'backend_profile_failed',
+          'تم تسجيل الدخول لكن تعذر تحميل ملف المستخدم من الخادم.',
+        );
       }
       debugPrint('[AUTH-AUDIT] login backend sync success for uid=${credential.user?.uid}');
       return <String, dynamic>{
