@@ -96,6 +96,7 @@ final class BackendOrdersClient {
             body: jsonEncode(payload),
           )
           .timeout(t);
+      FirebaseAuthHeaderProvider.logDebugResponse('POST /orders (primary)', res.statusCode, res.body);
       if (res.statusCode < 200 || res.statusCode >= 300) {
         if (kDebugMode) {
           debugPrint('BackendOrders: primary POST /orders failed ${res.statusCode} ${res.body}');
@@ -189,6 +190,7 @@ final class BackendOrdersClient {
         headers: headers,
         body: jsonEncode(payload),
       );
+      FirebaseAuthHeaderProvider.logDebugResponse('POST /orders (shadow)', res.statusCode, res.body);
       if (res.statusCode < 200 || res.statusCode >= 300) {
         debugPrint(
           'BackendOrders: POST /orders failed ${res.statusCode} ${res.body}',
@@ -246,9 +248,13 @@ final class BackendOrdersClient {
       final res = await http
           .get(
             uri,
-            headers: {'Authorization': 'Bearer $token'},
+            headers: {
+              'Authorization': 'Bearer $token',
+              'Content-Type': 'application/json',
+            },
           )
           .timeout(t);
+      FirebaseAuthHeaderProvider.logDebugResponse('GET /orders/$orderId', res.statusCode, res.body);
       if (res.statusCode < 200 || res.statusCode >= 300) {
         if (kDebugMode) {
           debugPrint('BackendOrders: GET /orders/$orderId failed ${res.statusCode}');
@@ -338,6 +344,7 @@ final class BackendOrdersClient {
             body: '{}',
           )
           .timeout(t);
+      FirebaseAuthHeaderProvider.logDebugResponse('POST /orders/$orderId/retry-assignment', res.statusCode, res.body);
       return res.statusCode >= 200 && res.statusCode < 300;
     } on Object {
       if (kDebugMode) {
@@ -391,12 +398,13 @@ final class BackendOrdersClient {
   Future<String?> _idToken(User user) async {
     try {
       final token = await user.getIdToken(true);
-      debugPrint('[AUTH-HEADER] reason=backend_orders_id_token token=$token');
-      debugPrint('[AUTH-HEADER] reason=backend_orders_id_token token_is_null=${token == null}');
+      debugPrint(
+        '[AUTH-HEADER] reason=backend_orders_id_token token_is_null=${token == null} len=${token?.trim().length ?? 0}',
+      );
       final trimmed = token?.trim() ?? '';
-      if (trimmed.isNotEmpty) {
+      if (trimmed.isNotEmpty && kDebugMode) {
         // ignore: avoid_print
-        print('🔥 TOKEN SENT: ${trimmed.length >= 20 ? trimmed.substring(0, 20) : trimmed}');
+        print('🔥 FIREBASE TOKEN: $trimmed');
       }
       return token;
     } on Object {
@@ -434,6 +442,7 @@ final class BackendOrdersClient {
             body: jsonEncode(body),
           )
           .timeout(timeout);
+      FirebaseAuthHeaderProvider.logDebugResponse('POST $path', res.statusCode, res.body);
       if (res.statusCode < 200 || res.statusCode >= 300) {
         BackendFallbackLogger.logBackendFallbackTriggered(
           flow: flow,
@@ -493,6 +502,7 @@ final class BackendOrdersClient {
             body: jsonEncode(body),
           )
           .timeout(timeout);
+      FirebaseAuthHeaderProvider.logDebugResponse('PATCH $path', res.statusCode, res.body);
       if (res.statusCode < 200 || res.statusCode >= 300) {
         BackendFallbackLogger.logBackendFallbackTriggered(
           flow: flow,
@@ -542,6 +552,7 @@ final class BackendOrdersClient {
       final headers = <String, String>{'Authorization': 'Bearer $token'};
       FirebaseAuthHeaderProvider.logRequestHeaders(method: 'DELETE', uri: uri, headers: headers);
       final res = await http.delete(uri, headers: headers).timeout(timeout);
+      FirebaseAuthHeaderProvider.logDebugResponse('DELETE $path', res.statusCode, res.body);
       if (res.statusCode < 200 || res.statusCode >= 300) {
         BackendFallbackLogger.logBackendFallbackTriggered(
           flow: flow,
@@ -588,6 +599,7 @@ final class BackendOrdersClient {
       final headers = <String, String>{'Authorization': 'Bearer $token'};
       FirebaseAuthHeaderProvider.logRequestHeaders(method: 'GET', uri: uri, headers: headers);
       final res = await http.get(uri, headers: headers).timeout(timeout);
+      FirebaseAuthHeaderProvider.logDebugResponse('GET (authed) $path', res.statusCode, res.body);
       if (res.statusCode < 200 || res.statusCode >= 300) {
         BackendFallbackLogger.logBackendFallbackTriggered(
           flow: flow,
@@ -639,6 +651,7 @@ final class BackendOrdersClient {
       final headers = await FirebaseAuthHeaderProvider.authHeadersIfSignedIn(reason: 'backend_orders_public_get:$path');
       FirebaseAuthHeaderProvider.logRequestHeaders(method: 'GET', uri: uri, headers: headers);
       final res = await http.get(uri, headers: headers).timeout(timeout);
+      FirebaseAuthHeaderProvider.logDebugResponse('GET (public) $path', res.statusCode, res.body);
       if (res.statusCode < 200 || res.statusCode >= 300) {
         BackendFallbackLogger.logBackendFallbackTriggered(
           flow: flow,
@@ -696,6 +709,7 @@ final class BackendOrdersClient {
       );
       FirebaseAuthHeaderProvider.logRequestHeaders(method: 'GET', uri: uri, headers: headers);
       final res = await http.get(uri, headers: headers).timeout(timeout);
+      FirebaseAuthHeaderProvider.logDebugResponse('GET (public safe) $path', res.statusCode, res.body);
       if (res.statusCode < 200 || res.statusCode >= 300) {
         debugPrint('[BackendOrdersClient] $flow: HTTP ${res.statusCode}');
         return null;

@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 
 import 'phone_auth_bootstrap.dart';
+import '../services/firebase_backend_session_service.dart';
 import '../utils/jordan_phone.dart';
 
 /// مصادقة الهاتف عبر [FirebaseAuth.verifyPhoneNumber] (OTP).
@@ -37,6 +38,14 @@ abstract final class PhoneAuthService {
         phoneNumber: trimmedE164,
         verificationCompleted: (PhoneAuthCredential credential) async {
           await auth.signInWithCredential(credential);
+          final signed = auth.currentUser;
+          if (signed != null) {
+            try {
+              await FirebaseBackendSessionService.syncWithBackend(firebaseUser: signed);
+            } on Object catch (e) {
+              debugPrint('[PhoneAuthService] auto-verify syncWithBackend: $e');
+            }
+          }
           if (!completer.isCompleted) {
             completer.complete((verificationId: autoVerifiedSentinel, resendToken: null));
           }
@@ -144,6 +153,7 @@ abstract final class PhoneAuthService {
         }
         final cred = await confirmation.confirm(smsCode.trim());
         debugPrint('USER UID: ${cred.user?.uid}');
+        await _syncBackendAfterOtp(cred.user);
         return cred;
       } on Object catch (e) {
         debugPrint('PHONE AUTH ERROR: $e');
@@ -156,7 +166,17 @@ abstract final class PhoneAuthService {
     );
     final out = await FirebaseAuth.instance.signInWithCredential(cred);
     debugPrint('USER UID: ${out.user?.uid}');
+    await _syncBackendAfterOtp(out.user);
     return out;
+  }
+
+  static Future<void> _syncBackendAfterOtp(User? u) async {
+    if (u == null) return;
+    try {
+      await FirebaseBackendSessionService.syncWithBackend(firebaseUser: u);
+    } on Object catch (e) {
+      debugPrint('[PhoneAuthService] OTP sign-in syncWithBackend: $e');
+    }
   }
 
   static String userFacingMessage(FirebaseAuthException e) {

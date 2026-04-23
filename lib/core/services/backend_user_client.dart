@@ -63,6 +63,7 @@ final class BackendUserClient {
     final req = await _request(path);
     if (req == null) throw StateError('NULL_RESPONSE');
     final res = await http.get(req.$1, headers: req.$2);
+    FirebaseAuthHeaderProvider.logDebugResponse('BackendUserClient GET $path', res.statusCode, res.body);
     if (res.statusCode < 200 || res.statusCode >= 300) throw StateError('NULL_RESPONSE');
     final decoded = jsonDecode(res.body);
     if (decoded is Map<String, dynamic>) return decoded;
@@ -75,6 +76,7 @@ final class BackendUserClient {
     if (req == null) throw StateError('NULL_RESPONSE');
     final headers = <String, String>{...req.$2, 'Content-Type': 'application/json'};
     final res = await http.patch(req.$1, headers: headers, body: jsonEncode(body));
+    FirebaseAuthHeaderProvider.logDebugResponse('BackendUserClient PATCH $path', res.statusCode, res.body);
     if (res.statusCode < 200 || res.statusCode >= 300) throw StateError('NULL_RESPONSE');
     if (res.body.trim().isEmpty) return <String, dynamic>{};
     final decoded = jsonDecode(res.body);
@@ -87,6 +89,7 @@ final class BackendUserClient {
     final req = await _request(path);
     if (req == null) return false;
     final res = await http.delete(req.$1, headers: req.$2);
+    FirebaseAuthHeaderProvider.logDebugResponse('BackendUserClient DELETE $path', res.statusCode, res.body);
     return res.statusCode >= 200 && res.statusCode < 300;
   }
 

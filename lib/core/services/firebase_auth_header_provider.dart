@@ -1,7 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 
-/// Centralized Firebase ID token + Authorization header provider.
+/// Centralized Firebase ID token + `Authorization: Bearer <idToken>` for REST calls to NestJS.
+/// Token is obtained with [User.getIdToken] (force refresh) and attached as the sole auth mechanism.
 abstract final class FirebaseAuthHeaderProvider {
   FirebaseAuthHeaderProvider._();
 
@@ -12,12 +13,13 @@ abstract final class FirebaseAuthHeaderProvider {
     debugPrint('[AUTH-HEADER] reason=$reason user=${user?.uid}');
     if (user == null) throw StateError('NULL_RESPONSE');
     final token = await user.getIdToken(true);
-    debugPrint('[AUTH-HEADER] reason=$reason token=$token');
-    debugPrint('[AUTH-HEADER] reason=$reason token_is_null=${token == null}');
+    debugPrint('[AUTH-HEADER] reason=$reason token_is_null=${token == null} len=${token?.trim().length ?? 0}');
     final trimmed = token?.trim() ?? '';
     if (trimmed.isEmpty) throw StateError('NULL_RESPONSE');
-    // ignore: avoid_print
-    print('🔥 TOKEN SENT: ${trimmed.length >= 20 ? trimmed.substring(0, 20) : trimmed}');
+    if (kDebugMode) {
+      // ignore: avoid_print
+      print('🔥 FIREBASE TOKEN: $trimmed');
+    }
     return trimmed;
   }
 
@@ -25,6 +27,8 @@ abstract final class FirebaseAuthHeaderProvider {
     required String reason,
   }) async {
     final token = await requireIdToken(reason: reason);
+    // Match backend: Bearer = Firebase **ID** token (not session cookie). Add
+    // `Content-Type: application/json` on POST/PATCH/PUT in the caller when sending a body.
     return <String, String>{'Authorization': 'Bearer $token'};
   }
 
@@ -35,12 +39,13 @@ abstract final class FirebaseAuthHeaderProvider {
     debugPrint('[AUTH-HEADER] optional reason=$reason user=${user?.uid}');
     if (user == null) return <String, String>{};
     final token = await user.getIdToken(true);
-    debugPrint('[AUTH-HEADER] optional reason=$reason token=$token');
-    debugPrint('[AUTH-HEADER] optional reason=$reason token_is_null=${token == null}');
+    debugPrint('[AUTH-HEADER] optional reason=$reason token_is_null=${token == null} len=${token?.trim().length ?? 0}');
     final trimmed = token?.trim() ?? '';
     if (trimmed.isEmpty) return <String, String>{};
-    // ignore: avoid_print
-    print('🔥 TOKEN SENT: ${trimmed.length >= 20 ? trimmed.substring(0, 20) : trimmed}');
+    if (kDebugMode) {
+      // ignore: avoid_print
+      print('🔥 FIREBASE TOKEN: $trimmed');
+    }
     return <String, String>{'Authorization': 'Bearer $trimmed'};
   }
 
@@ -50,5 +55,20 @@ abstract final class FirebaseAuthHeaderProvider {
     required Map<String, String> headers,
   }) {
     debugPrint('[AUTH-HEADER] request $method $uri headers=$headers');
+    if (kDebugMode) {
+      final hasAuth = (headers['Authorization'] ?? '').trim().isNotEmpty;
+      // ignore: avoid_print
+      print('🔥 REQUEST: $method $uri  (Authorization: ${hasAuth ? 'Bearer <${headers['Authorization']?.length} chars>' : 'MISSING'})');
+    }
+  }
+
+  /// One-line log for debugging HTTP responses (kDebug only; long bodies are truncated).
+  static void logDebugResponse(String context, int status, String body, {int maxBodyLength = 16000}) {
+    if (!kDebugMode) return;
+    final b = body.length > maxBodyLength
+        ? '${body.substring(0, maxBodyLength)}…(truncated, totalLen=${body.length})'
+        : body;
+    // ignore: avoid_print
+    print('🔥 RESPONSE ($context) [$status]: $b');
   }
 }

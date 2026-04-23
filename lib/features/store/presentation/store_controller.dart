@@ -563,6 +563,11 @@ class StoreController extends ChangeNotifier {
     }
     await FirebaseAuthHeaderProvider.requireIdToken(reason: 'store_controller_signup_link_password');
     try {
+      await FirebaseBackendSessionService.syncWithBackend(firebaseUser: u);
+    } on Object catch (e) {
+      debugPrint('[StoreController] linkPasswordAndSaveRegistration syncWithBackend: $e');
+    }
+    try {
       await u.updateDisplayName(displayName);
     } on Object {
       debugPrint('[StoreController] updateDisplayName skipped');
@@ -634,6 +639,14 @@ class StoreController extends ChangeNotifier {
       notifyListeners();
       await AccountPasswordService.setPasswordAfterPhoneOtpRecovery(newPassword);
       await _local.setLocalBypassSession(false);
+      final cu = FirebaseAuth.instance.currentUser;
+      if (cu != null) {
+        try {
+          await FirebaseBackendSessionService.syncWithBackend(firebaseUser: cu);
+        } on Object catch (e) {
+          debugPrint('[StoreController] finishForgotPassword syncWithBackend: $e');
+        }
+      }
       await syncLocalProfileWithFirebaseSession();
       return true;
     } on FirebaseAuthException {
@@ -845,6 +858,11 @@ class StoreController extends ChangeNotifier {
     await _local.saveProfile(profile!);
     // _api.setJwtToken(null); // LEGACY Woo JWT
     await _local.setLocalBypassSession(false);
+    try {
+      await FirebaseBackendSessionService.syncWithBackend(firebaseUser: u);
+    } on Object catch (e) {
+      debugPrint('[StoreController] _finalizePhoneSession syncWithBackend: $e');
+    }
     await syncChatFirebaseIdentity(profile);
     if (await user.isUserBannedInFirestore()) {
       errorMessage = 'تم حظر حسابك. تواصل مع الدعم.';
