@@ -300,6 +300,7 @@ export class UsersService {
 
   /**
    * Public profile for GET /users/:firebaseUid (self-only). Uses `profile_json` when present.
+   * Selects by `users.firebase_uid` only — never treats Firebase UID as `users.id` (UUID).
    */
   async findProfileRowByFirebaseUid(firebaseUid: string): Promise<{
     row: AppUserRow;
@@ -320,6 +321,45 @@ export class UsersService {
          WHERE firebase_uid = $1
          LIMIT 1`,
         [uid],
+      );
+      if (r.rows.length === 0) return null;
+      const raw = r.rows[0] as Record<string, unknown>;
+      const pj = raw['profile_json'];
+      const profile =
+        pj != null && typeof pj === 'object' && !Array.isArray(pj) ? (pj as Record<string, unknown>) : {};
+      return {
+        row: this.mapRow(raw),
+        phone: raw['phone'] != null ? String(raw['phone']) : null,
+        profile,
+        banned: raw['banned'] === true,
+      };
+    });
+  }
+
+  /**
+   * Load profile by internal PK (`users.id`) only when it belongs to the given Firebase user.
+   * Prevents using Firebase UID as UUID / IDOR.
+   */
+  async findProfileRowByInternalIdForFirebaseUser(
+    internalId: string,
+    firebaseUid: string,
+  ): Promise<{
+    row: AppUserRow;
+    phone: string | null;
+    profile: Record<string, unknown>;
+    banned: boolean;
+  } | null> {
+    const iid = internalId.trim();
+    const uid = firebaseUid.trim();
+    if (!iid || !uid || !this.pool) return null;
+    return this.withClient(async (client) => {
+      const r = await client.query(
+        `SELECT id, firebase_uid, email, role, tenant_id, store_id, wholesaler_id, store_type, is_active,
+                phone, profile_json, COALESCE(banned, false) AS banned
+         FROM users
+         WHERE id = $1::uuid AND firebase_uid = $2
+         LIMIT 1`,
+        [iid, uid],
       );
       if (r.rows.length === 0) return null;
       const raw = r.rows[0] as Record<string, unknown>;

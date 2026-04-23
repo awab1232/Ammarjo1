@@ -16,15 +16,19 @@ final class BackendUserClient {
     return _authedGet('/auth/me');
   }
 
+  /// Loads profile. Uses [`GET /users/me`]: uses token identity; DB is keyed by internal id + `firebase_uid`, not Firebase as UUID.
   Future<Map<String, dynamic>?> fetchUserById(String uid) async {
     final id = uid.trim();
     if (id.isEmpty) throw StateError('NULL_RESPONSE');
+    final currentUid = FirebaseAuth.instance.currentUser?.uid.trim() ?? '';
     try {
+      if (currentUid.isNotEmpty && currentUid == id) {
+        return await _authedGet('/users/me');
+      }
       return await _authedGet('/users/${Uri.encodeComponent(id)}');
     } on Object {
-      final currentUid = FirebaseAuth.instance.currentUser?.uid.trim() ?? '';
       if (currentUid.isNotEmpty && currentUid == id) {
-        return _authedGet('/auth/me');
+        return _authedGet('/users/me');
       }
       rethrow;
     }
@@ -33,7 +37,10 @@ final class BackendUserClient {
   Future<bool> patchUser(String uid, Map<String, dynamic> fields) async {
     final id = uid.trim();
     if (id.isEmpty || fields.isEmpty) throw StateError('NULL_RESPONSE');
-    final body = await _authedPatch('/users/${Uri.encodeComponent(id)}', fields);
+    final currentUid = FirebaseAuth.instance.currentUser?.uid.trim() ?? '';
+    final path =
+        (currentUid.isNotEmpty && currentUid == id) ? '/users/me' : '/users/${Uri.encodeComponent(id)}';
+    final body = await _authedPatch(path, fields);
     return body != null;
   }
 

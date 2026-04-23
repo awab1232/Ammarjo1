@@ -26,38 +26,26 @@ import { FirebaseAuthGuard, type RequestWithFirebase } from '../auth/firebase-au
 import { UserLocationDto } from './dto/user-location.dto';
 import { UsersService } from './users.service';
 
+function isUuidString(s: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s.trim());
+}
+
 @Controller()
 export class UsersController {
   private readonly logger = new Logger(UsersController.name);
 
   constructor(private readonly users: UsersService) {}
 
-  /**
-   * Self profile — same document shape the Flutter `BackendUserClient` / Firestore `users/{uid}` expected.
-   * `:id` must be the signed-in user’s Firebase UID.
-   */
-  @Get('users/:id')
-  @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
-  @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 120 } })
-  @RequirePermissions('orders.read')
-  async getUserByFirebaseUid(@Req() req: RequestWithFirebase, @Param('id') id: string) {
-    const target = (id || '').trim();
-    if (target === 'location') {
-      throw new NotFoundException();
-    }
-    if (!req.firebaseUid) {
-      throw new UnauthorizedException('Not authenticated');
-    }
-    if (target !== req.firebaseUid) {
-      throw new ForbiddenException();
-    }
+  /** Shapes `users` row + tenant context. Canonical id is `internalUserId` / `users.id`; Firebase UID is `firebaseUid`. */
+  private buildUserProfileResponse(found: {
+    row: { id: string; firebase_uid: string; email: string | null; role: string };
+    phone: string | null;
+    profile: Record<string, unknown>;
+    banned: boolean;
+  }) {
     const snap = getTenantContext();
-    if (!snap?.uid || snap.uid !== target) {
+    if (!snap) {
       throw new ForbiddenException();
-    }
-    const found = await this.users.findProfileRowByFirebaseUid(target);
-    if (!found) {
-      throw new NotFoundException('user not found');
     }
     const { row, phone, profile, banned } = found;
     const role = normalizeDbRoleToAppRole(row.role);
@@ -90,24 +78,98 @@ export class UsersController {
     };
   }
 
+  @Get('users/me')
+  @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
+  @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 120 } })
+  @RequirePermissions('orders.read')
+  async getUserMe(@Req() req: RequestWithFirebase) {
+    if (!req.firebaseUid) {
+      throw new UnauthorizedException('Not authenticated');
+    }
+    const found = await this.users.findProfileRowByFirebaseUid(req.firebaseUid);
+    if (!found) {
+      throw new NotFoundException('user not found');
+    }
+    return this.buildUserProfileResponse(found);
+  }
+
+  @Patch('users/me')
+  @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
+  @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 60 } })
+  @RequirePermissions('orders.write')
+  async patchUserMe(@Req() req: RequestWithFirebase, @Body() body: unknown) {
+    if (!req.firebaseUid) {
+      throw new UnauthorizedException();
+    }
+    if (body == null || typeof body !== 'object' || Array.isArray(body)) {
+      throw new BadRequestException();
+    }
+    await this.users.patchUserProfile(req.firebaseUid, body as Record<string, unknown>);
+    return { ok: true as const };
+  }
+
+  /**
+   * Self profile by path id:
+   * - Internal DB id (UUID) — must match `users.id` **and** `users.firebase_uid` = caller (never match Firebase string as uuid).
+   * - Otherwise — `id` is treated as Firebase UID and must equal the caller; loaded via `firebase_uid` column only.
+   */
+  @Get('users/:id')
+  @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
+  @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 120 } })
+  @RequirePermissions('orders.read')
+  async getUserById(@Req() req: RequestWithFirebase, @Param('id') id: string) {
+    const target = (id || '').trim();
+    if (target === 'location' || target === 'me') {
+      throw new NotFoundException();
+    }
+    if (!req.firebaseUid) {
+      throw new UnauthorizedException('Not authenticated');
+    }
+    const snap = getTenantContext();
+    if (!snap?.uid) {
+      throw new ForbiddenException();
+    }
+
+    let found = null;
+    if (isUuidString(target)) {
+      found = await this.users.findProfileRowByInternalIdForFirebaseUser(target, req.firebaseUid);
+    } else {
+      if (target !== req.firebaseUid || snap.uid !== target) {
+        throw new ForbiddenException();
+      }
+      found = await this.users.findProfileRowByFirebaseUid(target);
+    }
+    if (!found) {
+      throw new NotFoundException('user not found');
+    }
+    return this.buildUserProfileResponse(found);
+  }
+
   @Patch('users/:id')
   @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
   @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 60 } })
   @RequirePermissions('orders.write')
-  async patchUser(
-    @Req() req: RequestWithFirebase,
-    @Param('id') id: string,
-    @Body() body: unknown,
-  ) {
+  async patchUser(@Req() req: RequestWithFirebase, @Param('id') id: string, @Body() body: unknown) {
     const target = (id || '').trim();
+    if (target === 'me' || target === 'location') {
+      throw new NotFoundException();
+    }
     if (!req.firebaseUid) {
       throw new UnauthorizedException();
     }
-    if (target !== req.firebaseUid) {
-      throw new ForbiddenException();
-    }
     if (body == null || typeof body !== 'object' || Array.isArray(body)) {
       throw new BadRequestException();
+    }
+    if (isUuidString(target)) {
+      const exists = await this.users.findProfileRowByInternalIdForFirebaseUser(target, req.firebaseUid);
+      if (!exists) {
+        throw new NotFoundException();
+      }
+      await this.users.patchUserProfile(req.firebaseUid, body as Record<string, unknown>);
+      return { ok: true as const };
+    }
+    if (target !== req.firebaseUid) {
+      throw new ForbiddenException();
     }
     await this.users.patchUserProfile(target, body as Record<string, unknown>);
     return { ok: true as const };
