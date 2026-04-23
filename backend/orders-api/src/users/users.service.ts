@@ -1,4 +1,4 @@
-import { Injectable, Logger, ServiceUnavailableException } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { Pool, type PoolClient } from 'pg';
 import { buildPgPoolConfig } from '../infrastructure/database/pg-ssl';
@@ -296,5 +296,109 @@ export class UsersService {
     } catch {
       return null;
     }
+  }
+
+  /**
+   * Public profile for GET /users/:firebaseUid (self-only). Uses `profile_json` when present.
+   */
+  async findProfileRowByFirebaseUid(firebaseUid: string): Promise<{
+    row: AppUserRow;
+    phone: string | null;
+    profile: Record<string, unknown>;
+    banned: boolean;
+  } | null> {
+    const uid = firebaseUid.trim();
+    if (!uid) return null;
+    if (!this.pool) {
+      return null;
+    }
+    return this.withClient(async (client) => {
+      const r = await client.query(
+        `SELECT id, firebase_uid, email, role, tenant_id, store_id, wholesaler_id, store_type, is_active,
+                phone, profile_json, COALESCE(banned, false) AS banned
+         FROM users
+         WHERE firebase_uid = $1
+         LIMIT 1`,
+        [uid],
+      );
+      if (r.rows.length === 0) return null;
+      const raw = r.rows[0] as Record<string, unknown>;
+      const pj = raw['profile_json'];
+      const profile =
+        pj != null && typeof pj === 'object' && !Array.isArray(pj) ? (pj as Record<string, unknown>) : {};
+      return {
+        row: this.mapRow(raw),
+        phone: raw['phone'] != null ? String(raw['phone']) : null,
+        profile,
+        banned: raw['banned'] === true,
+      };
+    });
+  }
+
+  /**
+   * Merge into `users.profile_json` and update email/phone columns. Self-only; caller enforces.
+   */
+  async patchUserProfile(firebaseUid: string, body: Record<string, unknown>): Promise<void> {
+    const uid = firebaseUid.trim();
+    if (!uid) {
+      throw new NotFoundException('user not found');
+    }
+    return this.withClient(async (client) => {
+      const cur = await client.query(
+        `SELECT profile_json, email, phone FROM users WHERE firebase_uid = $1 FOR UPDATE`,
+        [uid],
+      );
+      if (cur.rows.length === 0) {
+        throw new NotFoundException('user not found');
+      }
+      const raw = cur.rows[0] as Record<string, unknown>;
+      const pj = raw['profile_json'];
+      const next: Record<string, unknown> =
+        pj != null && typeof pj === 'object' && !Array.isArray(pj) ? { ...(pj as Record<string, unknown>) } : {};
+
+      if (typeof body['loyaltyPointsDelta'] === 'number' && Number.isFinite(body['loyaltyPointsDelta'])) {
+        const curPts = Math.max(0, Math.floor(Number(next['loyaltyPoints'] ?? 0)));
+        next['loyaltyPoints'] = curPts + Math.floor(body['loyaltyPointsDelta']);
+      }
+      const apo = body['addPointsForOrder'];
+      if (apo != null && typeof apo === 'object' && !Array.isArray(apo)) {
+        const p = (apo as Record<string, unknown>)['points'];
+        if (typeof p === 'number' && Number.isFinite(p)) {
+          const curPts = Math.max(0, Math.floor(Number(next['loyaltyPoints'] ?? 0)));
+          next['loyaltyPoints'] = curPts + Math.floor(p);
+        }
+      }
+      for (const [k, v] of Object.entries(body)) {
+        if (v == null) continue;
+        if (k === 'loyaltyPointsDelta' || k === 'addPointsForOrder') continue;
+        if (k === 'loyaltyPoints' && typeof v === 'number' && Number.isFinite(v)) {
+          next['loyaltyPoints'] = Math.max(0, Math.floor(v));
+          continue;
+        }
+        if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean') {
+          next[k] = v;
+        }
+      }
+
+      let newEmail: string | null = raw['email'] != null ? String(raw['email']) : null;
+      if (typeof body['email'] === 'string' && body['email'].trim()) {
+        newEmail = body['email'].trim();
+      } else if (next['email'] != null && String(next['email']).trim()) {
+        newEmail = String(next['email']).trim();
+      }
+      let newPhone: string | null = raw['phone'] != null ? String(raw['phone']) : null;
+      if (typeof body['phone'] === 'string' && body['phone'].trim()) {
+        newPhone = body['phone'].trim();
+      } else if (next['phone'] != null && String(next['phone']).trim()) {
+        newPhone = String(next['phone']).trim();
+      }
+
+      await client.query(
+        `UPDATE users
+         SET profile_json = $2::jsonb, email = $3, phone = $4
+         WHERE firebase_uid = $1`,
+        [uid, JSON.stringify(next), newEmail, newPhone],
+      );
+    });
   }
 }

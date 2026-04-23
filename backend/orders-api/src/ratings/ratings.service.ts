@@ -42,7 +42,7 @@ export class RatingsService {
   }
 
   private actorIdOrThrow(): string {
-    const uid = this.tenant?.getSnapshot().uid?.trim();
+    const uid = this.tenant?.getSnapshot?.()?.uid?.trim();
     if (!uid) throw new ForbiddenException('Authenticated actor is required');
     return uid;
   }
@@ -102,17 +102,21 @@ export class RatingsService {
       productQuality: row.product_quality != null ? Number(row.product_quality) : null,
       serviceRequestId: row.service_request_id != null ? String(row.service_request_id) : null,
       orderId: row.order_id != null ? String(row.order_id) : null,
-      createdAt: new Date(String(row.created_at)).toISOString(),
+      createdAt: (() => {
+        const t = row.created_at != null ? new Date(String(row.created_at)) : new Date(0);
+        return Number.isNaN(t.getTime()) ? new Date(0).toISOString() : t.toISOString();
+      })(),
     };
   }
 
   private mapAggregate(row: Record<string, unknown>): RatingAggregate {
+    const u = row.updated_at != null ? new Date(String(row.updated_at)) : new Date(0);
     return {
       targetType: String(row.target_type) as RatingTargetType,
       targetId: String(row.target_id),
       avgRating: Number(row.avg_rating ?? 0),
       totalReviews: Number(row.total_reviews ?? 0),
-      updatedAt: new Date(String(row.updated_at)).toISOString(),
+      updatedAt: Number.isNaN(u.getTime()) ? new Date(0).toISOString() : u.toISOString(),
     };
   }
 
@@ -238,10 +242,16 @@ export class RatingsService {
           throw new ConflictException('duplicate review for this order/target');
         }
 
-        const uq = await client.query(`SELECT display_name, email FROM users WHERE firebase_uid = $1 LIMIT 1`, [reviewerId]);
+        const uq = await client.query(
+          `SELECT email, profile_json->>'name' AS prof_name
+           FROM users WHERE firebase_uid = $1 LIMIT 1`,
+          [reviewerId],
+        );
         const reviewerName =
           uq.rows.length > 0
-            ? String((uq.rows[0] as Record<string, unknown>).display_name ?? (uq.rows[0] as Record<string, unknown>).email ?? '')
+            ? String(
+                (uq.rows[0] as Record<string, unknown>).prof_name ?? (uq.rows[0] as Record<string, unknown>).email ?? '',
+              ) || null
             : null;
 
         const id = randomUUID();
