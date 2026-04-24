@@ -500,6 +500,8 @@ export class OrdersPgService implements OnModuleDestroy {
     }
     const lim = Math.min(Math.max(1, limit), 50);
     const fetchN = lim + 1;
+    let lastQueryText = '';
+    let lastQueryParams: unknown[] = [];
     try {
       let r: {
         rows: Array<{
@@ -519,10 +521,15 @@ export class OrdersPgService implements OnModuleDestroy {
           delivery_manual_retries?: string | number | null;
         }>;
       };
+      const trackedQuery = (text: string, params: unknown[]) => {
+        lastQueryText = text;
+        lastQueryParams = params;
+        return client.query(text, params);
+      };
       const runQuery = async (compact: boolean) => {
         if (cursor == null) {
           if (compact) {
-            return client.query(
+            return trackedQuery(
               `SELECT o.payload, o.created_at, o.order_id
                FROM orders o
                WHERE o.user_id = $1
@@ -531,7 +538,7 @@ export class OrdersPgService implements OnModuleDestroy {
               [userId.trim(), fetchN],
             );
           }
-          return client.query(
+          return trackedQuery(
             `SELECT o.payload, o.created_at, o.order_id,
                     o.driver_id, o.delivery_status, o.delivery_lat, o.delivery_lng, o.eta_minutes, o.assigned_at,
                     o.delivery_on_the_way_at, o.delivery_delivered_at,
@@ -545,7 +552,7 @@ export class OrdersPgService implements OnModuleDestroy {
           );
         }
         if (compact) {
-          return client.query(
+          return trackedQuery(
             `SELECT o.payload, o.created_at, o.order_id
              FROM orders o
              WHERE o.user_id = $1
@@ -555,7 +562,7 @@ export class OrdersPgService implements OnModuleDestroy {
             [userId.trim(), cursor.c, cursor.o, fetchN],
           );
         }
-        return client.query(
+        return trackedQuery(
           `SELECT o.payload, o.created_at, o.order_id,
                   o.driver_id, o.delivery_status, o.delivery_lat, o.delivery_lng, o.eta_minutes, o.assigned_at,
                   o.delivery_on_the_way_at, o.delivery_delivered_at,
@@ -573,10 +580,24 @@ export class OrdersPgService implements OnModuleDestroy {
         r = await runQuery(false);
       } catch (e) {
         // Some production DBs may lag on delivery columns; fallback to core order columns.
+        console.warn(
+          '[OrdersPgService] findPayloadsByUserIdPaginated full query failed',
+          JSON.stringify({
+            query: lastQueryText,
+            params: lastQueryParams,
+          }),
+        );
         this.logOrdersReadSqlError('findPayloadsByUserIdPaginated/full', e);
         try {
           r = await runQuery(true);
         } catch (e2) {
+          console.warn(
+            '[OrdersPgService] findPayloadsByUserIdPaginated compact query failed',
+            JSON.stringify({
+              query: lastQueryText,
+              params: lastQueryParams,
+            }),
+          );
           this.logOrdersReadSqlError('findPayloadsByUserIdPaginated/compact', e2);
           r = { rows: [] };
         }
