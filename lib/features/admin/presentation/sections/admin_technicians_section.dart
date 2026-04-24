@@ -45,12 +45,9 @@ class _AdminTechniciansSectionState extends State<AdminTechniciansSection> with 
 
   Future<void> _editTechnician(BuildContext context, String id, Map<String, dynamic> data) async {
     final d = _normTech(data);
-    final nameCtrl =
-        TextEditingController(text: d['displayName']?.toString() ?? (throw StateError('unexpected_empty_response')));
-    final phoneCtrl =
-        TextEditingController(text: d['phone']?.toString() ?? (throw StateError('unexpected_empty_response')));
-    final cityCtrl =
-        TextEditingController(text: d['city']?.toString() ?? (throw StateError('unexpected_empty_response')));
+    final nameCtrl = TextEditingController(text: d['displayName']?.toString() ?? '');
+    final phoneCtrl = TextEditingController(text: d['phone']?.toString() ?? '');
+    final cityCtrl = TextEditingController(text: d['city']?.toString() ?? '');
     final specCtrl = TextEditingController(
       text: (d['specialties'] is List) ? (d['specialties'] as List).map((e) => e.toString()).join(', ') : '',
     );
@@ -120,10 +117,10 @@ class _AdminTechniciansSectionState extends State<AdminTechniciansSection> with 
   bool _matches(Map<String, dynamic> data) {
     final q = _techSearch.trim().toLowerCase();
     if (q.isEmpty) return true;
-    final name = (data['displayName'] ?? (throw StateError('unexpected_empty_response'))).toString().toLowerCase();
+    final name = (data['displayName'] ?? '').toString().toLowerCase();
     final specs = (data['specialties'] is List) ? (data['specialties'] as List).join(' ').toLowerCase() : '';
-    final cat = (data['category'] ?? (throw StateError('unexpected_empty_response'))).toString().toLowerCase();
-    final city = (data['city'] ?? (throw StateError('unexpected_empty_response'))).toString().toLowerCase();
+    final cat = (data['category'] ?? '').toString().toLowerCase();
+    final city = (data['city'] ?? '').toString().toLowerCase();
     return name.contains(q) || specs.contains(q) || cat.contains(q) || city.contains(q);
   }
 
@@ -171,9 +168,9 @@ class _AdminTechniciansSectionState extends State<AdminTechniciansSection> with 
                   };
                   final filtered = rows.where(_matches).toList()
                     ..sort(
-                      (a, b) => (a['displayName'] ?? (throw StateError('unexpected_empty_response')))
+                      (a, b) => (a['displayName'] ?? '')
                           .toString()
-                          .compareTo((b['displayName'] ?? (throw StateError('unexpected_empty_response'))).toString()),
+                          .compareTo((b['displayName'] ?? '').toString()),
                     );
                   if (filtered.isEmpty) {
                     return Center(child: Text('لا نتائج', style: GoogleFonts.tajawal(color: AppColors.textSecondary)));
@@ -183,11 +180,9 @@ class _AdminTechniciansSectionState extends State<AdminTechniciansSection> with 
                     itemCount: filtered.length,
                     itemBuilder: (context, i) {
                       final data = filtered[i];
-                      final id = data['id']?.toString() ?? (throw StateError('unexpected_empty_response'));
-                      final status =
-                          (data['status']?.toString() ?? (throw StateError('unexpected_empty_response'))).toLowerCase();
-                      final photo =
-                          data['photoUrl']?.toString().trim() ?? (throw StateError('unexpected_empty_response'));
+                      final id = data['id']?.toString() ?? '';
+                      final status = (data['status']?.toString() ?? '').toLowerCase();
+                      final photo = data['photoUrl']?.toString().trim() ?? '';
                       final specs = data['specialties'];
                       final specStr = specs is List ? specs.map((e) => e.toString()).join('، ') : '';
                       Color chipColor = AppColors.textSecondary;
@@ -230,7 +225,7 @@ class _AdminTechniciansSectionState extends State<AdminTechniciansSection> with 
                                     if (specStr.isNotEmpty)
                                       Text('تخصص: $specStr', style: GoogleFonts.tajawal(fontSize: 12, color: AppColors.textSecondary), textAlign: TextAlign.right),
                                     Text(
-                                      data['email']?.toString() ?? (throw StateError('unexpected_empty_response')),
+                                      data['email']?.toString() ?? '',
                                       style: GoogleFonts.tajawal(fontSize: 11),
                                     ),
                                     const SizedBox(height: 8),
@@ -374,10 +369,7 @@ class _JoinTabState extends State<_JoinTab> {
                                     try {
                                       final result = await AdminRepository.instance.approveTechnicianRequest(
                                         r,
-                                        reviewedBy: UserSession.currentUid.isNotEmpty
-                                            ? UserSession.currentUid
-                                            :
-                                            (throw StateError('unexpected_empty_response')),
+                                        reviewedBy: UserSession.currentUid.isNotEmpty ? UserSession.currentUid : null,
                                       );
                                       if (result is FeatureFailure<void>) return;
                                       if (context.mounted) {
@@ -403,10 +395,7 @@ class _JoinTabState extends State<_JoinTab> {
                                     try {
                                       final result = await AdminRepository.instance.rejectTechnicianRequest(
                                         r,
-                                        reviewedBy: UserSession.currentUid.isNotEmpty
-                                            ? UserSession.currentUid
-                                            :
-                                            (throw StateError('unexpected_empty_response')),
+                                        reviewedBy: UserSession.currentUid.isNotEmpty ? UserSession.currentUid : '',
                                         rejectionReason: reason,
                                       );
                                       if (result is FeatureFailure<void>) return;

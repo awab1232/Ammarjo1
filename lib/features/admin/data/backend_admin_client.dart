@@ -20,7 +20,7 @@ final class BackendAdminClient {
       return await FirebaseAuthHeaderProvider.requireIdToken(reason: 'backend_admin_id_token');
     } on Object {
       debugPrint('[BackendAdminClient] getIdToken failed');
-      throw StateError('unexpected_empty_response');
+      return null;
     }
   }
 
@@ -35,9 +35,9 @@ final class BackendAdminClient {
     Duration timeout = const Duration(seconds: 25),
   }) async {
     final token = await _idToken();
-    if (token == null || token.isEmpty) throw StateError('unexpected_empty_response');
+    if (token == null || token.isEmpty) return null;
     final base = _base();
-    if (base.isEmpty) throw StateError('unexpected_empty_response');
+    if (base.isEmpty) return null;
     final uri = Uri.parse('$base$path').replace(queryParameters: query);
     try {
       final res = await http
@@ -48,7 +48,7 @@ final class BackendAdminClient {
           .timeout(timeout);
       if (res.statusCode < 200 || res.statusCode >= 300) {
         debugPrint('[BackendAdminClient] GET $path → ${res.statusCode}');
-        throw StateError('unexpected_empty_response');
+        return null;
       }
       final decoded = jsonDecode(res.body);
       if (decoded is Map<String, dynamic>) return decoded;
@@ -57,10 +57,10 @@ final class BackendAdminClient {
         debugPrint('[BackendAdminClient] GET $path responseJson runtimeType: ${decoded.runtimeType}');
         return <String, dynamic>{'items': decoded};
       }
-      throw StateError('unexpected_empty_response');
+      return null;
     } on Object {
       debugPrint('[BackendAdminClient] GET $path failed');
-      throw StateError('unexpected_empty_response');
+      return null;
     }
   }
 
@@ -70,9 +70,9 @@ final class BackendAdminClient {
     Duration timeout = const Duration(seconds: 25),
   }) async {
     final token = await _idToken();
-    if (token == null || token.isEmpty) throw StateError('unexpected_empty_response');
+    if (token == null || token.isEmpty) return null;
     final base = _base();
-    if (base.isEmpty) throw StateError('unexpected_empty_response');
+    if (base.isEmpty) return null;
     final uri = Uri.parse('$base$path');
     try {
       final res = await http
@@ -87,7 +87,7 @@ final class BackendAdminClient {
           .timeout(timeout);
       if (res.statusCode < 200 || res.statusCode >= 300) {
         debugPrint('[BackendAdminClient] PATCH $path → ${res.statusCode} ${res.body}');
-        throw StateError('unexpected_empty_response');
+        return null;
       }
       final decoded = jsonDecode(res.body);
       if (decoded is Map<String, dynamic>) return decoded;
@@ -95,21 +95,21 @@ final class BackendAdminClient {
       return <String, dynamic>{'ok': true};
     } on Object {
       debugPrint('[BackendAdminClient] PATCH $path failed');
-      throw StateError('unexpected_empty_response');
+      return null;
     }
   }
 
   Future<Map<String, dynamic>?> _delete(String path, {Duration timeout = const Duration(seconds: 25)}) async {
     final token = await _idToken();
-    if (token == null || token.isEmpty) throw StateError('unexpected_empty_response');
+    if (token == null || token.isEmpty) return null;
     final base = _base();
-    if (base.isEmpty) throw StateError('unexpected_empty_response');
+    if (base.isEmpty) return null;
     final uri = Uri.parse('$base$path');
     try {
       final res = await http.delete(uri, headers: {'Authorization': 'Bearer $token'}).timeout(timeout);
       if (res.statusCode < 200 || res.statusCode >= 300) {
         debugPrint('[BackendAdminClient] DELETE $path → ${res.statusCode}');
-        throw StateError('unexpected_empty_response');
+        return null;
       }
       final decoded = jsonDecode(res.body);
       if (decoded is Map<String, dynamic>) return decoded;
@@ -117,7 +117,7 @@ final class BackendAdminClient {
       return <String, dynamic>{'ok': true};
     } on Object {
       debugPrint('[BackendAdminClient] DELETE $path failed');
-      throw StateError('unexpected_empty_response');
+      return null;
     }
   }
 
@@ -127,9 +127,9 @@ final class BackendAdminClient {
     Duration timeout = const Duration(seconds: 25),
   }) async {
     final token = await _idToken();
-    if (token == null || token.isEmpty) throw StateError('unexpected_empty_response');
+    if (token == null || token.isEmpty) return null;
     final base = _base();
-    if (base.isEmpty) throw StateError('unexpected_empty_response');
+    if (base.isEmpty) return null;
     final uri = Uri.parse('$base$path');
     try {
       final res = await http
@@ -144,7 +144,7 @@ final class BackendAdminClient {
           .timeout(timeout);
       if (res.statusCode < 200 || res.statusCode >= 300) {
         debugPrint('[BackendAdminClient] POST $path → ${res.statusCode} ${res.body}');
-        throw StateError('unexpected_empty_response');
+        return null;
       }
       final decoded = jsonDecode(res.body);
       if (decoded is Map<String, dynamic>) return decoded;
@@ -152,7 +152,7 @@ final class BackendAdminClient {
       return <String, dynamic>{'ok': true};
     } on Object {
       debugPrint('[BackendAdminClient] POST $path failed');
-      throw StateError('unexpected_empty_response');
+      return null;
     }
   }
 
@@ -800,9 +800,9 @@ final class BackendAdminClient {
       if (subCategoryId != null && subCategoryId.trim().isNotEmpty) 'subCategoryId': subCategoryId.trim(),
       'name': name.trim(),
       if (description != null) 'description': description.trim(),
-      'price': price ?? (throw StateError('INVALID_NUMERIC_DATA')),
+      'price': price ?? 0,
       if (image != null) 'image': image,
-      'stock': stock ?? (throw StateError('INVALID_NUMERIC_DATA')),
+      'stock': stock ?? 0,
       'isActive': isActive,
     });
   }

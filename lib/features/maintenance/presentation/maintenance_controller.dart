@@ -42,7 +42,7 @@ class MaintenanceController extends ChangeNotifier {
     final desc = (experienceDescription ?? '').trim();
     final ids = specialtyIds.map((e) => e.trim()).where((e) => e.isNotEmpty).toList();
     final applicantId = UserSession.currentUid.trim();
-    if (applicantId.isEmpty) throw StateError('INVALID_ID');
+    if (applicantId.isEmpty) return;
     final emailNormalized = email.trim().toLowerCase();
     final safeEmail = emailNormalized.isNotEmpty ? emailNormalized : '$applicantId@ammarjo.local';
     await BackendOrdersClient.instance.submitStoreApplication({
