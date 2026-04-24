@@ -5,6 +5,7 @@ class StoreShelfProduct {
   StoreShelfProduct({
     required this.id,
     required this.storeId,
+    this.catalogProductId,
     required this.name,
     required this.description,
     required this.priceDisplay,
@@ -16,6 +17,8 @@ class StoreShelfProduct {
 
   final String id;
   final String storeId;
+  /// Filled from API when a `catalog_products` row matches this store + product name; required for server cart.
+  final int? catalogProductId;
   final String name;
   final String description;
   final String priceDisplay;
@@ -25,8 +28,11 @@ class StoreShelfProduct {
   final bool isAvailable;
   final bool isPurchasable;
 
-  /// معرّف مستقر للسلة يعتمد على المتجر + وثيقة المنتج.
-  int get cartProductId => Object.hash(storeId, id).abs();
+  /// If non-null, add-to-cart is blocked: show this in UI before calling [toCartProduct].
+  static const String kCatalogProductUnavailable = 'المنتج غير متاح حالياً';
+
+  String? get addToCartIfUnavailableMessage =>
+      (catalogProductId == null || catalogProductId! <= 0) ? kCatalogProductUnavailable : null;
 
   factory StoreShelfProduct.fromBackendRow(
     String storeId,
@@ -54,9 +60,24 @@ class StoreShelfProduct {
             ? (row['price'] as num).toString()
             : row['price']?.toString() ?? '0');
     final stock = (row['stock'] ?? 0);
+    final rawCatalog = row['catalogProductId'] ?? row['catalog_product_id'];
+    int? catId;
+    if (rawCatalog != null) {
+      if (rawCatalog is int) {
+        catId = rawCatalog;
+      } else if (rawCatalog is num) {
+        catId = rawCatalog.toInt();
+      } else {
+        catId = int.tryParse(rawCatalog.toString());
+      }
+    }
+    if (catId != null && catId <= 0) {
+      catId = null;
+    }
     return StoreShelfProduct(
       id: row['id']?.toString() ?? '',
       storeId: storeId,
+      catalogProductId: catId,
       name: row['name']?.toString() ?? '',
       description: row['description']?.toString() ?? '',
       priceDisplay: priceStr,
@@ -68,13 +89,28 @@ class StoreShelfProduct {
   }
 
   Product toCartProduct() {
+    final pid = catalogProductId;
+    if (pid == null || pid <= 0) {
+      return Product(
+        id: 0,
+        name: name,
+        description: description,
+        price: priceDisplay,
+        images: imageUrls,
+        categoryIds: const <int>[],
+        stock: 0,
+        stockStatus: 'outofstock',
+      );
+    }
     return Product(
-      id: cartProductId,
+      id: pid,
       name: name,
       description: description,
       price: priceDisplay,
       images: imageUrls,
       categoryIds: const <int>[],
+      stock: isPurchasable ? 1 : 0,
+      stockStatus: isPurchasable ? 'instock' : 'outofstock',
     );
   }
 }

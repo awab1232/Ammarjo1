@@ -50,6 +50,8 @@ export type StoreCategoryRecord = {
 export type StoreProductRecord = {
   id: string;
   storeId: string;
+  /** Matches `catalog_products.product_id` when a row exists for the same store + name (for cart + stock). */
+  catalogProductId: number | null;
   categoryId: string | null;
   name: string;
   description: string;

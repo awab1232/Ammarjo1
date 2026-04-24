@@ -127,10 +127,18 @@ export class ProductsService {
     return storeId;
   }
 
+  private mapCatalogProductIdFromRow(row: Record<string, unknown>): number | null {
+    const raw = row['catalog_product_id'] ?? row['catalogProductId'];
+    if (raw == null) return null;
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 && Math.floor(n) === n ? n : null;
+  }
+
   private map(row: Record<string, unknown>): StoreProductRecord {
     return {
       id: String(row.id),
       storeId: String(row.store_id),
+      catalogProductId: this.mapCatalogProductIdFromRow(row),
       categoryId: row.category_id != null ? String(row.category_id) : null,
       name: String(row.name ?? ''),
       description: String(row.description ?? ''),
@@ -160,7 +168,12 @@ export class ProductsService {
                 WHEN EXISTS (SELECT 1 FROM product_variants pv3 WHERE pv3.product_id = p.id)
                   THEN (SELECT pv3.stock FROM product_variants pv3 WHERE pv3.product_id = p.id ORDER BY pv3.price ASC, pv3.created_at ASC LIMIT 1)
                 ELSE 0
-              END AS display_stock
+              END AS display_stock,
+              (SELECT cp.product_id
+                 FROM catalog_products cp
+                WHERE cp.store_id = p.store_id::text
+                  AND lower(btrim(cp.name)) = lower(btrim(p.name))
+                LIMIT 1) AS catalog_product_id
        FROM products p
        WHERE p.store_id = $1::uuid
        ORDER BY p.created_at DESC`,
@@ -348,7 +361,12 @@ export class ProductsService {
                 WHEN EXISTS (SELECT 1 FROM product_variants pv3 WHERE pv3.product_id = p.id)
                   THEN (SELECT pv3.stock FROM product_variants pv3 WHERE pv3.product_id = p.id ORDER BY pv3.price ASC, pv3.created_at ASC LIMIT 1)
                 ELSE 0
-              END AS display_stock
+              END AS display_stock,
+              (SELECT cp.product_id
+                 FROM catalog_products cp
+                WHERE cp.store_id = p.store_id::text
+                  AND lower(btrim(cp.name)) = lower(btrim(p.name))
+                LIMIT 1) AS catalog_product_id
        FROM products p
        INNER JOIN stores s ON s.id = p.store_id
        WHERE s.status = 'approved'
@@ -376,7 +394,12 @@ export class ProductsService {
                 WHEN EXISTS (SELECT 1 FROM product_variants pv3 WHERE pv3.product_id = p.id)
                   THEN (SELECT pv3.stock FROM product_variants pv3 WHERE pv3.product_id = p.id ORDER BY pv3.price ASC, pv3.created_at ASC LIMIT 1)
                 ELSE 0
-              END AS display_stock
+              END AS display_stock,
+              (SELECT cp.product_id
+                 FROM catalog_products cp
+                WHERE cp.store_id = p.store_id::text
+                  AND lower(btrim(cp.name)) = lower(btrim(p.name))
+                LIMIT 1) AS catalog_product_id
        FROM products p
        INNER JOIN stores s ON s.id = p.store_id
        WHERE p.id = $1::uuid AND s.status = 'approved'
@@ -474,7 +497,12 @@ export class ProductsService {
               p.name, p.description, p.price,
               CASE WHEN NULLIF(p.image, '') IS NULL THEN p.image_url ELSE p.image END AS image,
               CASE WHEN p.stock IS NULL THEN 0 ELSE p.stock END::int AS stock,
-              p.is_boosted AS "isBoosted", p.is_trending AS "isTrending"
+              p.is_boosted AS "isBoosted", p.is_trending AS "isTrending",
+              (SELECT cp.product_id
+                 FROM catalog_products cp
+                WHERE cp.store_id = p.store_id::text
+                  AND lower(btrim(cp.name)) = lower(btrim(p.name))
+                LIMIT 1) AS "catalogProductId"
        FROM products p
        LEFT JOIN sub_categories sc ON sc.id = p.sub_category_id
        WHERE ${whereSql}
