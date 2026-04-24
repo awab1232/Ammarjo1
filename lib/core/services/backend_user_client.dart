@@ -1,6 +1,5 @@
 import 'dart:convert';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
 import '../config/backend_orders_config.dart';
@@ -16,31 +15,15 @@ final class BackendUserClient {
     return _authedGet('/auth/me');
   }
 
-  /// Loads profile. Uses [`GET /users/me`]: uses token identity; DB is keyed by internal id + `firebase_uid`, not Firebase as UUID.
+  /// Loads profile through authenticated identity only.
   Future<Map<String, dynamic>?> fetchUserById(String uid) async {
-    final id = uid.trim();
-    if (id.isEmpty) throw StateError('NULL_RESPONSE');
-    final currentUid = FirebaseAuth.instance.currentUser?.uid.trim() ?? '';
-    try {
-      if (currentUid.isNotEmpty && currentUid == id) {
-        return await _authedGet('/users/me');
-      }
-      return await _authedGet('/users/${Uri.encodeComponent(id)}');
-    } on Object {
-      if (currentUid.isNotEmpty && currentUid == id) {
-        return _authedGet('/users/me');
-      }
-      rethrow;
-    }
+    if (uid.trim().isEmpty) throw StateError('invalid_user_id');
+    return _authedGet('/users/me');
   }
 
   Future<bool> patchUser(String uid, Map<String, dynamic> fields) async {
-    final id = uid.trim();
-    if (id.isEmpty || fields.isEmpty) throw StateError('NULL_RESPONSE');
-    final currentUid = FirebaseAuth.instance.currentUser?.uid.trim() ?? '';
-    final path =
-        (currentUid.isNotEmpty && currentUid == id) ? '/users/me' : '/users/${Uri.encodeComponent(id)}';
-    final body = await _authedPatch(path, fields);
+    if (uid.trim().isEmpty || fields.isEmpty) throw StateError('invalid_user_payload');
+    final body = await _authedPatch('/users/me', fields);
     return body != null;
   }
 
@@ -64,23 +47,23 @@ final class BackendUserClient {
 
   Future<Map<String, dynamic>?> _authedGet(String path) async {
     final req = await _request(path);
-    if (req == null) throw StateError('NULL_RESPONSE');
+    if (req == null) throw StateError('request_not_ready');
     final res = await http.get(req.$1, headers: req.$2);
     FirebaseAuthHeaderProvider.logDebugResponse('BackendUserClient GET $path', res.statusCode, res.body);
-    if (res.statusCode < 200 || res.statusCode >= 300) throw StateError('NULL_RESPONSE');
+    if (res.statusCode < 200 || res.statusCode >= 300) throw StateError('http_${res.statusCode}');
     final decoded = jsonDecode(res.body);
     if (decoded is Map<String, dynamic>) return decoded;
     if (decoded is Map) return Map<String, dynamic>.from(decoded);
-    throw StateError('NULL_RESPONSE');
+    throw StateError('invalid_json_response');
   }
 
   Future<Map<String, dynamic>?> _authedPatch(String path, Map<String, dynamic> body) async {
     final req = await _request(path);
-    if (req == null) throw StateError('NULL_RESPONSE');
+    if (req == null) throw StateError('request_not_ready');
     final headers = <String, String>{...req.$2, 'Content-Type': 'application/json'};
     final res = await http.patch(req.$1, headers: headers, body: jsonEncode(body));
     FirebaseAuthHeaderProvider.logDebugResponse('BackendUserClient PATCH $path', res.statusCode, res.body);
-    if (res.statusCode < 200 || res.statusCode >= 300) throw StateError('NULL_RESPONSE');
+    if (res.statusCode < 200 || res.statusCode >= 300) throw StateError('http_${res.statusCode}');
     if (res.body.trim().isEmpty) return <String, dynamic>{};
     final decoded = jsonDecode(res.body);
     if (decoded is Map<String, dynamic>) return decoded;
@@ -90,7 +73,7 @@ final class BackendUserClient {
 
   Future<(Uri, Map<String, String>)?> _request(String path) async {
     final base = BackendOrdersConfig.baseUrl.trim();
-    if (base.isEmpty) throw StateError('NULL_RESPONSE');
+    if (base.isEmpty) throw StateError('backend_base_url_missing');
     final authHeaders = await FirebaseAuthHeaderProvider.requireAuthHeaders(reason: 'backend_user:$path');
     final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}$path');
     FirebaseAuthHeaderProvider.logRequestHeaders(method: 'REQUEST', uri: uri, headers: authHeaders);

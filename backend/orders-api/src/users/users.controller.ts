@@ -26,10 +26,6 @@ import { FirebaseAuthGuard, type RequestWithFirebase } from '../auth/firebase-au
 import { UserLocationDto } from './dto/user-location.dto';
 import { UsersService } from './users.service';
 
-function isUuidString(s: string): boolean {
-  return /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s.trim());
-}
-
 @Controller()
 export class UsersController {
   private readonly logger = new Logger(UsersController.name);
@@ -108,11 +104,6 @@ export class UsersController {
     return { ok: true as const };
   }
 
-  /**
-   * Self profile by path id:
-   * - Internal DB id (UUID) — must match `users.id` **and** `users.firebase_uid` = caller (never match Firebase string as uuid).
-   * - Otherwise — `id` is treated as Firebase UID and must equal the caller; loaded via `firebase_uid` column only.
-   */
   @Get('users/:id')
   @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
   @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 120 } })
@@ -130,15 +121,10 @@ export class UsersController {
       throw new ForbiddenException();
     }
 
-    let found = null;
-    if (isUuidString(target)) {
-      found = await this.users.findProfileRowByInternalIdForFirebaseUser(target, req.firebaseUid);
-    } else {
-      if (target !== req.firebaseUid || snap.uid !== target) {
-        throw new ForbiddenException();
-      }
-      found = await this.users.findProfileRowByFirebaseUid(target);
+    if (target !== req.firebaseUid || snap.uid !== target) {
+      throw new ForbiddenException();
     }
+    const found = await this.users.findProfileRowByFirebaseUid(target);
     if (!found) {
       throw new NotFoundException('user not found');
     }
@@ -159,14 +145,6 @@ export class UsersController {
     }
     if (body == null || typeof body !== 'object' || Array.isArray(body)) {
       throw new BadRequestException();
-    }
-    if (isUuidString(target)) {
-      const exists = await this.users.findProfileRowByInternalIdForFirebaseUser(target, req.firebaseUid);
-      if (!exists) {
-        throw new NotFoundException();
-      }
-      await this.users.patchUserProfile(req.firebaseUid, body as Record<string, unknown>);
-      return { ok: true as const };
     }
     if (target !== req.firebaseUid) {
       throw new ForbiddenException();

@@ -24,6 +24,7 @@ import { TendersService } from './tenders.service';
 
 interface CreateTenderBody {
   category?: string;
+  categoryId?: string;
   description?: string;
   city?: string;
   userName?: string;
@@ -77,6 +78,7 @@ export class TendersController {
     return this.tenders.create({
       customerUid: req.firebaseUid ?? '',
       category: body.category ?? '',
+      categoryId: body.categoryId ?? null,
       description: body.description ?? '',
       city: body.city ?? '',
       userName: body.userName ?? '',

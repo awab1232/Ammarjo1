@@ -13,6 +13,7 @@ import { logAuditJson } from '../common/audit-log';
 export interface CreateTenderInput {
   customerUid: string;
   category: string;
+  categoryId?: string | null;
   description: string;
   city: string;
   userName: string;
@@ -80,8 +81,10 @@ export class TendersService {
       CREATE TABLE IF NOT EXISTS tenders (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         customer_uid text NOT NULL,
+        user_id text,
         customer_name text NOT NULL DEFAULT '',
         category text NOT NULL DEFAULT '',
+        category_id uuid,
         description text NOT NULL DEFAULT '',
         city text NOT NULL DEFAULT '',
         image_url text,
@@ -94,13 +97,20 @@ export class TendersService {
         created_at timestamptz NOT NULL DEFAULT now(),
         updated_at timestamptz NOT NULL DEFAULT now()
       );
+      ALTER TABLE tenders ADD COLUMN IF NOT EXISTS user_id text;
+      ALTER TABLE tenders ADD COLUMN IF NOT EXISTS category_id uuid;
+      UPDATE tenders
+      SET user_id = customer_uid
+      WHERE user_id IS NULL OR btrim(user_id) = '';
       CREATE INDEX IF NOT EXISTS idx_tenders_customer ON tenders (customer_uid, updated_at DESC);
+      CREATE INDEX IF NOT EXISTS idx_tenders_user_id ON tenders (user_id, updated_at DESC);
       CREATE INDEX IF NOT EXISTS idx_tenders_status_type ON tenders (status, store_type_id, updated_at DESC);
 
       CREATE TABLE IF NOT EXISTS tender_offers (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         tender_id uuid NOT NULL REFERENCES tenders(id) ON DELETE CASCADE,
         store_id text NOT NULL DEFAULT '',
+        store_id_uuid uuid,
         store_name text NOT NULL DEFAULT '',
         store_owner_uid text NOT NULL DEFAULT '',
         price numeric(12,2) NOT NULL DEFAULT 0,
@@ -109,6 +119,7 @@ export class TendersService {
         created_at timestamptz NOT NULL DEFAULT now(),
         updated_at timestamptz NOT NULL DEFAULT now()
       );
+      ALTER TABLE tender_offers ADD COLUMN IF NOT EXISTS store_id_uuid uuid;
       CREATE INDEX IF NOT EXISTS idx_tender_offers_tender ON tender_offers (tender_id, updated_at DESC);
     `);
     this.tablesReady = true;
@@ -118,11 +129,12 @@ export class TendersService {
     const createdAt = row['created_at'] ?? null;
     return {
       id: row['id'],
-      customerUid: row['customer_uid'],
-      userId: row['customer_uid'],
+      customerUid: row['customer_uid'] ?? row['user_id'],
+      userId: row['user_id'] ?? row['customer_uid'],
       userName: row['customer_name'],
       customerName: row['customer_name'],
       category: row['category'],
+      categoryId: row['category_id'],
       description: row['description'],
       city: row['city'],
       imageUrl: row['image_url'],
@@ -142,6 +154,7 @@ export class TendersService {
       id: row['id'],
       tenderId: row['tender_id'],
       storeId: row['store_id'],
+      storeIdUuid: row['store_id_uuid'],
       storeName: row['store_name'],
       storeOwnerUid: row['store_owner_uid'],
       storeOwnerId: row['store_owner_uid'],
@@ -161,16 +174,17 @@ export class TendersService {
     return this.withClient(async (client) => {
       const q = await client.query(
         `INSERT INTO tenders
-           (customer_uid, customer_name, category, description, city,
+           (customer_uid, user_id, customer_name, category, category_id, description, city,
             image_url, image_base64, store_type_id, store_type_key, store_type_name)
-         VALUES ($1,$2,$3,$4,$5,$6,$7, NULLIF($8,'')::uuid, NULLIF($9,''), NULLIF($10,''))
-         RETURNING id::text, customer_uid, customer_name, category, description, city,
+         VALUES ($1,$1,$2,$3, NULLIF($4,'')::uuid,$5,$6,$7,$8, NULLIF($9,'')::uuid, NULLIF($10,''), NULLIF($11,''))
+         RETURNING id::text, customer_uid, user_id, customer_name, category, category_id::text AS category_id, description, city,
                    image_url, store_type_id::text AS store_type_id, store_type_key, store_type_name,
                    status, accepted_offer_id::text AS accepted_offer_id, created_at, updated_at`,
         [
           input.customerUid.trim(),
           (input.userName || '').trim(),
           input.category.trim(),
+          input.categoryId?.trim() || '',
           input.description.trim(),
           input.city.trim(),
           input.imageUrl?.trim() || null,
@@ -194,11 +208,11 @@ export class TendersService {
     const lim = Math.min(200, Math.max(1, limit));
     return this.withClient(async (client) => {
       const q = await client.query(
-        `SELECT id::text, customer_uid, customer_name, category, description, city,
+        `SELECT id::text, customer_uid, user_id, customer_name, category, category_id::text AS category_id, description, city,
                 image_url, store_type_id::text AS store_type_id, store_type_key, store_type_name,
                 status, accepted_offer_id::text AS accepted_offer_id, created_at, updated_at
          FROM tenders
-         WHERE customer_uid = $1
+         WHERE user_id = $1 OR customer_uid = $1
          ORDER BY updated_at DESC
          LIMIT $2`,
         [customerUid.trim(), lim],
@@ -266,7 +280,7 @@ export class TendersService {
       }
       vals.push(lim);
       const q = await client.query(
-        `SELECT id::text, customer_uid, customer_name, category, description, city,
+        `SELECT id::text, customer_uid, user_id, customer_name, category, category_id::text AS category_id, description, city,
                 image_url, store_type_id::text AS store_type_id, store_type_key, store_type_name,
                 status, accepted_offer_id::text AS accepted_offer_id, created_at, updated_at
          FROM tenders
@@ -285,7 +299,7 @@ export class TendersService {
     if (!actor) throw new ForbiddenException('forbidden');
     return this.withClient(async (client) => {
       const q = await client.query(
-        `SELECT id::text, customer_uid, customer_name, category, description, city,
+        `SELECT id::text, customer_uid, user_id, customer_name, category, category_id::text AS category_id, description, city,
                 image_url, store_type_id::text AS store_type_id, store_type_key, store_type_name,
                 status, accepted_offer_id::text AS accepted_offer_id, created_at, updated_at,
                 EXISTS (
@@ -299,7 +313,7 @@ export class TendersService {
       );
       if (q.rows.length === 0) throw new NotFoundException('tender_not_found');
       const row = q.rows[0] as Record<string, unknown>;
-      const isOwner = String(row['customer_uid'] ?? '').trim() === actor;
+      const isOwner = String(row['user_id'] ?? row['customer_uid'] ?? '').trim() === actor;
       const hasActorOffer = row['has_actor_offer'] === true;
       if (!isAdmin && !isOwner && !hasActorOffer) {
         throw new ForbiddenException('forbidden');
@@ -318,14 +332,14 @@ export class TendersService {
     if (!actor) throw new ForbiddenException('forbidden');
     return this.withClient(async (client) => {
       const tender = await client.query(
-        `SELECT customer_uid
+        `SELECT COALESCE(user_id, customer_uid) AS user_id
          FROM tenders
          WHERE id = $1::uuid
          LIMIT 1`,
         [tenderId.trim()],
       );
       if (tender.rows.length === 0) throw new NotFoundException('tender_not_found');
-      const isOwner = String(tender.rows[0]?.['customer_uid'] ?? '').trim() === actor;
+      const isOwner = String(tender.rows[0]?.['user_id'] ?? '').trim() === actor;
       if (!isAdmin && !isOwner) {
         const actorOffer = await client.query(
           `SELECT 1
@@ -383,9 +397,9 @@ export class TendersService {
       if (sel.rows.length === 0) throw new NotFoundException('tender_not_found');
       if (String(sel.rows[0]['status']) !== 'open') throw new BadRequestException('tender_closed');
       const q = await client.query(
-        `INSERT INTO tender_offers (tender_id, store_id, store_name, store_owner_uid, price, note)
-         VALUES ($1::uuid, $2, $3, $4, $5, $6)
-         RETURNING id::text, tender_id::text, store_id, store_name, store_owner_uid,
+        `INSERT INTO tender_offers (tender_id, store_id, store_id_uuid, store_name, store_owner_uid, price, note)
+         VALUES ($1::uuid, $2, NULLIF($2,'')::uuid, $3, $4, $5, $6)
+         RETURNING id::text, tender_id::text, store_id, store_id_uuid::text AS store_id_uuid, store_name, store_owner_uid,
                    price, note, status, created_at, updated_at`,
         [
           input.tenderId.trim(),
@@ -422,11 +436,11 @@ export class TendersService {
 
     return this.withClient(async (client) => {
       const tSel = await client.query(
-        `SELECT customer_uid, status FROM tenders WHERE id = $1::uuid`,
+        `SELECT COALESCE(user_id, customer_uid) AS user_id, status FROM tenders WHERE id = $1::uuid`,
         [tenderId.trim()],
       );
       if (tSel.rows.length === 0) throw new NotFoundException('tender_not_found');
-      if (String(tSel.rows[0]['customer_uid']) !== customerUid.trim()) {
+      if (String(tSel.rows[0]['user_id']) !== customerUid.trim()) {
         throw new ForbiddenException('forbidden');
       }
 
@@ -477,9 +491,12 @@ export class TendersService {
     if (!status) throw new BadRequestException('missing_status');
     if (!['closed', 'cancelled'].includes(status)) throw new BadRequestException('invalid_status');
     return this.withClient(async (client) => {
-      const sel = await client.query(`SELECT customer_uid FROM tenders WHERE id = $1::uuid`, [tenderId.trim()]);
+      const sel = await client.query(
+        `SELECT COALESCE(user_id, customer_uid) AS user_id FROM tenders WHERE id = $1::uuid`,
+        [tenderId.trim()],
+      );
       if (sel.rows.length === 0) throw new NotFoundException('tender_not_found');
-      if (String(sel.rows[0]['customer_uid']) !== customerUid.trim()) {
+      if (String(sel.rows[0]['user_id']) !== customerUid.trim()) {
         throw new ForbiddenException('forbidden');
       }
       await client.query(
@@ -492,9 +509,12 @@ export class TendersService {
 
   async deleteTender(customerUid: string, tenderId: string): Promise<{ ok: true }> {
     return this.withClient(async (client) => {
-      const sel = await client.query(`SELECT customer_uid FROM tenders WHERE id = $1::uuid`, [tenderId.trim()]);
+      const sel = await client.query(
+        `SELECT COALESCE(user_id, customer_uid) AS user_id FROM tenders WHERE id = $1::uuid`,
+        [tenderId.trim()],
+      );
       if (sel.rows.length === 0) throw new NotFoundException('tender_not_found');
-      if (String(sel.rows[0]['customer_uid']) !== customerUid.trim()) {
+      if (String(sel.rows[0]['user_id']) !== customerUid.trim()) {
         throw new ForbiddenException('forbidden');
       }
       await client.query(`DELETE FROM tenders WHERE id = $1::uuid`, [tenderId.trim()]);

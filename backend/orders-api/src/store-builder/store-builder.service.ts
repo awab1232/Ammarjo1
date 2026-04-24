@@ -12,7 +12,6 @@ import { Pool, type PoolClient } from 'pg';
 import { DomainEventEmitterService } from '../events/domain-event-emitter.service';
 import { DomainEventNames } from '../events/domain-event-names';
 import { TenantContextService } from '../identity/tenant-context.service';
-import { getFirebaseApp } from '../auth/firebase-admin';
 import { AiStoreBuilderService } from './ai-store-builder.service';
 import { isHybridStoreBuilderEnabled } from './store-builder.config';
 import type {
@@ -116,28 +115,10 @@ export class StoreBuilderService {
       typeof snap?.customClaims?.['store_type'] === 'string'
         ? String(snap?.customClaims?.['store_type']).trim()
         : null;
-    let profileStoreType: string | null = null;
-    if (!fromSnapshot && !fromClaimsStoreType && !fromClaimsStoreTypeSnake && uid) {
-      try {
-        const fs = getFirebaseApp().firestore();
-        const profileDoc = await fs.collection('users').doc(uid).get();
-        const raw = profileDoc.exists ? profileDoc.get('storeType') ?? profileDoc.get('store_type') : null;
-        profileStoreType = raw != null ? String(raw).trim() : null;
-      } catch (e) {
-        this.logger.warn(
-          JSON.stringify({
-            kind: 'store_builder_store_type_profile_lookup_failed',
-            uid,
-            reason: e instanceof Error ? e.message : String(e),
-          }),
-        );
-      }
-    }
     const resolved =
       fromSnapshot ||
       fromClaimsStoreType ||
       fromClaimsStoreTypeSnake ||
-      profileStoreType ||
       dtoStoreType?.trim() ||
       '';
     if (resolved !== 'construction_store' && resolved !== 'home_store' && resolved !== 'wholesale_store') {
