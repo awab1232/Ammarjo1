@@ -45,15 +45,40 @@ class _AdminSessionsSectionState extends State<AdminSessionsSection> {
     });
     try {
       final headers = await _headers();
-      if (headers == null) throw Exception('not authenticated');
+      if (headers == null) {
+        setState(() {
+          _error = 'غير مصرّح: سجّل الدخول أولاً';
+          _loading = false;
+        });
+        return;
+      }
       final base = BackendOrdersConfig.baseUrl.replaceAll(RegExp(r'/$'), '');
       final uri = Uri.parse('$base/admin/rest/sessions?limit=$_limit&offset=$_offset');
       final res = await http.get(uri, headers: headers).timeout(const Duration(seconds: 20));
-      if (res.statusCode != 200) throw Exception('HTTP ${res.statusCode}');
-      final body = jsonDecode(res.body) as Map<String, dynamic>;
+      if (res.statusCode != 200) {
+        setState(() {
+          _error = 'تعذّر التحميل (HTTP ${res.statusCode})';
+          _loading = false;
+        });
+        return;
+      }
+      Map<String, dynamic> body;
+      try {
+        final decoded = jsonDecode(res.body);
+        body = decoded is Map<String, dynamic> ? decoded : <String, dynamic>{};
+      } on Object {
+        setState(() {
+          _error = 'استجابة غير صالحة من الخادم';
+          _loading = false;
+        });
+        return;
+      }
       final rows = body['rows'] as List? ?? const <dynamic>[];
       setState(() {
-        _sessions = rows.map((e) => Map<String, dynamic>.from(e as Map)).toList();
+        _sessions = rows
+            .whereType<Map>()
+            .map((e) => Map<String, dynamic>.from(e))
+            .toList();
         _total = (body['total'] as num?)?.toInt() ?? 0;
         _loading = false;
       });
@@ -69,7 +94,12 @@ class _AdminSessionsSectionState extends State<AdminSessionsSection> {
     setState(() => _loading = true);
     try {
       final headers = await _headers();
-      if (headers == null) throw Exception('not authenticated');
+      if (headers == null) {
+        if (mounted) {
+          setState(() => _error = 'غير مصرّح: سجّل الدخول أولاً');
+        }
+        return;
+      }
       final base = BackendOrdersConfig.baseUrl.replaceAll(RegExp(r'/$'), '');
       final uri = Uri.parse('$base/admin/rest/sessions/$id');
       await http.delete(uri, headers: headers).timeout(const Duration(seconds: 15));
@@ -104,7 +134,12 @@ class _AdminSessionsSectionState extends State<AdminSessionsSection> {
     setState(() => _loading = true);
     try {
       final headers = await _headers();
-      if (headers == null) throw Exception('not authenticated');
+      if (headers == null) {
+        if (mounted) {
+          setState(() => _error = 'غير مصرّح: سجّل الدخول أولاً');
+        }
+        return;
+      }
       final base = BackendOrdersConfig.baseUrl.replaceAll(RegExp(r'/$'), '');
       final uri = Uri.parse('$base/admin/rest/sessions/user/$firebaseUid');
       await http.delete(uri, headers: headers).timeout(const Duration(seconds: 15));

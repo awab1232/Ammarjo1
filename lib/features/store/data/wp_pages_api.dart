@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:http/http.dart' as http;
 
 import '../../../core/config/wp_site_config.dart';
@@ -18,11 +19,13 @@ Future<WpPageContent?> fetchWpPageBySlug(String slug) async {
   );
   final response = await http.get(uri, headers: {...WooJwtHolder.authorizationHeaders()});
   if (response.statusCode != 200) {
-    throw Exception('HTTP ${response.statusCode}');
+    debugPrint('[fetchWpPageBySlug] HTTP ${response.statusCode}');
+    return null;
   }
   final decoded = jsonDecodeUtf8Response(response);
   if (decoded is! List<dynamic> || decoded.isEmpty) {
-    throw StateError('unexpected_empty_response');
+    debugPrint('[fetchWpPageBySlug] empty or invalid list');
+    return null;
   }
   final map = decoded.first as Map<String, dynamic>;
   final title = (map['title'] is Map && (map['title'] as Map)['rendered'] != null)

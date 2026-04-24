@@ -51,33 +51,33 @@ class Coupon {
     DateTime? toDate(dynamic v) => v == null ? null : DateTime.tryParse(v.toString());
     List<int> intList(dynamic v) => v is List
         ? v
-            .map((e) => e is num ? e.toInt() : int.tryParse(e.toString()) ?? (throw StateError('INVALID_NUMERIC_DATA')))
+            .map((e) => e is num ? e.toInt() : int.tryParse(e.toString()) ?? 0)
             .where((e) => e > 0)
             .toList()
         : <int>[];
     List<String> strList(dynamic v) =>
         v is List ? v.map((e) => e.toString().trim()).where((e) => e.isNotEmpty).toList() : <String>[];
     return Coupon(
-      id: d['id']?.toString() ?? (throw StateError('unexpected_empty_response')),
-      code: (d['code']?.toString() ?? (throw StateError('unexpected_empty_response'))).trim().toUpperCase(),
-      name: d['name']?.toString() ?? (throw StateError('unexpected_empty_response')),
-      description: d['description']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      id: d['id']?.toString() ?? '',
+      code: (d['code']?.toString() ?? '').trim().toUpperCase(),
+      name: d['name']?.toString() ?? '',
+      description: d['description']?.toString() ?? '',
       discountType: (d['discountType']?.toString() ?? 'percentage').trim(),
-      discountValue: (d['discountValue'] as num?)?.toDouble() ?? (throw StateError('INVALID_NUMERIC_DATA')),
-      minOrderAmount: (d['minOrderAmount'] as num?)?.toDouble() ?? (throw StateError('INVALID_NUMERIC_DATA')),
+      discountValue: (d['discountValue'] as num?)?.toDouble() ?? 0,
+      minOrderAmount: (d['minOrderAmount'] as num?)?.toDouble() ?? 0,
       maxDiscount: (d['maxDiscount'] as num?)?.toDouble(),
       applicableProducts: intList(d['applicableProducts']),
       applicableStores: strList(d['applicableStores']),
       excludedProducts: intList(d['excludedProducts']),
       excludedStores: strList(d['excludedStores']),
       usageLimit: (d['usageLimit'] as num?)?.toInt(),
-      usagePerUser: (d['usagePerUser'] as num?)?.toInt() ?? (throw StateError('INVALID_NUMERIC_DATA')),
-      usedCount: (d['usedCount'] as num?)?.toInt() ?? (throw StateError('INVALID_NUMERIC_DATA')),
+      usagePerUser: (d['usagePerUser'] as num?)?.toInt() ?? 0,
+      usedCount: (d['usedCount'] as num?)?.toInt() ?? 0,
       validFrom: toDate(d['validFrom']),
       validTo: toDate(d['validTo']),
       isActive: d['isActive'] == true,
       isStackable: d['isStackable'] == true,
-      createdBy: d['createdBy']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      createdBy: d['createdBy']?.toString() ?? '',
       createdAt: toDate(d['createdAt']),
       updatedAt: toDate(d['updatedAt']),
     );
@@ -172,15 +172,15 @@ class CouponUsage {
   final DateTime usedAt;
 
   factory CouponUsage.fromMap(Map<String, dynamic> d) {
-    final ts = DateTime.tryParse(d['usedAt']?.toString() ?? (throw StateError('unexpected_empty_response')));
+    final ts = DateTime.tryParse(d['usedAt']?.toString() ?? '');
     return CouponUsage(
-      id: d['id']?.toString() ?? (throw StateError('unexpected_empty_response')),
-      couponCode: d['couponCode']?.toString() ?? (throw StateError('unexpected_empty_response')),
-      userId: d['userId']?.toString() ?? (throw StateError('unexpected_empty_response')),
-      userEmail: d['userEmail']?.toString() ?? (throw StateError('unexpected_empty_response')),
-      orderId: d['orderId']?.toString() ?? (throw StateError('unexpected_empty_response')),
-      discountAmount: (d['discountAmount'] as num?)?.toDouble() ?? (throw StateError('INVALID_NUMERIC_DATA')),
-      orderAmount: (d['orderAmount'] as num?)?.toDouble() ?? (throw StateError('INVALID_NUMERIC_DATA')),
+      id: d['id']?.toString() ?? '',
+      couponCode: d['couponCode']?.toString() ?? '',
+      userId: d['userId']?.toString() ?? '',
+      userEmail: d['userEmail']?.toString() ?? '',
+      orderId: d['orderId']?.toString() ?? '',
+      discountAmount: (d['discountAmount'] as num?)?.toDouble() ?? 0,
+      orderAmount: (d['orderAmount'] as num?)?.toDouble() ?? 0,
       usedAt: ts ?? DateTime.now(),
     );
   }

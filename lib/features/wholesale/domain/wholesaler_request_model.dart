@@ -30,14 +30,14 @@ class WholesalerRequestModel {
   factory WholesalerRequestModel.fromBackendMap(Map<String, dynamic> data) {
     final reviewed = data['reviewedAt'];
     return WholesalerRequestModel(
-      requestId: (data['id'] ?? data['requestId'] ?? (throw StateError('unexpected_empty_response'))).toString(),
-      applicantId: (data['applicantId'] ?? (throw StateError('unexpected_empty_response'))).toString(),
-      applicantEmail: (data['applicantEmail'] ?? (throw StateError('unexpected_empty_response'))).toString(),
-      applicantPhone: (data['applicantPhone'] ?? (throw StateError('unexpected_empty_response'))).toString(),
-      wholesalerName: (data['wholesalerName'] ?? (throw StateError('unexpected_empty_response'))).toString(),
-      description: (data['description'] ?? (throw StateError('unexpected_empty_response'))).toString(),
-      category: (data['category'] ?? (throw StateError('unexpected_empty_response'))).toString(),
-      city: (data['city'] ?? (throw StateError('unexpected_empty_response'))).toString(),
+      requestId: (data['id'] ?? data['requestId'] ?? '').toString(),
+      applicantId: (data['applicantId'] ?? '').toString(),
+      applicantEmail: (data['applicantEmail'] ?? '').toString(),
+      applicantPhone: (data['applicantPhone'] ?? '').toString(),
+      wholesalerName: (data['wholesalerName'] ?? '').toString(),
+      description: (data['description'] ?? '').toString(),
+      category: (data['category'] ?? '').toString(),
+      city: (data['city'] ?? '').toString(),
       status: (data['status'] ?? 'pending').toString(),
       reviewedBy: data['reviewedBy']?.toString(),
       reviewedAt: reviewed is String ? DateTime.tryParse(reviewed)?.toLocal() : null,

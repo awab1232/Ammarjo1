@@ -51,17 +51,17 @@ class _AdminServiceRequestsSectionState extends State<AdminServiceRequestsSectio
         statusFilter: _statusFilter == 'all' ? null : _statusFilter,
         technicianId: _technicianFilter == 'all' ? null : _technicianFilter,
       );
-      final result = switch (resultState) {
-        FeatureSuccess(:final data) => data,
-        FeatureFailure(:final message) => throw StateError(message),
-        _ => throw StateError('FAILED_TO_LOAD_SERVICE_REQUESTS_PAGE'),
-      };
       if (!mounted) return;
-      setState(() {
-        _requests.addAll(result.items);
-        _nextCursor = result.nextCursor;
-        _hasMore = result.hasMore;
-      });
+      if (resultState case FeatureSuccess(:final data)) {
+        setState(() {
+          _requests.addAll(data.items);
+          _nextCursor = data.nextCursor;
+          _hasMore = data.hasMore;
+        });
+      } else {
+        resultState.logIfNotSuccess('AdminServiceRequestsSection._loadInitial');
+        setState(() => _hasError = true);
+      }
     } on Object {
       debugPrint('❌ Error loading service requests');
       if (!mounted) return;
@@ -83,17 +83,16 @@ class _AdminServiceRequestsSectionState extends State<AdminServiceRequestsSectio
         statusFilter: _statusFilter == 'all' ? null : _statusFilter,
         technicianId: _technicianFilter == 'all' ? null : _technicianFilter,
       );
-      final result = switch (resultState) {
-        FeatureSuccess(:final data) => data,
-        FeatureFailure(:final message) => throw StateError(message),
-        _ => throw StateError('FAILED_TO_LOAD_SERVICE_REQUESTS_PAGE'),
-      };
       if (!mounted) return;
-      setState(() {
-        _requests.addAll(result.items);
-        _nextCursor = result.nextCursor;
-        _hasMore = result.hasMore;
-      });
+      if (resultState case FeatureSuccess(:final data)) {
+        setState(() {
+          _requests.addAll(data.items);
+          _nextCursor = data.nextCursor;
+          _hasMore = data.hasMore;
+        });
+      } else {
+        resultState.logIfNotSuccess('AdminServiceRequestsSection._loadMore');
+      }
     } on Object {
       debugPrint('❌ Error loading more');
     } finally {
@@ -199,8 +198,7 @@ class _AdminServiceRequestsSectionState extends State<AdminServiceRequestsSectio
                         : const SizedBox.shrink();
                   }
                   final req = _requests[i];
-                  final img =
-                      req.imageUrl?.toString().trim() ?? (throw StateError('unexpected_empty_response'));
+                  final img = req.imageUrl?.toString().trim() ?? '';
                   return InkWell(
                     borderRadius: BorderRadius.circular(12),
                     onTap: () => _openRequestDialog(context, req),
@@ -251,8 +249,7 @@ class _AdminServiceRequestsSectionState extends State<AdminServiceRequestsSectio
                                     ),
                                   ],
                                 ),
-                                if ((req.description?.toString().trim().isNotEmpty ??
-                                    (throw StateError('unexpected_empty_response'))))
+                                if ((req.description?.toString().trim().isNotEmpty ?? false))
                                   Text(
                                     req.description.toString(),
                                     maxLines: 2,
@@ -303,21 +300,23 @@ class _TechnicianFilterDropdown extends StatelessWidget {
         final docs = <Map<String, dynamic>>[];
         if (raw is List) {
           for (final e in raw) {
-            if (e is Map &&
-                (e['status']?.toString() ?? (throw StateError('unexpected_empty_response'))) == 'approved') {
+            if (e is Map && (e['status']?.toString() ?? '') == 'approved') {
               docs.add(Map<String, dynamic>.from(e));
             }
           }
         }
         final items = <DropdownMenuItem<String>>[
           const DropdownMenuItem(value: 'all', child: Text('كل الفنيين')),
-          ...docs.map((d) {
-            final id = d['id']?.toString() ?? (throw StateError('unexpected_empty_response'));
+          ...docs.expand((d) {
+            final id = d['id']?.toString() ?? '';
+            if (id.isEmpty) return const Iterable<DropdownMenuItem<String>>.empty();
             final name = d['display_name']?.toString().trim() ?? d['displayName']?.toString().trim();
-            return DropdownMenuItem<String>(
-              value: id,
-              child: Text((name != null && name.isNotEmpty) ? name : id),
-            );
+            return [
+              DropdownMenuItem<String>(
+                value: id,
+                child: Text((name != null && name.isNotEmpty) ? name : id),
+              ),
+            ];
           }),
         ];
         final effective = items.any((e) => e.value == value) ? value : 'all';
@@ -358,8 +357,7 @@ class _ServiceRequestEditorDialogState extends State<_ServiceRequestEditorDialog
     super.initState();
     _status = widget.request.status;
     _technicianId = widget.request.assignedTechnicianId;
-    _adminNoteCtrl =
-        TextEditingController(text: widget.request.adminNote ?? (throw StateError('unexpected_empty_response')));
+    _adminNoteCtrl = TextEditingController(text: widget.request.adminNote ?? '');
   }
 
   @override
@@ -369,19 +367,19 @@ class _ServiceRequestEditorDialogState extends State<_ServiceRequestEditorDialog
   }
 
   Future<Map<String, dynamic>?> _customerData() async {
-    final cid = widget.request.customerId?.trim() ?? (throw StateError('unexpected_empty_response'));
-    if (cid.isEmpty) throw StateError('unexpected_empty_response');
+    final cid = widget.request.customerId?.trim() ?? '';
+    if (cid.isEmpty) return null;
     try {
       final u = await BackendAdminClient.instance.getUserById(cid);
-      if (u == null) throw StateError('unexpected_empty_response');
+      if (u == null) return null;
       return <String, dynamic>{
-        'fullName': u['email']?.toString() ?? (throw StateError('unexpected_empty_response')),
-        'email': u['email']?.toString() ?? (throw StateError('unexpected_empty_response')),
+        'fullName': u['email']?.toString() ?? '',
+        'email': u['email']?.toString() ?? '',
         'phoneLocal': u['phone']?.toString(),
       };
     } on Object {
       debugPrint('[AdminServiceRequestsSection] _customerData failed');
-      throw StateError('unexpected_empty_response');
+      return null;
     }
   }
 
@@ -393,8 +391,8 @@ class _ServiceRequestEditorDialogState extends State<_ServiceRequestEditorDialog
     for (final e in items) {
       if (e is! Map) continue;
       final m = Map<String, dynamic>.from(e);
-      if ((m['status']?.toString() ?? (throw StateError('unexpected_empty_response'))) != 'approved') continue;
-      final id = m['id']?.toString() ?? (throw StateError('unexpected_empty_response'));
+      if ((m['status']?.toString() ?? '') != 'approved') continue;
+      final id = m['id']?.toString() ?? '';
       if (id.isEmpty) continue;
       final specs = m['specialties'];
       out.add(
@@ -432,8 +430,7 @@ class _ServiceRequestEditorDialogState extends State<_ServiceRequestEditorDialog
         adminNote: _adminNoteCtrl.text,
       );
 
-      final customerId =
-          widget.request.customerId?.trim() ?? (throw StateError('unexpected_empty_response'));
+      final customerId = widget.request.customerId?.trim() ?? '';
       if (customerId.isNotEmpty) {
         try {
           await UserNotificationsRepository.sendNotificationToUser(

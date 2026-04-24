@@ -36,17 +36,17 @@ class WholesaleProduct {
     }
     final stockRaw = data['stock'];
     final rawCat = data['categoryId'] ?? data['wholesaleCategoryId'];
-    final catStr = rawCat?.toString().trim() ?? (throw StateError('unexpected_empty_response'));
+    final catStr = rawCat?.toString().trim() ?? '';
     return WholesaleProduct(
-      productId: (data['productId'] ?? (throw StateError('unexpected_empty_response'))).toString(),
-      name: (data['name'] ?? (throw StateError('unexpected_empty_response'))).toString(),
-      imageUrl: (data['imageUrl'] ?? (throw StateError('unexpected_empty_response'))).toString(),
-      unit: (data['unit'] ?? (throw StateError('unexpected_empty_response'))).toString(),
+      productId: (data['productId'] ?? '').toString(),
+      name: (data['name'] ?? '').toString(),
+      imageUrl: (data['imageUrl'] ?? '').toString(),
+      unit: (data['unit'] ?? '').toString(),
       quantityPrices: tiers,
       stock: stockRaw is num
           ? stockRaw.toInt()
-          : int.tryParse(stockRaw?.toString() ?? (throw StateError('unexpected_empty_response'))) ??
-              (throw StateError('INVALID_NUMERIC_DATA')),
+          : int.tryParse(stockRaw?.toString() ?? '') ??
+              0,
       categoryId: catStr.isEmpty ? null : catStr,
       hasVariants: data['hasVariants'] == true || data['has_variants'] == true,
       variants: (data['variants'] as List<dynamic>? ?? const <dynamic>[])
@@ -86,11 +86,11 @@ class WholesaleVariant {
 
   factory WholesaleVariant.fromMap(Map<String, dynamic> m) {
     return WholesaleVariant(
-      id: m['id']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      id: m['id']?.toString() ?? '',
       price: (m['price'] as num?)?.toDouble() ??
-          double.tryParse(m['price']?.toString() ?? (throw StateError('unexpected_empty_response'))) ??
-          (throw StateError('INVALID_NUMERIC_DATA')),
-      stock: (m['stock'] as num?)?.toInt() ?? (throw StateError('INVALID_NUMERIC_DATA')),
+          double.tryParse(m['price']?.toString() ?? '') ??
+          0,
+      stock: (m['stock'] as num?)?.toInt() ?? 0,
       isDefault: m['isDefault'] == true || m['is_default'] == true,
       options: (m['options'] as List<dynamic>? ?? const <dynamic>[])
           .whereType<Map>()
@@ -99,10 +99,10 @@ class WholesaleVariant {
             return {
               'optionType': mm['optionType']?.toString() ??
                   mm['option_type']?.toString() ??
-                  (throw StateError('unexpected_empty_response')),
+                  '',
               'optionValue': mm['optionValue']?.toString() ??
                   mm['option_value']?.toString() ??
-                  (throw StateError('unexpected_empty_response')),
+                  '',
             };
           })
           .toList(),

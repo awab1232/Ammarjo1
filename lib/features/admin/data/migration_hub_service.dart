@@ -18,7 +18,10 @@ class MigrationHubService {
       ...patch,
     };
     final res = await BackendAdminClient.instance.patchMigrationStatus(merged);
-    if (res == null) throw StateError('تعذر حفظ حالة الهجرة في الخادم');
+    if (res == null) {
+      developer.log('MigrationHub: patchMigrationStatus returned null', name: 'MigrationHub');
+      return;
+    }
   }
 
   /// يجلب أعداد الأقسام والمنتجات من Woo ويسجّلها في الخادم (لا يكتب كتالوجاً في Firestore).
@@ -27,7 +30,8 @@ class MigrationHubService {
     void Function(String message)? onProgress,
   }) async {
     if (!Firebase.apps.isNotEmpty) {
-      throw StateError('Firebase غير مهيأ');
+      developer.log('MigrationHub: Firebase not initialized', name: 'MigrationHub');
+      return MigrationHubResult(categoriesCount: 0, productsCount: 0);
     }
 
     await _patchStatus({
@@ -48,7 +52,12 @@ class MigrationHubService {
           'MigrationHub: fetch categories failed',
           name: 'MigrationHub',
         );
-        rethrow;
+        await _patchStatus({
+          'phase': 'failed',
+          'migrationCompleted': false,
+          'lastError': 'fetch categories failed',
+        });
+        return MigrationHubResult(categoriesCount: 0, productsCount: 0);
       }
       rawCategories.sort((a, b) {
         final pa = (a['parent'] as num?)?.toInt() ?? 0;
@@ -68,7 +77,12 @@ class MigrationHubService {
           'MigrationHub: fetch products failed',
           name: 'MigrationHub',
         );
-        rethrow;
+        await _patchStatus({
+          'phase': 'failed',
+          'migrationCompleted': false,
+          'lastError': 'fetch products failed',
+        });
+        return MigrationHubResult(categoriesCount: 0, productsCount: 0);
       }
 
       await _patchStatus({
@@ -92,7 +106,7 @@ class MigrationHubService {
         'migrationCompleted': false,
         'lastError': 'Unexpected migration error',
       });
-      rethrow;
+      return MigrationHubResult(categoriesCount: 0, productsCount: 0);
     }
   }
 

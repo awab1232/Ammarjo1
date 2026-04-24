@@ -7,7 +7,6 @@ import 'package:http/http.dart' as http;
 import '../../../core/config/backend_orders_config.dart';
 import '../../../core/contracts/feature_state.dart';
 import '../../../core/services/firebase_auth_header_provider.dart';
-import '../../../core/session/user_session.dart';
 import '../domain/quantity_price_tier.dart';
 import '../domain/wholesale_order_model.dart';
 import '../domain/wholesale_product_model.dart';
@@ -25,102 +24,93 @@ class WholesaleRepository {
   String get _baseUrl => BackendOrdersConfig.baseUrl.trim().replaceAll(RegExp(r'/$'), '');
 
   Future<Map<String, String>> _authHeaders() async {
-    if (!UserSession.isLoggedIn && FirebaseAuth.instance.currentUser == null) {
-      throw StateError('???? ????? ?????? ?????');
-    }
-    final headers = await FirebaseAuthHeaderProvider.requireAuthHeaders(
+    final headers = await FirebaseAuthHeaderProvider.authHeadersIfSignedIn(
       reason: 'wholesale_repository_auth_headers',
     );
     return <String, String>{...headers, 'Content-Type': 'application/json'};
   }
 
   Future<dynamic> _httpGetJson(String path, {Map<String, String>? query}) async {
-    if (!useBackendWholesale) throw StateError('Backend wholesale disabled');
-    if (_baseUrl.isEmpty) throw StateError('Backend URL ??? ?????');
-    final headers = await _authHeaders();
-    final uri = Uri.parse('$_baseUrl$path').replace(queryParameters: query);
-    final res = await http.get(uri, headers: headers).timeout(const Duration(seconds: 20));
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      if (res.statusCode == 401) {
-        throw StateError('????? ??????? ??? ?????? ?????? ?? ??? ????????.');
+    if (!useBackendWholesale || _baseUrl.isEmpty) return null;
+    try {
+      final headers = await _authHeaders();
+      final uri = Uri.parse('$_baseUrl$path').replace(queryParameters: query);
+      final res = await http.get(uri, headers: headers).timeout(const Duration(seconds: 20));
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        debugPrint('[WholesaleRepository] GET $path HTTP ${res.statusCode}');
+        return null;
       }
-      if (res.statusCode == 403) {
-        throw StateError('?? ???? ?????? ????? ??? ???????.');
-      }
-      throw StateError('??? ????? ?????? ?????? (${res.statusCode})');
+      return jsonDecode(res.body);
+    } on Object catch (e) {
+      debugPrint('[WholesaleRepository] _httpGetJson failed: $e');
+      return null;
     }
-    return jsonDecode(res.body);
   }
 
   Future<Map<String, dynamic>> _httpPostJson(String path, Map<String, dynamic> body) async {
-    if (!useBackendWholesale) throw StateError('Backend wholesale disabled');
-    if (_baseUrl.isEmpty) throw StateError('Backend URL ??? ?????');
-    final headers = await _authHeaders();
-    final uri = Uri.parse('$_baseUrl$path');
-    final res = await http
-        .post(
-          uri,
-          headers: headers,
-          body: jsonEncode(body),
-        )
-        .timeout(const Duration(seconds: 25));
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      if (res.statusCode == 401) {
-        throw StateError('????? ??????? ??? ?????? ?????? ?? ??? ????????.');
+    if (!useBackendWholesale || _baseUrl.isEmpty) return <String, dynamic>{};
+    try {
+      final headers = await _authHeaders();
+      final uri = Uri.parse('$_baseUrl$path');
+      final res = await http
+          .post(
+            uri,
+            headers: headers,
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 25));
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        debugPrint('[WholesaleRepository] POST $path HTTP ${res.statusCode}');
+        return <String, dynamic>{};
       }
-      if (res.statusCode == 403) {
-        throw StateError('?? ???? ?????? ????? ??? ???????.');
-      }
-      throw StateError('??? ????? ??????? (${res.statusCode})');
+      final decoded = jsonDecode(res.body);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      return <String, dynamic>{};
+    } on Object catch (e) {
+      debugPrint('[WholesaleRepository] _httpPostJson failed: $e');
+      return <String, dynamic>{};
     }
-    final decoded = jsonDecode(res.body);
-    if (decoded is Map<String, dynamic>) return decoded;
-    if (decoded is Map) return Map<String, dynamic>.from(decoded);
-    return <String, dynamic>{};
   }
 
   Future<Map<String, dynamic>> _httpPatchJson(String path, Map<String, dynamic> body) async {
-    if (!useBackendWholesale) throw StateError('Backend wholesale disabled');
-    if (_baseUrl.isEmpty) throw StateError('Backend URL ??? ?????');
-    final headers = await _authHeaders();
-    final uri = Uri.parse('$_baseUrl$path');
-    final res = await http
-        .patch(
-          uri,
-          headers: headers,
-          body: jsonEncode(body),
-        )
-        .timeout(const Duration(seconds: 25));
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      if (res.statusCode == 401) {
-        throw StateError('????? ??????? ??? ?????? ?????? ?? ??? ????????.');
+    if (!useBackendWholesale || _baseUrl.isEmpty) return <String, dynamic>{};
+    try {
+      final headers = await _authHeaders();
+      final uri = Uri.parse('$_baseUrl$path');
+      final res = await http
+          .patch(
+            uri,
+            headers: headers,
+            body: jsonEncode(body),
+          )
+          .timeout(const Duration(seconds: 25));
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        debugPrint('[WholesaleRepository] PATCH $path HTTP ${res.statusCode}');
+        return <String, dynamic>{};
       }
-      if (res.statusCode == 403) {
-        throw StateError('?? ???? ?????? ????? ??? ???????.');
-      }
-      throw StateError('??? ????? ??????? (${res.statusCode})');
+      if (res.body.trim().isEmpty) return <String, dynamic>{};
+      final decoded = jsonDecode(res.body);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      return <String, dynamic>{};
+    } on Object catch (e) {
+      debugPrint('[WholesaleRepository] _httpPatchJson failed: $e');
+      return <String, dynamic>{};
     }
-    if (res.body.trim().isEmpty) return <String, dynamic>{};
-    final decoded = jsonDecode(res.body);
-    if (decoded is Map<String, dynamic>) return decoded;
-    if (decoded is Map) return Map<String, dynamic>.from(decoded);
-    return <String, dynamic>{};
   }
 
   Future<void> _httpDeleteJson(String path) async {
-    if (!useBackendWholesale) throw StateError('Backend wholesale disabled');
-    if (_baseUrl.isEmpty) throw StateError('Backend URL ??? ?????');
-    final headers = await _authHeaders();
-    final uri = Uri.parse('$_baseUrl$path');
-    final res = await http.delete(uri, headers: headers).timeout(const Duration(seconds: 20));
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      if (res.statusCode == 401) {
-        throw StateError('????? ??????? ??? ?????? ?????? ?? ??? ????????.');
+    if (!useBackendWholesale || _baseUrl.isEmpty) return;
+    try {
+      final headers = await _authHeaders();
+      final uri = Uri.parse('$_baseUrl$path');
+      final res = await http.delete(uri, headers: headers).timeout(const Duration(seconds: 20));
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        debugPrint('[WholesaleRepository] DELETE $path HTTP ${res.statusCode}');
       }
-      if (res.statusCode == 403) {
-        throw StateError('?? ???? ?????? ????? ??? ???????.');
-      }
-      throw StateError('??? ????? ??????? (${res.statusCode})');
+    } on Object catch (e) {
+      debugPrint('[WholesaleRepository] _httpDeleteJson failed: $e');
     }
   }
 
@@ -134,10 +124,7 @@ class WholesaleRepository {
         .map((x) {
           final row = Map<String, dynamic>.from(x);
           final priceRaw = row['price'];
-          final price = (priceRaw as num?)?.toDouble();
-          if (price == null) {
-            throw StateError('INVALID_NUMERIC_DATA');
-          }
+          final price = (priceRaw as num?)?.toDouble() ?? double.tryParse(priceRaw?.toString() ?? '') ?? 0.0;
           return QuantityPriceTier(
             minQuantity: (row['minQty'] as num?)?.toInt() ?? (row['minQuantity'] as num?)?.toInt() ?? 1,
             price: price,
@@ -145,12 +132,12 @@ class WholesaleRepository {
         })
         .toList();
     return WholesaleProduct(
-      productId: (m['id'] ?? m['productCode'] ?? (throw StateError('unexpected_empty_response'))).toString(),
-      name: (m['name'] ?? (throw StateError('unexpected_empty_response'))).toString(),
-      imageUrl: (m['imageUrl'] ?? (throw StateError('unexpected_empty_response'))).toString(),
-      unit: (m['unit'] ?? (throw StateError('unexpected_empty_response'))).toString(),
+      productId: (m['id'] ?? m['productCode'] ?? '').toString(),
+      name: (m['name'] ?? '').toString(),
+      imageUrl: (m['imageUrl'] ?? '').toString(),
+      unit: (m['unit'] ?? '').toString(),
       quantityPrices: prices,
-      stock: (m['stock'] as num?)?.toInt() ?? (throw StateError('INVALID_NUMERIC_DATA')),
+      stock: (m['stock'] as num?)?.toInt() ?? 0,
       categoryId: m['categoryId']?.toString(),
       hasVariants: m['hasVariants'] == true || m['has_variants'] == true,
       variants: (m['variants'] as List<dynamic>? ?? const <dynamic>[])
@@ -251,7 +238,7 @@ class WholesaleRepository {
           .toList(),
     };
     final response = await _httpPostJson('/wholesale/orders', payload);
-    return (response['id'] ?? (throw StateError('unexpected_empty_response'))).toString();
+    return (response['id'] ?? '').toString();
   }
 
   Future<FeatureState<List<WholesaleOrderModel>>> getWholesalerIncomingOrders(
@@ -304,7 +291,7 @@ class WholesaleRepository {
   }) async {
     final response = await _httpGetJson('/wholesale/orders', query: {
       if (wholesalerId == null) 'storeId':
-        FirebaseAuth.instance.currentUser?.uid ?? (throw StateError('unexpected_empty_response')),
+        FirebaseAuth.instance.currentUser?.uid ?? '',
       if ((wholesalerId ?? '').trim().isNotEmpty) 'wholesalerId': wholesalerId!.trim(),
       'limit': '$limit',
       if (cursor != null && cursor.trim().isNotEmpty) 'cursor': cursor.trim(),
@@ -359,7 +346,7 @@ class WholesaleRepository {
     final seen = <String>{};
     final out = <WholesalerCategory>[];
     for (final p in products) {
-      final c = p.categoryId?.trim() ?? (throw StateError('unexpected_empty_response'));
+      final c = p.categoryId?.trim() ?? '';
       if (c.isEmpty || !seen.add(c)) continue;
       out.add(WholesalerCategory(id: c, name: c, order: out.length));
     }
@@ -456,7 +443,7 @@ class WholesaleRepository {
     if (me == null || uid.trim().isEmpty) return <String, dynamic>{};
     return <String, dynamic>{
       'uid': uid.trim(),
-      'email': me.email ?? (throw StateError('unexpected_empty_response')),
+      'email': me.email ?? '',
     };
   }
 

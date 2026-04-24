@@ -66,15 +66,15 @@ Future<int?> _fetchCategoryIdBySlug(String slug) async {
     queryParameters: <String, String>{'slug': slug, 'per_page': '1'},
   );
   final response = await http.get(uri, headers: {...WooJwtHolder.authorizationHeaders()});
-  if (response.statusCode != 200) throw StateError('unexpected_empty_response');
+  if (response.statusCode != 200) return null;
   final decoded = jsonDecodeUtf8Response(response);
-  if (decoded is! List<dynamic> || decoded.isEmpty) throw StateError('unexpected_empty_response');
+  if (decoded is! List<dynamic> || decoded.isEmpty) return null;
   final first = decoded.first;
-  if (first is! Map<String, dynamic>) throw StateError('unexpected_empty_response');
+  if (first is! Map<String, dynamic>) return null;
   final cid = first['id'];
   if (cid is int) return cid;
   if (cid is num) return cid.toInt();
-  throw StateError('unexpected_empty_response');
+  return null;
 }
 
 String? _featuredImageUrl(Map<String, dynamic> post) {
@@ -95,7 +95,7 @@ String? _featuredImageUrl(Map<String, dynamic> post) {
     }
   }
 
-  throw StateError('unexpected_empty_response');
+  return null;
 }
 
 String? _titleRendered(Map<String, dynamic> post) {
@@ -104,5 +104,5 @@ String? _titleRendered(Map<String, dynamic> post) {
     final s = title['rendered'].toString().replaceAll(RegExp(r'<[^>]*>'), '').trim();
     return s.isEmpty ? null : s;
   }
-  throw StateError('unexpected_empty_response');
+  return null;
 }

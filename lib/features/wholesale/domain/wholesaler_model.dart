@@ -61,21 +61,21 @@ class WholesalerModel {
     final dd = data['deliveryDays'];
     final df = data['deliveryFee'];
     return WholesalerModel(
-      id: (data['id'] ?? (throw StateError('unexpected_empty_response'))).toString(),
-      ownerId: (data['ownerId'] ?? data['owner_id'] ?? (throw StateError('unexpected_empty_response'))).toString(),
-      name: (data['name'] ?? (throw StateError('unexpected_empty_response'))).toString(),
-      logo: (data['logo'] ?? data['logoUrl'] ?? (throw StateError('unexpected_empty_response'))).toString(),
-      coverImage: (data['coverImage'] ?? data['cover_image'] ?? (throw StateError('unexpected_empty_response'))).toString(),
-      description: (data['description'] ?? (throw StateError('unexpected_empty_response'))).toString(),
-      category: (data['category'] ?? (throw StateError('unexpected_empty_response'))).toString(),
-      city: (data['city'] ?? (throw StateError('unexpected_empty_response'))).toString(),
-      phone: (data['phone'] ?? (throw StateError('unexpected_empty_response'))).toString(),
-      email: (data['email'] ?? (throw StateError('unexpected_empty_response'))).toString(),
+      id: (data['id'] ?? '').toString(),
+      ownerId: (data['ownerId'] ?? data['owner_id'] ?? '').toString(),
+      name: (data['name'] ?? '').toString(),
+      logo: (data['logo'] ?? data['logoUrl'] ?? '').toString(),
+      coverImage: (data['coverImage'] ?? data['cover_image'] ?? '').toString(),
+      description: (data['description'] ?? '').toString(),
+      category: (data['category'] ?? '').toString(),
+      city: (data['city'] ?? '').toString(),
+      phone: (data['phone'] ?? '').toString(),
+      email: (data['email'] ?? '').toString(),
       status: (data['status'] ?? 'pending').toString(),
       commission: commissionRaw is num
           ? commissionRaw.toDouble()
-          : double.tryParse(commissionRaw?.toString() ?? (throw StateError('unexpected_empty_response'))) ??
-              (throw StateError('INVALID_NUMERIC_DATA')),
+          : double.tryParse(commissionRaw?.toString() ?? '') ??
+              0.0,
       products: parsedProducts,
       createdAt: created is String ? (DateTime.tryParse(created)?.toLocal() ?? DateTime.now()) : DateTime.now(),
       approvedAt: approved is String ? DateTime.tryParse(approved)?.toLocal() : null,

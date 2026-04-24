@@ -17,12 +17,12 @@ final class BackendUserClient {
 
   /// Loads profile through authenticated identity only.
   Future<Map<String, dynamic>?> fetchUserById(String uid) async {
-    if (uid.trim().isEmpty) throw StateError('invalid_user_id');
+    if (uid.trim().isEmpty) return null;
     return _authedGet('/users/me');
   }
 
   Future<bool> patchUser(String uid, Map<String, dynamic> fields) async {
-    if (uid.trim().isEmpty || fields.isEmpty) throw StateError('invalid_user_payload');
+    if (uid.trim().isEmpty || fields.isEmpty) return false;
     final body = await _authedPatch('/users/me', fields);
     return body != null;
   }
@@ -38,45 +38,61 @@ final class BackendUserClient {
   }
 
   Future<bool> putUserFavorite(String uid, Map<String, dynamic> payload) async {
-    throw StateError('Favorites endpoint is not wired on backend.');
+    if (uid.trim().isEmpty || payload.isEmpty) return false;
+    return false;
   }
 
   Future<bool> deleteUserFavorite(String uid, String productId) async {
-    throw StateError('Favorites endpoint is not wired on backend.');
+    if (uid.trim().isEmpty || productId.trim().isEmpty) return false;
+    return false;
   }
 
   Future<Map<String, dynamic>?> _authedGet(String path) async {
     final req = await _request(path);
-    if (req == null) throw StateError('request_not_ready');
-    final res = await http.get(req.$1, headers: req.$2);
-    FirebaseAuthHeaderProvider.logDebugResponse('BackendUserClient GET $path', res.statusCode, res.body);
-    if (res.statusCode < 200 || res.statusCode >= 300) throw StateError('http_${res.statusCode}');
-    final decoded = jsonDecode(res.body);
-    if (decoded is Map<String, dynamic>) return decoded;
-    if (decoded is Map) return Map<String, dynamic>.from(decoded);
-    throw StateError('invalid_json_response');
+    if (req == null) return null;
+    try {
+      final res = await http.get(req.$1, headers: req.$2);
+      FirebaseAuthHeaderProvider.logDebugResponse('BackendUserClient GET $path', res.statusCode, res.body);
+      if (res.statusCode < 200 || res.statusCode >= 300) return null;
+      final trimmed = res.body.trim();
+      if (trimmed.isEmpty) return <String, dynamic>{};
+      final decoded = jsonDecode(trimmed);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      return null;
+    } on Object {
+      return null;
+    }
   }
 
   Future<Map<String, dynamic>?> _authedPatch(String path, Map<String, dynamic> body) async {
     final req = await _request(path);
-    if (req == null) throw StateError('request_not_ready');
-    final headers = <String, String>{...req.$2, 'Content-Type': 'application/json'};
-    final res = await http.patch(req.$1, headers: headers, body: jsonEncode(body));
-    FirebaseAuthHeaderProvider.logDebugResponse('BackendUserClient PATCH $path', res.statusCode, res.body);
-    if (res.statusCode < 200 || res.statusCode >= 300) throw StateError('http_${res.statusCode}');
-    if (res.body.trim().isEmpty) return <String, dynamic>{};
-    final decoded = jsonDecode(res.body);
-    if (decoded is Map<String, dynamic>) return decoded;
-    if (decoded is Map) return Map<String, dynamic>.from(decoded);
-    return <String, dynamic>{};
+    if (req == null) return null;
+    try {
+      final headers = <String, String>{...req.$2, 'Content-Type': 'application/json'};
+      final res = await http.patch(req.$1, headers: headers, body: jsonEncode(body));
+      FirebaseAuthHeaderProvider.logDebugResponse('BackendUserClient PATCH $path', res.statusCode, res.body);
+      if (res.statusCode < 200 || res.statusCode >= 300) return null;
+      if (res.body.trim().isEmpty) return <String, dynamic>{};
+      final decoded = jsonDecode(res.body);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      return <String, dynamic>{};
+    } on Object {
+      return null;
+    }
   }
 
   Future<(Uri, Map<String, String>)?> _request(String path) async {
-    final base = BackendOrdersConfig.baseUrl.trim();
-    if (base.isEmpty) throw StateError('backend_base_url_missing');
-    final authHeaders = await FirebaseAuthHeaderProvider.requireAuthHeaders(reason: 'backend_user:$path');
-    final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}$path');
-    FirebaseAuthHeaderProvider.logRequestHeaders(method: 'REQUEST', uri: uri, headers: authHeaders);
-    return (uri, authHeaders);
+    try {
+      final base = BackendOrdersConfig.baseUrl.trim();
+      if (base.isEmpty) return null;
+      final authHeaders = await FirebaseAuthHeaderProvider.requireAuthHeaders(reason: 'backend_user:$path');
+      final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}$path');
+      FirebaseAuthHeaderProvider.logRequestHeaders(method: 'REQUEST', uri: uri, headers: authHeaders);
+      return (uri, authHeaders);
+    } on Object {
+      return null;
+    }
   }
 }

@@ -126,12 +126,20 @@ class _AdminCrudSectionState extends State<AdminCrudSection> {
       if (item == null) {
         final res = await widget.onCreate?.call(values);
         if (res case FeatureFailure(:final message)) {
-          throw StateError(message);
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(message, style: GoogleFonts.tajawal())),
+          );
+          return;
         }
       } else {
         final res = await widget.onUpdate?.call(item, values);
         if (res case FeatureFailure(:final message)) {
-          throw StateError(message);
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(message, style: GoogleFonts.tajawal())),
+          );
+          return;
         }
       }
       await _refresh();
@@ -255,7 +263,11 @@ class _AdminStatusSectionState extends State<AdminStatusSection> {
     try {
       final res = await widget.onUpdateStatus(item, status);
       if (res case FeatureFailure(:final message)) {
-        throw StateError(message);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text(message, style: GoogleFonts.tajawal())),
+        );
+        return;
       }
       await _refresh();
     } on Object {

@@ -53,10 +53,14 @@ final class BackendTenderClient {
     final res = await http.delete(req.$1, headers: req.$2);
     if (res.statusCode < 200 || res.statusCode >= 300) return null;
     if (res.body.trim().isEmpty) return <String, dynamic>{};
-    final decoded = jsonDecode(res.body);
-    if (decoded is Map<String, dynamic>) return decoded;
-    if (decoded is Map) return Map<String, dynamic>.from(decoded);
-    return <String, dynamic>{};
+    try {
+      final decoded = jsonDecode(res.body);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      return <String, dynamic>{};
+    } on Object {
+      return null;
+    }
   }
 
   Future<Map<String, dynamic>?> fetchTender(String tenderId) async {
@@ -147,10 +151,14 @@ final class BackendTenderClient {
     if (res.statusCode < 200 || res.statusCode >= 300) {
       return null;
     }
-    final decoded = jsonDecode(res.body);
-    if (decoded is Map<String, dynamic>) return decoded;
-    if (decoded is Map) return Map<String, dynamic>.from(decoded);
-    return null;
+    try {
+      final decoded = jsonDecode(res.body);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      return null;
+    } on Object {
+      return null;
+    }
   }
 
   Future<Map<String, dynamic>?> _authedPost(String path, Map<String, dynamic> body) async {
@@ -162,10 +170,14 @@ final class BackendTenderClient {
       return null;
     }
     if (res.body.trim().isEmpty) return <String, dynamic>{};
-    final decoded = jsonDecode(res.body);
-    if (decoded is Map<String, dynamic>) return decoded;
-    if (decoded is Map) return Map<String, dynamic>.from(decoded);
-    return <String, dynamic>{};
+    try {
+      final decoded = jsonDecode(res.body);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      return <String, dynamic>{};
+    } on Object {
+      return null;
+    }
   }
 
   Future<Map<String, dynamic>?> _authedPatch(String path, Map<String, dynamic> body) async {
@@ -177,18 +189,26 @@ final class BackendTenderClient {
       return null;
     }
     if (res.body.trim().isEmpty) return <String, dynamic>{};
-    final decoded = jsonDecode(res.body);
-    if (decoded is Map<String, dynamic>) return decoded;
-    if (decoded is Map) return Map<String, dynamic>.from(decoded);
-    return <String, dynamic>{};
+    try {
+      final decoded = jsonDecode(res.body);
+      if (decoded is Map<String, dynamic>) return decoded;
+      if (decoded is Map) return Map<String, dynamic>.from(decoded);
+      return <String, dynamic>{};
+    } on Object {
+      return null;
+    }
   }
 
   Future<(Uri, Map<String, String>)?> _request(String path, {Map<String, String>? query}) async {
-    final base = BackendOrdersConfig.baseUrl.trim();
-    if (base.isEmpty) return null;
-    final authHeaders = await FirebaseAuthHeaderProvider.requireAuthHeaders(reason: 'backend_tender:$path');
-    final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}$path').replace(queryParameters: query);
-    FirebaseAuthHeaderProvider.logRequestHeaders(method: 'REQUEST', uri: uri, headers: authHeaders);
-    return (uri, authHeaders);
+    try {
+      final base = BackendOrdersConfig.baseUrl.trim();
+      if (base.isEmpty) return null;
+      final authHeaders = await FirebaseAuthHeaderProvider.requireAuthHeaders(reason: 'backend_tender:$path');
+      final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}$path').replace(queryParameters: query);
+      FirebaseAuthHeaderProvider.logRequestHeaders(method: 'REQUEST', uri: uri, headers: authHeaders);
+      return (uri, authHeaders);
+    } on Object {
+      return null;
+    }
   }
 }

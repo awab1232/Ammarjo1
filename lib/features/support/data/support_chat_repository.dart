@@ -1,6 +1,7 @@
 import 'dart:convert';
 
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:http/http.dart' as http;
 
 import '../../../core/config/backend_orders_config.dart';
@@ -64,9 +65,11 @@ class SupportChatRepository {
 
   Future<Map<String, String>> _headers() async {
     final base = BackendOrdersConfig.baseUrl.trim();
-    if (base.isEmpty) throw StateError('Backend URL غير مضبوط');
-    final auth = await FirebaseAuthHeaderProvider.requireAuthHeaders(reason: 'support_chat_headers');
-    return {...auth, 'Content-Type': 'application/json'};
+    if (base.isEmpty) {
+      return <String, String>{'Content-Type': 'application/json'};
+    }
+    final auth = await FirebaseAuthHeaderProvider.authHeadersIfSignedIn(reason: 'support_chat_headers');
+    return <String, String>{...auth, 'Content-Type': 'application/json'};
   }
 
   Uri _uri(String path, [Map<String, String>? query]) =>
@@ -77,48 +80,68 @@ class SupportChatRepository {
     required String uid,
     required String userName,
   }) async {
+    const empty = SupportChatOpenResult(chatId: '', created: false);
     final cur = FirebaseAuth.instance.currentUser;
     if (cur == null || cur.uid != uid) {
-      throw StateError('جلسة المستخدم غير متطابقة');
+      debugPrint('[SupportChatRepository] findOrCreateOpenChat: session mismatch');
+      return empty;
     }
-    final res = await http.post(
-      _uri('/support/tickets'),
-      headers: await _headers(),
-      body: jsonEncode(<String, dynamic>{'userName': userName}),
-    );
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw StateError('تعذّر فتح المحادثة (${res.statusCode})');
-    }
-    dynamic decoded;
     try {
-      decoded = jsonDecode(res.body);
-    } on Object {
-      throw StateError('INVALID_JSON');
+      final res = await http.post(
+        _uri('/support/tickets'),
+        headers: await _headers(),
+        body: jsonEncode(<String, dynamic>{'userName': userName}),
+      );
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        debugPrint('[SupportChatRepository] findOrCreateOpenChat HTTP ${res.statusCode}');
+        return empty;
+      }
+      dynamic decoded;
+      try {
+        decoded = jsonDecode(res.body);
+      } on Object {
+        debugPrint('[SupportChatRepository] findOrCreateOpenChat: invalid JSON');
+        return empty;
+      }
+      if (decoded is! Map) {
+        debugPrint('[SupportChatRepository] findOrCreateOpenChat: unexpected payload');
+        return empty;
+      }
+      final m = Map<String, dynamic>.from(decoded);
+      final id = m['id']?.toString() ?? '';
+      if (id.isEmpty) {
+        debugPrint('[SupportChatRepository] findOrCreateOpenChat: empty id');
+        return empty;
+      }
+      final created = m['created'] == true;
+      return SupportChatOpenResult(chatId: id, created: created);
+    } on Object catch (e) {
+      debugPrint('[SupportChatRepository] findOrCreateOpenChat failed: $e');
+      return empty;
     }
-    if (decoded is! Map) {
-      throw StateError('استجابة غير صالحة من الخادم');
-    }
-    final m = Map<String, dynamic>.from(decoded);
-    final id = m['id']?.toString() ?? '';
-    if (id.isEmpty) throw StateError('معرّف المحادثة غير صالح');
-    final created = m['created'] == true;
-    return SupportChatOpenResult(chatId: id, created: created);
   }
 
   Future<SupportTicket?> fetchTicket(String ticketId) async {
-    final res = await http.get(_uri('/support/tickets', {'id': ticketId.trim()}), headers: await _headers());
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw StateError('unexpected_empty_response');
-    }
-    dynamic decoded;
     try {
-      decoded = jsonDecode(res.body);
-    } on Object {
-      throw StateError('INVALID_JSON');
+      final res = await http.get(_uri('/support/tickets', {'id': ticketId.trim()}), headers: await _headers());
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        debugPrint('[SupportChatRepository] fetchTicket HTTP ${res.statusCode}');
+        return null;
+      }
+      dynamic decoded;
+      try {
+        decoded = jsonDecode(res.body);
+      } on Object {
+        debugPrint('[SupportChatRepository] fetchTicket: invalid JSON');
+        return null;
+      }
+      if (decoded is Map<String, dynamic>) return SupportTicket.fromMap(decoded);
+      if (decoded is Map) return SupportTicket.fromMap(Map<String, dynamic>.from(decoded));
+      return null;
+    } on Object catch (e) {
+      debugPrint('[SupportChatRepository] fetchTicket failed: $e');
+      return null;
     }
-    if (decoded is Map<String, dynamic>) return SupportTicket.fromMap(decoded);
-    if (decoded is Map) return SupportTicket.fromMap(Map<String, dynamic>.from(decoded));
-    throw StateError('unexpected_empty_response');
   }
 
   Future<void> sendMessage({
@@ -127,37 +150,46 @@ class SupportChatRepository {
     String? senderId,
     required String senderName,
   }) async {
-    final resolvedSenderId = senderId != null && senderId.trim().isNotEmpty
-        ? senderId
-        : FirebaseAuth.instance.currentUser?.uid;
-    if (resolvedSenderId == null || resolvedSenderId.trim().isEmpty) {
-      throw StateError('INVALID_ID');
-    }
-    final res = await http.patch(
-      _uri('/support/tickets/${Uri.encodeComponent(chatId.trim())}'),
-      headers: await _headers(),
-      body: jsonEncode(<String, dynamic>{
-        'message': {
-          'senderId': resolvedSenderId,
-          'senderName': senderName,
-          'text': text.trim(),
-          'createdAt': DateTime.now().toUtc().toIso8601String(),
-        }
-      }),
-    );
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw StateError('تعذّر الإرسال (${res.statusCode})');
+    try {
+      final resolvedSenderId = senderId != null && senderId.trim().isNotEmpty
+          ? senderId
+          : FirebaseAuth.instance.currentUser?.uid;
+      if (resolvedSenderId == null || resolvedSenderId.trim().isEmpty) {
+        debugPrint('[SupportChatRepository] sendMessage: no sender id');
+        return;
+      }
+      final res = await http.patch(
+        _uri('/support/tickets/${Uri.encodeComponent(chatId.trim())}'),
+        headers: await _headers(),
+        body: jsonEncode(<String, dynamic>{
+          'message': {
+            'senderId': resolvedSenderId,
+            'senderName': senderName,
+            'text': text.trim(),
+            'createdAt': DateTime.now().toUtc().toIso8601String(),
+          }
+        }),
+      );
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        debugPrint('[SupportChatRepository] sendMessage HTTP ${res.statusCode}');
+      }
+    } on Object catch (e) {
+      debugPrint('[SupportChatRepository] sendMessage failed: $e');
     }
   }
 
   Future<void> closeChat(String chatId) async {
-    final res = await http.patch(
-      _uri('/support/tickets/${Uri.encodeComponent(chatId.trim())}'),
-      headers: await _headers(),
-      body: jsonEncode(<String, dynamic>{'status': 'closed'}),
-    );
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw StateError('تعذّر إغلاق المحادثة (${res.statusCode})');
+    try {
+      final res = await http.patch(
+        _uri('/support/tickets/${Uri.encodeComponent(chatId.trim())}'),
+        headers: await _headers(),
+        body: jsonEncode(<String, dynamic>{'status': 'closed'}),
+      );
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        debugPrint('[SupportChatRepository] closeChat HTTP ${res.statusCode}');
+      }
+    } on Object catch (e) {
+      debugPrint('[SupportChatRepository] closeChat failed: $e');
     }
   }
 
@@ -172,15 +204,19 @@ class SupportChatRepository {
   Future<void> _touchTicket(String chatId) async {
     final id = chatId.trim();
     if (id.isEmpty) return;
-    final ticket = await fetchTicket(id);
-    if (ticket == null) return;
-    final res = await http.patch(
-      _uri('/support/tickets/${Uri.encodeComponent(id)}'),
-      headers: await _headers(),
-      body: jsonEncode(<String, dynamic>{'status': ticket.status}),
-    );
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw StateError('تعذّر تحديث حالة القراءة (${res.statusCode})');
+    try {
+      final ticket = await fetchTicket(id);
+      if (ticket == null) return;
+      final res = await http.patch(
+        _uri('/support/tickets/${Uri.encodeComponent(id)}'),
+        headers: await _headers(),
+        body: jsonEncode(<String, dynamic>{'status': ticket.status}),
+      );
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        debugPrint('[SupportChatRepository] _touchTicket HTTP ${res.statusCode}');
+      }
+    } on Object catch (e) {
+      debugPrint('[SupportChatRepository] _touchTicket failed: $e');
     }
   }
 }

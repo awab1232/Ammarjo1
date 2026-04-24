@@ -449,7 +449,7 @@ class _ProductsTabState extends State<_ProductsTab> {
                         : AmmarCachedImage(imageUrl: img, width: 64, height: 64, fit: BoxFit.cover, productTileStyle: true),
                   ),
                   title: Text(
-                    m['name']?.toString() ?? (throw StateError('unexpected_empty_response')),
+                    m['name']?.toString() ?? '',
                     style: GoogleFonts.tajawal(fontWeight: FontWeight.w800),
                   ),
                   subtitle: Column(
@@ -634,9 +634,9 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
   void initState() {
     super.initState();
     final d = widget.initial;
-    _name = TextEditingController(text: d?['name']?.toString() ?? (throw StateError('unexpected_empty_response')));
+    _name = TextEditingController(text: d?['name']?.toString() ?? '');
     _desc =
-        TextEditingController(text: d?['description']?.toString() ?? (throw StateError('unexpected_empty_response')));
+        TextEditingController(text: d?['description']?.toString() ?? '');
     _price = TextEditingController(text: (d != null && d['price'] != null) ? '${d['price']}' : '');
     _disc = TextEditingController(
       text: (d != null && d['discountPrice'] != null) ? '${d['discountPrice']}' : '',
@@ -659,10 +659,8 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
         _variants.add(
           _VariantInput(
             optionType: map['optionType']?.toString() ?? map['option_type']?.toString() ?? 'size',
-            optionValue: map['optionValue']?.toString() ??
-                map['option_value']?.toString() ??
-                (throw StateError('unexpected_empty_response')),
-            price: map['price']?.toString() ?? (throw StateError('unexpected_empty_response')),
+            optionValue: map['optionValue']?.toString() ?? map['option_value']?.toString() ?? '',
+            price: map['price']?.toString() ?? '',
             stock: map['stock']?.toString() ?? '0',
             isDefault: map['isDefault'] == true || map['is_default'] == true,
           ),
@@ -695,10 +693,9 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
         .map((v) => {
               'optionType': v.optionType,
               'optionValue': v.optionValue.text.trim(),
-              'price': double.tryParse(v.price.text.replaceAll(',', '.')) ??
-                  (throw StateError('INVALID_NUMERIC_DATA')),
+              'price': double.tryParse(v.price.text.replaceAll(',', '.')) ?? 0.0,
               'stock':
-                  int.tryParse(v.stock.text.trim()) ?? (throw StateError('INVALID_NUMERIC_DATA')),
+                  int.tryParse(v.stock.text.trim()) ?? 0,
               'isDefault': v.isDefault,
               'options': [
                 {'optionType': v.optionType, 'optionValue': v.optionValue.text.trim()},
@@ -725,13 +722,19 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
   }
 
   Future<void> _save() async {
-    if (!(_formKey.currentState?.validate() ?? (throw StateError('unexpected_empty_response')))) return;
+    if (!(_formKey.currentState?.validate() ?? false)) return;
     final name = _name.text.trim();
-    final price = double.tryParse(_price.text.replaceAll(',', '.')) ??
-        (throw StateError('INVALID_NUMERIC_DATA'));
+    final price = double.tryParse(_price.text.replaceAll(',', '.'));
+    if (price == null) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('أدخل سعرًا صالحًا', style: GoogleFonts.tajawal())),
+      );
+      return;
+    }
     final discText = _disc.text.trim();
     final disc = discText.isEmpty ? null : double.tryParse(discText.replaceAll(',', '.'));
-    final stock = int.tryParse(_stock.text.trim()) ?? (throw StateError('INVALID_NUMERIC_DATA'));
+    final stock = int.tryParse(_stock.text.trim()) ?? 0;
     if (_hasVariants) {
       if (_variants.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -762,7 +765,11 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
           ? widget.productId!
           : StoreOwnerRepository.newStoreProductDocumentId(widget.storeId);
       if (resolvedProductId.trim().isEmpty) {
-        throw StateError('INVALID_ID');
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر إنشاء معرف المنتج', style: GoogleFonts.tajawal())),
+        );
+        return;
       }
       debugPrint('[StoreOwnerIsolation] upsert product → stores/${widget.storeId}/products/$resolvedProductId');
       final urls = List<String>.from(_existingUrls);
@@ -836,7 +843,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       validator: (v) {
-                        final input = v ?? (throw StateError('unexpected_empty_response'));
+                        final input = v ?? '';
                         if (input.trim().isEmpty) {
                           return 'يرجى إدخال السعر';
                         }
@@ -862,7 +869,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       validator: (v) {
-                        final t = (v ?? (throw StateError('unexpected_empty_response'))).trim();
+                        final t = (v ?? '').trim();
                         if (t.isEmpty) return (null);
                         final dv = double.tryParse(t.replaceAll(',', '.'));
                         final pv = double.tryParse(_price.text.trim().replaceAll(',', '.'));
@@ -996,7 +1003,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
                 builder: (context, snap) {
                   final cats = snap.data ?? <OwnerEntityDoc>[];
                   final names = cats
-                      .map((c) => c.data()['name']?.toString() ?? (throw StateError('unexpected_empty_response')))
+                      .map((c) => c.data()['name']?.toString() ?? '')
                       .where((s) => s.isNotEmpty)
                       .toList();
                   if (names.isEmpty) {
@@ -1148,8 +1155,8 @@ class _CategoriesTabState extends State<_CategoriesTab> {
         }
       }
       categories.sort(
-        (a, b) => ((a['sortOrder'] as num?)?.toInt() ?? (throw StateError('INVALID_NUMERIC_DATA')))
-            .compareTo((b['sortOrder'] as num?)?.toInt() ?? (throw StateError('INVALID_NUMERIC_DATA'))),
+        (a, b) => ((a['sortOrder'] as num?)?.toInt() ?? 0)
+            .compareTo((b['sortOrder'] as num?)?.toInt() ?? 0),
       );
       if (!mounted) return;
       setState(() {
@@ -1180,7 +1187,7 @@ class _CategoriesTabState extends State<_CategoriesTab> {
         items: [
           for (var i = 0; i < cloned.length; i++)
             {
-              'id': cloned[i]['id']?.toString() ?? (throw StateError('unexpected_empty_response')),
+              'id': cloned[i]['id']?.toString() ?? '',
               'sortOrder': i + 1,
             },
         ],
@@ -1220,12 +1227,10 @@ class _CategoriesTabState extends State<_CategoriesTab> {
               itemCount: _hybridCategories.length,
               itemBuilder: (context, i) {
                 final c = _hybridCategories[i];
-                final id = c['id']?.toString() ?? (throw StateError('unexpected_empty_response'));
-                final name = c['name']?.toString() ?? (throw StateError('unexpected_empty_response'));
+                final id = c['id']?.toString() ?? '';
+                final name = c['name']?.toString() ?? '';
                 final imageUrl = webSafeImageUrl(
-                  c['imageUrl']?.toString() ??
-                      c['image_url']?.toString() ??
-                      (throw StateError('unexpected_empty_response')),
+                  c['imageUrl']?.toString() ?? c['image_url']?.toString() ?? '',
                 );
                 return Card(
                   child: ListTile(
@@ -1304,9 +1309,9 @@ class _CategoriesTabState extends State<_CategoriesTab> {
                 itemCount: docs.length,
                 itemBuilder: (context, i) {
                   final d = docs[i];
-                  final n = d.data()['name']?.toString() ?? (throw StateError('unexpected_empty_response'));
+                  final n = d.data()['name']?.toString() ?? '';
                   final imgUrl = webSafeImageUrl(
-                    d.data()['imageUrl']?.toString() ?? (throw StateError('unexpected_empty_response')),
+                    d.data()['imageUrl']?.toString() ?? '',
                   );
                   return Card(
                     child: ListTile(
@@ -1606,7 +1611,7 @@ class _EditCategorySheetState extends State<_EditCategorySheet> {
 
   @override
   Widget build(BuildContext context) {
-    final existing = webSafeImageUrl(widget.initialImageUrl ?? (throw StateError('unexpected_empty_response')));
+    final existing = webSafeImageUrl(widget.initialImageUrl ?? '');
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: SingleChildScrollView(
@@ -1749,7 +1754,7 @@ class _OffersTab extends StatelessWidget {
             final d = docs[i];
             final m = d.data();
             final img =
-                webSafeImageUrl(m['imageUrl']?.toString() ?? (throw StateError('unexpected_empty_response')));
+                webSafeImageUrl(m['imageUrl']?.toString() ?? '');
             final until = m['validUntil'];
             var untilStr = _storeOwnerFormatDateShort(until);
             if (untilStr == '—' && until is String && until.isNotEmpty) {
@@ -1765,11 +1770,11 @@ class _OffersTab extends StatelessWidget {
                         child: AmmarCachedImage(imageUrl: img, width: 56, height: 56, fit: BoxFit.cover, productTileStyle: true),
                       ),
                 title: Text(
-                  m['title']?.toString() ?? (throw StateError('unexpected_empty_response')),
+                  m['title']?.toString() ?? '',
                   style: GoogleFonts.tajawal(fontWeight: FontWeight.w800),
                 ),
                 subtitle: Text(
-                  '${m['discountPercent']?.toString() ?? (throw StateError('unexpected_empty_response'))}% · حتى $untilStr',
+                  '${m['discountPercent']?.toString() ?? ''}% · حتى $untilStr',
                   style: GoogleFonts.tajawal(fontSize: 12),
                 ),
                 trailing: IconButton(
@@ -1922,7 +1927,7 @@ String _orderPhoneFromMap(Map<String, dynamic> m) {
     final p = billing['phone']?.toString().trim();
     if (p != null && p.isNotEmpty) return p;
   }
-  return m['customerPhone']?.toString().trim() ?? (throw StateError('unexpected_empty_response'));
+  return m['customerPhone']?.toString().trim() ?? '';
 }
 
 String _orderAddressFromMap(Map<String, dynamic> m) {
@@ -1946,7 +1951,7 @@ String _orderAddressFromMap(Map<String, dynamic> m) {
 
 (double lat, double lng)? _deliveryLatLng(Map<String, dynamic> m) {
   final loc = m['deliveryLocation'];
-  if (loc == null) throw StateError('unexpected_empty_response');
+  if (loc == null) return null;
   if (loc is Map) {
     final la = loc['latitude'];
     final ln = loc['longitude'];
@@ -1958,13 +1963,13 @@ String _orderAddressFromMap(Map<String, dynamic> m) {
     final lngRaw = map['longitude'] ?? map['lng'];
     final lat = latRaw is num
         ? latRaw.toDouble()
-        : double.tryParse(latRaw?.toString() ?? (throw StateError('unexpected_empty_response')));
+        : double.tryParse(latRaw?.toString() ?? '');
     final lng = lngRaw is num
         ? lngRaw.toDouble()
-        : double.tryParse(lngRaw?.toString() ?? (throw StateError('unexpected_empty_response')));
+        : double.tryParse(lngRaw?.toString() ?? '');
     if (lat != null && lng != null) return (lat, lng);
   }
-  throw StateError('unexpected_empty_response');
+  return null;
 }
 
 Future<void> _openDeliveryOnMap(BuildContext context, Map<String, dynamic> m) async {
@@ -1999,7 +2004,7 @@ String? _firstImageFromOrderLine(Map<String, dynamic> it) {
   }
   final single = it['imageUrl'] ?? it['image'];
   if (single != null && single.toString().trim().isNotEmpty) return single.toString().trim();
-  throw StateError('unexpected_empty_response');
+  return null;
 }
 
 String? _orderTenderImageFromMap(Map<String, dynamic> m) {
@@ -2023,12 +2028,12 @@ String? _orderTenderImageFromMap(Map<String, dynamic> m) {
       }
     }
   }
-  throw StateError('unexpected_empty_response');
+  return null;
 }
 
 Widget? _orderTenderImageSection(BuildContext context, Map<String, dynamic> m) {
   final tenderImageUrl = _orderTenderImageFromMap(m);
-  if (tenderImageUrl == null || tenderImageUrl.isEmpty) throw StateError('unexpected_empty_response');
+  if (tenderImageUrl == null || tenderImageUrl.isEmpty) return null;
   return Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
@@ -2251,10 +2256,8 @@ class _CommissionsTab extends StatelessWidget {
                 else
                   ...orderDocs.map((d) {
                     final o = d.data();
-                    final orderTotal = (o['orderTotal'] as num?)?.toDouble() ??
-                        (throw StateError('INVALID_NUMERIC_DATA'));
-                    final comm = (o['commissionAmount'] as num?)?.toDouble() ??
-                        (throw StateError('INVALID_NUMERIC_DATA'));
+                    final orderTotal = (o['orderTotal'] as num?)?.toDouble() ?? 0.0;
+                    final comm = (o['commissionAmount'] as num?)?.toDouble() ?? 0.0;
                     final hasPerOrderPayment = o.containsKey('paid') || o['paymentStatus'] != null;
                     final paid = o['paid'] == true || o['paymentStatus']?.toString().toLowerCase() == 'paid';
                     final ts = o['date'];
@@ -2569,12 +2572,12 @@ class _OrdersTabState extends State<_OrdersTab> {
                       dense: true,
                       leading: _orderLineThumb(it),
                       title: Text(
-                        it['name']?.toString() ?? (throw StateError('unexpected_empty_response')),
+                        it['name']?.toString() ?? '',
                         textAlign: TextAlign.right,
                         style: GoogleFonts.tajawal(),
                       ),
                       subtitle: Text(
-                        'الكمية: ${it['quantity'] ?? (throw StateError('INVALID_NUMERIC_DATA'))} · ${it['price'] ?? (throw StateError('unexpected_empty_response'))}',
+                        'الكمية: ${it['quantity'] ?? 0} · ${it['price'] ?? ''}',
                         textAlign: TextAlign.right,
                         style: GoogleFonts.tajawal(fontSize: 12),
                       ),
@@ -2600,7 +2603,7 @@ const List<String> kStoreDeliveryTimeOptions = <String>[
 ];
 
 String _normalizeDeliveryOption(String? raw) {
-  final t = raw?.trim() ?? (throw StateError('unexpected_empty_response'));
+  final t = raw?.trim() ?? '';
   if (t.isNotEmpty && kStoreDeliveryTimeOptions.contains(t)) return t;
   return kStoreDeliveryTimeOptions[1];
 }
@@ -2853,9 +2856,9 @@ class _StoreSettingsTabState extends State<_StoreSettingsTab> {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
             setState(() {
-              _name.text = d['name']?.toString() ?? (throw StateError('unexpected_empty_response'));
-              _description.text = d['description']?.toString() ?? (throw StateError('unexpected_empty_response'));
-              _phone.text = d['phone']?.toString() ?? (throw StateError('unexpected_empty_response'));
+              _name.text = d['name']?.toString() ?? '';
+              _description.text = d['description']?.toString() ?? '';
+              _phone.text = d['phone']?.toString() ?? '';
               _deliveryChoice = _normalizeDeliveryOption(d['deliveryTime']?.toString());
               final policy = ShippingPolicy.fromMap(
                 d['shippingPolicy'] is Map
@@ -2952,22 +2955,19 @@ class _StoreSettingsTabState extends State<_StoreSettingsTab> {
                 const SizedBox(height: 10),
                 _SuggestionCard(
                   title: 'Improve category names',
-                  body: ((_hybridSuggestions!['recommendedRenames'] as List?)?.isNotEmpty ??
-                          (throw StateError('unexpected_empty_response')))
+                  body: (((_hybridSuggestions!['recommendedRenames'] as List?) ?? const <dynamic>[]).isNotEmpty)
                       ? 'لديك أسماء أقسام مقترحة لتحسين المبيعات'
                       : 'لا توجد اقتراحات أسماء حالياً',
                 ),
                 _SuggestionCard(
                   title: 'Add featured products',
-                  body: ((_hybridSuggestions!['suggestedFeaturedProducts'] as List?)?.isNotEmpty ??
-                          (throw StateError('unexpected_empty_response')))
+                  body: (((_hybridSuggestions!['suggestedFeaturedProducts'] as List?) ?? const <dynamic>[]).isNotEmpty)
                       ? 'يمكنك إبراز منتجات ذات تحويل أعلى'
                       : 'لا توجد اقتراحات منتجات حالياً',
                 ),
                 _SuggestionCard(
                   title: 'Reorder categories for more sales',
-                  body: ((_hybridSuggestions!['layoutImprovements'] as List?)?.isNotEmpty ??
-                          (throw StateError('unexpected_empty_response')))
+                  body: (((_hybridSuggestions!['layoutImprovements'] as List?) ?? const <dynamic>[]).isNotEmpty)
                       ? 'رتّب الأقسام حسب أولوية التحويل'
                       : 'لا توجد اقتراحات ترتيب حالياً',
                 ),

@@ -103,7 +103,12 @@ class _AdminNotificationsScreenState extends State<AdminNotificationsScreen> {
     try {
       final state = await AdminNotificationRepository.markAllAsRead();
       if (state is! FeatureSuccess<void>) {
-        throw StateError('تعذر تحديد الكل كمقروء حالياً.');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('تعذر تحديد الكل كمقروء حالياً.', style: GoogleFonts.tajawal())),
+          );
+        }
+        return;
       }
       if (mounted) {
         setState(() {

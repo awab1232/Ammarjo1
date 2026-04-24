@@ -147,16 +147,15 @@ class CatalogController extends ChangeNotifier {
     try {
       final rowsState = await BackendCatalogClient.instance.fetchProducts(limit: kStoreCatalogPageSize);
       if (rowsState is! FeatureSuccess<List<Map<String, dynamic>>>) {
-        throw StateError('Failed to load catalog products.');
+        errorMessage = 'حدث خطأ أثناء تحميل المنتجات من Firestore.';
+        return;
       }
       final rows = rowsState.data;
       products = rows
           .map((r) => Product(
-                id: (r['id']?.toString() ?? (throw StateError('unexpected_empty_response')))
-                    .hashCode
-                    .abs(),
-                name: r['name']?.toString() ?? (throw StateError('unexpected_empty_response')),
-                description: r['description']?.toString() ?? (throw StateError('unexpected_empty_response')),
+                id: (r['id']?.toString() ?? '').hashCode.abs(),
+                name: r['name']?.toString() ?? '',
+                description: r['description']?.toString() ?? '',
                 price: r['price']?.toString() ?? '0',
                 images: <String>[
                   if (((r['imageUrl'] ?? r['image'])?.toString().trim() ?? '').isNotEmpty)
@@ -187,17 +186,16 @@ class CatalogController extends ChangeNotifier {
     try {
       final rowsState = await BackendCatalogClient.instance.fetchProducts(limit: kStoreCatalogPageSize);
       if (rowsState is! FeatureSuccess<List<Map<String, dynamic>>>) {
-        throw StateError('Failed to load next catalog products.');
+        errorMessage = 'تعذر تحميل المزيد من المنتجات.';
+        return;
       }
       final rows = rowsState.data;
       final pageProducts = rows
           .skip(_productOffset)
           .map((r) => Product(
-                id: (r['id']?.toString() ?? (throw StateError('unexpected_empty_response')))
-                    .hashCode
-                    .abs(),
-                name: r['name']?.toString() ?? (throw StateError('unexpected_empty_response')),
-                description: r['description']?.toString() ?? (throw StateError('unexpected_empty_response')),
+                id: (r['id']?.toString() ?? '').hashCode.abs(),
+                name: r['name']?.toString() ?? '',
+                description: r['description']?.toString() ?? '',
                 price: r['price']?.toString() ?? '0',
                 images: <String>[
                   if (((r['imageUrl'] ?? r['image'])?.toString().trim() ?? '').isNotEmpty)
@@ -234,17 +232,18 @@ class CatalogController extends ChangeNotifier {
     try {
       final rowsState = await BackendCatalogClient.instance.fetchCategories();
       if (rowsState is! FeatureSuccess<List<Map<String, dynamic>>>) {
-        throw StateError('Failed to load categories.');
+        if (errorMessage == null || errorMessage!.isEmpty) {
+          errorMessage = 'تعذر تحميل الأقسام.';
+        }
+        return;
       }
       final rows = rowsState.data;
       categories = rows
           .map((r) => ProductCategory(
-                id: (r['id']?.toString() ?? (throw StateError('unexpected_empty_response')))
-                    .hashCode
-                    .abs(),
-                name: r['name']?.toString() ?? (throw StateError('unexpected_empty_response')),
+                id: (r['id']?.toString() ?? '').hashCode.abs(),
+                name: r['name']?.toString() ?? '',
                 parent: 0,
-                imageUrl: r['imageUrl']?.toString() ?? (throw StateError('unexpected_empty_response')),
+                imageUrl: r['imageUrl']?.toString() ?? '',
               ))
           .toList();
     } on Object {

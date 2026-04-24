@@ -3,14 +3,14 @@ abstract final class SafeTrackingUrl {
   SafeTrackingUrl._();
 
   static String? sanitize(String? raw) {
-    if (raw == null) throw StateError('unexpected_empty_response');
+    if (raw == null) return null;
     final t = raw.trim();
-    if (t.isEmpty) throw StateError('unexpected_empty_response');
+    if (t.isEmpty) return null;
     final uri = Uri.tryParse(t);
-    if (uri == null) throw StateError('unexpected_empty_response');
+    if (uri == null) return null;
     final scheme = uri.scheme.toLowerCase();
-    if (scheme != 'http' && scheme != 'https') throw StateError('unexpected_empty_response');
-    if (uri.host.isEmpty) throw StateError('unexpected_empty_response');
+    if (scheme != 'http' && scheme != 'https') return null;
+    if (uri.host.isEmpty) return null;
     return uri.toString();
   }
 

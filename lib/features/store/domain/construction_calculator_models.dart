@@ -21,10 +21,10 @@ class CalculatorMetadata {
       }
     }
     return CalculatorMetadata(
-      region: j['region']?.toString() ?? (throw StateError('unexpected_empty_response')),
-      standard: j['standard']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      region: j['region']?.toString() ?? '',
+      standard: j['standard']?.toString() ?? '',
       dataSources: list,
-      lastUpdated: j['last_updated']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      lastUpdated: j['last_updated']?.toString() ?? '',
     );
   }
 }
@@ -44,12 +44,12 @@ class MaterialComponent {
   factory MaterialComponent.fromJson(Map<String, dynamic> j) {
     final q = j['quantity'];
     return MaterialComponent(
-      material: j['material']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      material: j['material']?.toString() ?? '',
       quantity: q is num
           ? q.toDouble()
-          : double.tryParse(q?.toString() ?? (throw StateError('unexpected_empty_response'))) ??
-              (throw StateError('INVALID_NUMERIC_DATA')),
-      unit: j['unit']?.toString() ?? (throw StateError('unexpected_empty_response')),
+          : double.tryParse(q?.toString() ?? '') ??
+              0.0,
+      unit: j['unit']?.toString() ?? '',
     );
   }
 }
@@ -68,12 +68,12 @@ class PackageSize {
   factory PackageSize.fromJson(Map<String, dynamic> j) {
     final c = j['coverage'];
     return PackageSize(
-      size: j['size']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      size: j['size']?.toString() ?? '',
       coverage: c is num
           ? c.toDouble()
-          : double.tryParse(c?.toString() ?? (throw StateError('unexpected_empty_response'))) ??
-              (throw StateError('INVALID_NUMERIC_DATA')),
-      unit: j['unit']?.toString() ?? (throw StateError('unexpected_empty_response')),
+          : double.tryParse(c?.toString() ?? '') ??
+              0.0,
+      unit: j['unit']?.toString() ?? '',
     );
   }
 }
@@ -118,14 +118,14 @@ class ConstructionItem {
     }
     final w = j['waste_factor'];
     return ConstructionItem(
-      id: j['id']?.toString() ?? (throw StateError('unexpected_empty_response')),
-      nameAr: j['name_ar']?.toString() ?? (throw StateError('unexpected_empty_response')),
-      unit: j['unit']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      id: j['id']?.toString() ?? '',
+      nameAr: j['name_ar']?.toString() ?? '',
+      unit: j['unit']?.toString() ?? '',
       wasteFactor: w is num
           ? w.toDouble()
-          : double.tryParse(w?.toString() ?? (throw StateError('unexpected_empty_response'))) ??
-              (throw StateError('INVALID_NUMERIC_DATA')),
-      expertTip: j['expert_tip']?.toString() ?? (throw StateError('unexpected_empty_response')),
+          : double.tryParse(w?.toString() ?? '') ??
+              0.0,
+      expertTip: j['expert_tip']?.toString() ?? '',
       components: comps,
       availableSizes: sizes,
     );
@@ -152,8 +152,8 @@ class ConstructionCategory {
       }
     }
     return ConstructionCategory(
-      id: j['id']?.toString() ?? (throw StateError('unexpected_empty_response')),
-      nameAr: j['name_ar']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      id: j['id']?.toString() ?? '',
+      nameAr: j['name_ar']?.toString() ?? '',
       items: items,
     );
   }

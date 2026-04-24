@@ -51,17 +51,21 @@ class _WholesaleMarketplacePageState extends State<WholesaleMarketplacePage> {
     });
     try {
       final resultState = await WholesaleRepository.instance.getWholesalers(limit: _pageSize);
-      final result = switch (resultState) {
-        FeatureSuccess(:final data) => data,
-        FeatureFailure(:final message) => throw StateError(message),
-        _ => throw StateError('FAILED_TO_LOAD_WHOLESALERS'),
-      };
       if (!mounted) return;
-      setState(() {
-        _stores.addAll(result.items);
-        _nextCursor = result.nextCursor;
-        _hasMore = _nextCursor != null;
-      });
+      if (resultState case FeatureSuccess(:final data)) {
+        setState(() {
+          _stores.addAll(data.items);
+          _nextCursor = data.nextCursor;
+          _hasMore = _nextCursor != null;
+        });
+      } else {
+        resultState.logIfNotSuccess('WholesaleMarketplace._reload');
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('تعذر تحميل سوق الجملة.', style: GoogleFonts.tajawal())),
+          );
+        }
+      }
     } on Object {
       debugPrint('[WholesaleMarketplace] _reload failed.');
       if (mounted) {
@@ -82,17 +86,16 @@ class _WholesaleMarketplacePageState extends State<WholesaleMarketplacePage> {
         limit: _pageSize,
         cursor: _nextCursor,
       );
-      final result = switch (resultState) {
-        FeatureSuccess(:final data) => data,
-        FeatureFailure(:final message) => throw StateError(message),
-        _ => throw StateError('FAILED_TO_LOAD_WHOLESALERS'),
-      };
       if (!mounted) return;
-      setState(() {
-        _stores.addAll(result.items);
-        _nextCursor = result.nextCursor;
-        _hasMore = _nextCursor != null;
-      });
+      if (resultState case FeatureSuccess(:final data)) {
+        setState(() {
+          _stores.addAll(data.items);
+          _nextCursor = data.nextCursor;
+          _hasMore = _nextCursor != null;
+        });
+      } else {
+        resultState.logIfNotSuccess('WholesaleMarketplace._loadMore');
+      }
     } on Object {
       debugPrint('[WholesaleMarketplace] _loadMore failed.');
     } finally {

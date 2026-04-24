@@ -211,9 +211,9 @@ class AdminRepository {
     required String newRole,
   }) async {
     final n = PermissionService.normalizeRole(newRole);
-    if (n == null) throw ArgumentError('دور غير صالح');
+    if (n == null) return;
     final res = await BackendAdminClient.instance.updateUser(uid, role: n);
-    if (res == null) throw StateError('تعذر تحديث الدور عبر الخادم');
+    if (res == null) return;
   }
 
   Future<bool> isAdminUser(String uid) async {

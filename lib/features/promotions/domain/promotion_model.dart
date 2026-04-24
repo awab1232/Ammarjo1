@@ -51,7 +51,7 @@ class Promotion {
 
   factory Promotion.fromMap(Map<String, dynamic> d) {
     DateTime parseTs(dynamic v, DateTime fallback) =>
-        DateTime.tryParse(v?.toString() ?? (throw StateError('unexpected_empty_response'))) ?? fallback;
+        DateTime.tryParse(v?.toString() ?? '') ?? fallback;
     final rawDays = d['daysOfWeek'];
     final days = <int>[];
     if (rawDays is List) {
@@ -69,28 +69,28 @@ class Promotion {
       }
     }
     return Promotion(
-      id: d['id']?.toString() ?? (throw StateError('unexpected_empty_response')),
-      name: (d['name'] ?? (throw StateError('unexpected_empty_response'))).toString(),
+      id: d['id']?.toString() ?? '',
+      name: (d['name'] ?? '').toString(),
       description:
-          (d['description'] ?? (throw StateError('unexpected_empty_response'))).toString(),
+          (d['description'] ?? '').toString(),
       type: (d['type'] ?? 'percentage').toString(),
       value: (d['value'] is num)
           ? (d['value'] as num).toDouble()
-          : (throw StateError('INVALID_NUMERIC_DATA')),
+          : 0.0,
       buyQuantity: (d['buyQuantity'] is num)
           ? (d['buyQuantity'] as num).toInt()
-          : (throw StateError('INVALID_NUMERIC_DATA')),
+          : 0,
       getQuantity: (d['getQuantity'] is num)
           ? (d['getQuantity'] as num).toInt()
-          : (throw StateError('INVALID_NUMERIC_DATA')),
+          : 0,
       getDiscount: (d['getDiscount'] is num)
           ? (d['getDiscount'] as num).toDouble()
-          : (throw StateError('INVALID_NUMERIC_DATA')),
+          : 0.0,
       applicableOn: (d['applicableOn'] ?? 'all').toString(),
       applicableIds: ids,
       minOrderAmount: (d['minOrderAmount'] is num)
           ? (d['minOrderAmount'] as num).toDouble()
-          : (throw StateError('INVALID_NUMERIC_DATA')),
+          : 0.0,
       maxDiscount: d['maxDiscount'] is num ? (d['maxDiscount'] as num).toDouble() : null,
       startDate: parseTs(d['startDate'], DateTime.fromMillisecondsSinceEpoch(0)),
       endDate: parseTs(d['endDate'], DateTime.fromMillisecondsSinceEpoch(253402300799000)),
@@ -98,16 +98,16 @@ class Promotion {
       usageLimit: d['usageLimit'] is num ? (d['usageLimit'] as num).toInt() : null,
       usagePerUser: (d['usagePerUser'] is num)
           ? (d['usagePerUser'] as num).toInt()
-          : (throw StateError('INVALID_NUMERIC_DATA')),
+          : 0,
       usedCount: (d['usedCount'] is num)
           ? (d['usedCount'] as num).toInt()
-          : (throw StateError('INVALID_NUMERIC_DATA')),
+          : 0,
       isActive: d['isActive'] != false,
       isStackable: d['isStackable'] == true,
       createdAt: DateTime.tryParse(
-        d['createdAt']?.toString() ?? (throw StateError('unexpected_empty_response')),
+        d['createdAt']?.toString() ?? '',
       ),
-      createdBy: (d['createdBy'] ?? (throw StateError('unexpected_empty_response'))).toString(),
+      createdBy: (d['createdBy'] ?? '').toString(),
     );
   }
 
@@ -161,5 +161,5 @@ class PromotionsCalculationResult {
 double productUnitPrice(Product p) {
   final raw = p.price.trim();
   final first = raw.contains('–') ? raw.split('–').first.trim() : raw;
-  return double.tryParse(first) ?? (throw StateError('INVALID_NUMERIC_DATA'));
+  return double.tryParse(first) ?? 0.0;
 }

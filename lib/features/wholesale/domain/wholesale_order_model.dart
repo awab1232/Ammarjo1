@@ -20,21 +20,20 @@ class WholesaleOrderItem {
     final qty = data['quantity'];
     final t = data['total'];
     return WholesaleOrderItem(
-      productId: (data['productId'] ?? (throw StateError('unexpected_empty_response'))).toString(),
+      productId: (data['productId'] ?? '').toString(),
       variantId: data['variantId']?.toString(),
-      name: (data['name'] ?? (throw StateError('unexpected_empty_response'))).toString(),
+      name: (data['name'] ?? '').toString(),
       unitPrice: up is num
           ? up.toDouble()
-          : double.tryParse(up?.toString() ?? (throw StateError('unexpected_empty_response'))) ??
-              (throw StateError('INVALID_NUMERIC_DATA')),
+          : double.tryParse(up?.toString() ?? '') ??
+              0.0,
       quantity: qty is num
           ? qty.toInt()
-          : int.tryParse(qty?.toString() ?? (throw StateError('unexpected_empty_response'))) ??
-              (throw StateError('INVALID_NUMERIC_DATA')),
+          : int.tryParse(qty?.toString() ?? '') ?? 0,
       total: t is num
           ? t.toDouble()
-          : double.tryParse(t?.toString() ?? (throw StateError('unexpected_empty_response'))) ??
-              (throw StateError('INVALID_NUMERIC_DATA')),
+          : double.tryParse(t?.toString() ?? '') ??
+              0.0,
     );
   }
 
@@ -95,24 +94,24 @@ class WholesaleOrderModel {
     final created = data['createdAt'];
     final delivered = data['deliveredAt'];
     return WholesaleOrderModel(
-      orderId: (data['id'] ?? data['orderId'] ?? (throw StateError('unexpected_empty_response'))).toString(),
-      wholesalerId: (data['wholesalerId'] ?? data['wholesaler_id'] ?? (throw StateError('unexpected_empty_response'))).toString(),
-      wholesalerName: (data['wholesalerName'] ?? (throw StateError('unexpected_empty_response'))).toString(),
-      storeOwnerId: (data['storeOwnerId'] ?? data['store_owner_id'] ?? (throw StateError('unexpected_empty_response'))).toString(),
-      storeName: (data['storeName'] ?? data['store_name'] ?? (throw StateError('unexpected_empty_response'))).toString(),
+      orderId: (data['id'] ?? data['orderId'] ?? '').toString(),
+      wholesalerId: (data['wholesalerId'] ?? data['wholesaler_id'] ?? '').toString(),
+      wholesalerName: (data['wholesalerName'] ?? '').toString(),
+      storeOwnerId: (data['storeOwnerId'] ?? data['store_owner_id'] ?? '').toString(),
+      storeName: (data['storeName'] ?? data['store_name'] ?? '').toString(),
       items: parsedItems,
       subtotal: sub is num
           ? sub.toDouble()
-          : double.tryParse(sub?.toString() ?? (throw StateError('unexpected_empty_response'))) ??
-              (throw StateError('INVALID_NUMERIC_DATA')),
+          : double.tryParse(sub?.toString() ?? '') ??
+              0.0,
       commission: com is num
           ? com.toDouble()
-          : double.tryParse(com?.toString() ?? (throw StateError('unexpected_empty_response'))) ??
-              (throw StateError('INVALID_NUMERIC_DATA')),
+          : double.tryParse(com?.toString() ?? '') ??
+              0.0,
       netAmount: net is num
           ? net.toDouble()
-          : double.tryParse((data['net_amount'] ?? net)?.toString() ?? (throw StateError('unexpected_empty_response'))) ??
-              (throw StateError('INVALID_NUMERIC_DATA')),
+          : double.tryParse((data['net_amount'] ?? net)?.toString() ?? '') ??
+              0.0,
       status: (data['status'] ?? 'pending').toString(),
       createdAt: created is String ? (DateTime.tryParse(created)?.toLocal() ?? DateTime.now()) : DateTime.now(),
       deliveredAt: delivered is String ? DateTime.tryParse(delivered)?.toLocal() : null,

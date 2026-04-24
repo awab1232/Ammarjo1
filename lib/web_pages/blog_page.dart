@@ -278,22 +278,22 @@ class _BlogPageState extends State<BlogPage> {
         ? tagsRaw.map((e) => e.toString()).toList()
         : const <String>[];
     return BlogPost(
-      id: d['id']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      id: d['id']?.toString() ?? '',
       slug: d['slug']?.toString() ??
-          (d['id']?.toString() ?? (throw StateError('unexpected_empty_response'))),
+          (d['id']?.toString() ?? ''),
       title: d['title']?.toString() ?? 'مقال',
-      excerpt: d['excerpt']?.toString() ?? (throw StateError('unexpected_empty_response')),
-      content: d['content']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      excerpt: d['excerpt']?.toString() ?? '',
+      content: d['content']?.toString() ?? '',
       category: d['category']?.toString() ?? 'عام',
       tags: tags,
       author: d['author']?.toString() ?? 'فريق AmmarJo',
       publishedAt: DateTime.tryParse(
-            d['publishedAt']?.toString() ?? (throw StateError('unexpected_empty_response')),
+            d['publishedAt']?.toString() ?? '',
           ) ??
-          (throw StateError('unexpected_empty_response')),
+          DateTime.fromMillisecondsSinceEpoch(0),
       seoTitle:
           d['seoTitle']?.toString() ?? (d['title']?.toString() ?? 'AmmarJo'),
-      seoDescription: d['seoDescription']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      seoDescription: d['seoDescription']?.toString() ?? '',
     );
   }
 }
@@ -490,12 +490,12 @@ class _BlogBannerCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final imageUrl =
-        webSafeImageUrl(data['imageUrl']?.toString() ?? (throw StateError('unexpected_empty_response')));
+        webSafeImageUrl(data['imageUrl']?.toString() ?? '');
     final title = data['title']?.toString() ?? 'إعلان';
     final links = <String>[
-      data['link1']?.toString() ?? (throw StateError('unexpected_empty_response')),
-      data['link2']?.toString() ?? (throw StateError('unexpected_empty_response')),
-      data['link3']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      data['link1']?.toString() ?? '',
+      data['link2']?.toString() ?? '',
+      data['link3']?.toString() ?? '',
     ].where((e) => e.trim().isNotEmpty).toList();
     return Card(
       margin: const EdgeInsets.fromLTRB(16, 8, 16, 8),

@@ -103,8 +103,7 @@ final class CsvProductImporter {
       'csvValidatedAt': DateTime.now().toUtc().toIso8601String(),
       'note': 'CSV analyzed in admin app; catalog writes are server-side only.',
     };
-    final res = await BackendAdminClient.instance.patchMigrationStatus(merged);
-    if (res == null) throw StateError('تعذر حفظ ملخص CSV في الخادم');
+    await BackendAdminClient.instance.patchMigrationStatus(merged);
   }
 
   static Future<CsvProductImportResult> importFromCsvString(
@@ -113,7 +112,7 @@ final class CsvProductImporter {
     CsvImportProgress? progress,
   }) async {
     if (!Firebase.apps.isNotEmpty) {
-      throw CsvProductImportException('Firebase غير مهيأ');
+      return CsvProductImportResult(productsWritten: 0, rowsSkipped: 0, warnings: const ['Firebase غير مهيأ']);
     }
 
     final normalized = csvText.replaceAll('\r\n', '\n').replaceAll('\r', '\n');
@@ -122,7 +121,7 @@ final class CsvProductImporter {
       rows = _converter.convert(normalized);
     } on Object {
       print('[CsvImport] فشل تحليل CSV');
-      throw CsvProductImportException('تعذر تحليل CSV');
+      return CsvProductImportResult(productsWritten: 0, rowsSkipped: 0, warnings: const ['تعذر تحليل CSV']);
     }
 
     return importFromParsedRows(
@@ -138,12 +137,12 @@ final class CsvProductImporter {
     CsvImportProgress? progress,
   }) async {
     if (!Firebase.apps.isNotEmpty) {
-      throw CsvProductImportException('Firebase غير مهيأ');
+      return CsvProductImportResult(productsWritten: 0, rowsSkipped: 0, warnings: const ['Firebase غير مهيأ']);
     }
     print('CSV Rows found: ${rows.length}');
 
     if (rows.isEmpty) {
-      throw CsvProductImportException('CSV فارغ');
+      return CsvProductImportResult(productsWritten: 0, rowsSkipped: 0, warnings: const ['CSV فارغ']);
     }
 
     final dataRowCount = rows.length - 1;

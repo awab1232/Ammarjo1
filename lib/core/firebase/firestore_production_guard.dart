@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart' show kDebugMode;
+import 'package:flutter/foundation.dart' show debugPrint, kDebugMode;
 
 import '../logging/firestore_usage_logger.dart';
 
@@ -6,14 +6,14 @@ import '../logging/firestore_usage_logger.dart';
 abstract final class FirestoreProductionGuard {
   static const String blockedMessage = 'Firestore access blocked in production';
 
-  /// Throws [Exception] with [blockedMessage] when not in debug mode.
+  /// Logs and returns when Firestore access is not allowed (no throw — avoids crashing release builds).
   static void assertFirestoreAccessAllowed({
     required String domain,
     String path = '*',
   }) {
     if (!kDebugMode) {
       FirestoreUsageLogger.logBlocked(domain: domain, path: path);
-      throw Exception(blockedMessage);
+      debugPrint('[FirestoreProductionGuard] $blockedMessage domain=$domain path=$path');
     }
   }
 

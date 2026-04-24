@@ -30,20 +30,20 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
 
   static (double, double)? _deliveryLatLng(Map<String, dynamic> o) {
     final loc = o['deliveryLocation'];
-    if (loc == null) throw StateError('unexpected_empty_response');
+    if (loc == null) return null;
     if (loc is Map) {
       final map = Map<String, dynamic>.from(loc);
       final latRaw = map['latitude'] ?? map['lat'];
       final lngRaw = map['longitude'] ?? map['lng'];
       final lat = latRaw is num
           ? latRaw.toDouble()
-          : double.tryParse(latRaw?.toString() ?? (throw StateError('unexpected_empty_response')));
+          : double.tryParse(latRaw?.toString() ?? '');
       final lng = lngRaw is num
           ? lngRaw.toDouble()
-          : double.tryParse(lngRaw?.toString() ?? (throw StateError('unexpected_empty_response')));
+          : double.tryParse(lngRaw?.toString() ?? '');
       if (lat != null && lng != null) return (lat, lng);
     }
-    throw StateError('unexpected_empty_response');
+    return null;
   }
 
   Future<void> _openMap(double lat, double lng) async {
@@ -66,9 +66,9 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
   }
 
   Future<Map<String, dynamic>?> _loadOrder() async {
-    if (!BackendOrdersConfig.useBackendOrdersRead) throw StateError('unexpected_empty_response');
+    if (!BackendOrdersConfig.useBackendOrdersRead) return null;
     final raw = await BackendOrdersClient.instance.fetchOrderGet(widget.orderId);
-    if (raw == null) throw StateError('unexpected_empty_response');
+    if (raw == null) return null;
     return BackendOrderReadValidator.backendOrderMap(raw);
   }
 
@@ -113,38 +113,38 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
           final pair = _deliveryLatLng(o);
           final lat = pair?.$1;
           final lng = pair?.$2;
-          final statusRaw = o['status']?.toString() ?? (throw StateError('unexpected_empty_response'));
-          final customerUid = o['customerUid']?.toString().trim() ?? (throw StateError('unexpected_empty_response'));
+          final statusRaw = o['status']?.toString() ?? '';
+          final customerUid = o['customerUid']?.toString().trim() ?? '';
           final showShip = _showShippingSection(statusRaw);
 
           return ListView(
             padding: const EdgeInsets.all(16),
             children: [
               Text(
-                'الحالة: ${OrderStatus.toArabicForDisplay(o['status']?.toString() ?? (throw StateError('unexpected_empty_response')))}',
+                'الحالة: ${OrderStatus.toArabicForDisplay(o['status']?.toString() ?? '')}',
                 style: GoogleFonts.tajawal(fontWeight: FontWeight.w800),
               ),
               Text(
-                'الإجمالي: ${o['total'] ?? (throw StateError('unexpected_empty_response'))} ${o['currency'] ?? (throw StateError('unexpected_empty_response'))}',
+                'الإجمالي: ${o['total'] ?? ''} ${o['currency'] ?? ''}',
                 style: GoogleFonts.tajawal(),
               ),
               const SizedBox(height: 8),
               Text('العميل', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
               Text(
-                '${billing['first_name'] ?? (throw StateError('unexpected_empty_response'))} ${billing['last_name'] ?? (throw StateError('unexpected_empty_response'))}'
+                '${billing['first_name'] ?? ''} ${billing['last_name'] ?? ''}'
                     .trim(),
                 style: GoogleFonts.tajawal(),
               ),
               Text(
-                billing['phone']?.toString() ?? (throw StateError('unexpected_empty_response')),
+                billing['phone']?.toString() ?? '',
                 style: GoogleFonts.tajawal(fontSize: 13),
               ),
               Text(
-                billing['email']?.toString() ?? (throw StateError('unexpected_empty_response')),
+                billing['email']?.toString() ?? '',
                 style: GoogleFonts.tajawal(fontSize: 13),
               ),
               Text(
-                '${billing['address_1'] ?? (throw StateError('unexpected_empty_response'))} — ${billing['city'] ?? (throw StateError('unexpected_empty_response'))} — ${billing['country'] ?? (throw StateError('unexpected_empty_response'))}',
+                '${billing['address_1'] ?? ''} — ${billing['city'] ?? ''} — ${billing['country'] ?? ''}',
                 style: GoogleFonts.tajawal(fontSize: 13),
               ),
               if (lat != null && lng != null) ...[
@@ -171,15 +171,14 @@ class _AdminOrderDetailScreenState extends State<AdminOrderDetailScreen> {
               ...items.map((raw) {
                 if (raw is! Map) return const SizedBox.shrink();
                 final m = Map<String, dynamic>.from(raw);
-                final name = m['name']?.toString() ?? (throw StateError('unexpected_empty_response'));
-                final qty = (m['quantity'] as num?)?.toInt() ?? (throw StateError('INVALID_NUMERIC_DATA'));
-                final price = m['price']?.toString() ?? (throw StateError('unexpected_empty_response'));
+                final name = m['name']?.toString() ?? '';
+                final qty = (m['quantity'] as num?)?.toInt() ?? 0;
+                final price = m['price']?.toString() ?? '';
                 final imgs = m['images'] is List<dynamic>
                     ? (m['images'] as List<dynamic>)
                     : List<dynamic>.empty(growable: false);
                 final img = imgs.isNotEmpty ? imgs.first.toString() : '';
-                final unit = double.tryParse(price.replaceAll(RegExp(r'[^\d.]'), '')) ??
-                    (throw StateError('INVALID_NUMERIC_DATA'));
+                final unit = double.tryParse(price.replaceAll(RegExp(r'[^\d.]'), '')) ?? 0.0;
                 final line = unit * qty;
                 return Card(
                   margin: const EdgeInsets.only(bottom: 10),
@@ -273,9 +272,9 @@ class _ShippingTrackingBlockState extends State<_ShippingTrackingBlock> {
   void initState() {
     super.initState();
     final o = widget.orderData;
-    _urlCtrl = TextEditingController(text: o['trackingUrl']?.toString() ?? (throw StateError('unexpected_empty_response')));
-    _numCtrl = TextEditingController(text: o['trackingNumber']?.toString() ?? (throw StateError('unexpected_empty_response')));
-    _companyCtrl = TextEditingController(text: o['shippingCompany']?.toString() ?? (throw StateError('unexpected_empty_response')));
+    _urlCtrl = TextEditingController(text: o['trackingUrl']?.toString() ?? '');
+    _numCtrl = TextEditingController(text: o['trackingNumber']?.toString() ?? '');
+    _companyCtrl = TextEditingController(text: o['shippingCompany']?.toString() ?? '');
     final ets = o['estimatedDeliveryDate'];
     if (ets is String) {
       _estimated = DateTime.tryParse(ets);
@@ -303,7 +302,7 @@ class _ShippingTrackingBlockState extends State<_ShippingTrackingBlock> {
 
   Future<void> _save(String? staffRole) async {
     final canEdit =
-        PermissionService.canEditShippingTracking(staffRole ?? (throw StateError('unexpected_empty_response')));
+        PermissionService.canEditShippingTracking(staffRole ?? '');
     if (!canEdit) return;
     final safeUrl = SafeTrackingUrl.sanitize(_urlCtrl.text);
     if (_urlCtrl.text.trim().isNotEmpty && safeUrl == null) {
@@ -339,7 +338,7 @@ class _ShippingTrackingBlockState extends State<_ShippingTrackingBlock> {
         final me = BackendIdentityController.instance.me;
         final role = me == null ? null : PermissionService.staffRoleFromUserData({'role': me.role});
         final canEdit =
-            PermissionService.canEditShippingTracking(role ?? (throw StateError('unexpected_empty_response')));
+            PermissionService.canEditShippingTracking(role ?? '');
 
         return Card(
           color: AppColors.surfaceSecondary,

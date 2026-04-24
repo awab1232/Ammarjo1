@@ -7,7 +7,7 @@ import 'core/session/user_session.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
-import 'package:flutter/foundation.dart' show defaultTargetPlatform, kDebugMode, kIsWeb;
+import 'package:flutter/foundation.dart' show debugPrint, defaultTargetPlatform, kDebugMode, kIsWeb;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
 import 'core/config/backend_orders_config.dart';
@@ -324,9 +324,7 @@ Future<void> _appMain() async {
     ),
   );
   if (const bool.fromEnvironment('SENTRY_TEST_FLUTTER', defaultValue: false)) {
-    Future<void>.microtask(() {
-      throw Exception('SENTRY_TEST_FLUTTER');
-    });
+    debugPrint('[SENTRY_TEST_FLUTTER] skipped throw — use Sentry SDK test APIs instead.');
   }
 }
 
