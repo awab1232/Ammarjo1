@@ -218,16 +218,18 @@ class _OpenTendersList extends StatelessWidget {
                 onPressed: () async {
                   final price = double.tryParse(priceController.text.trim());
                   if (price == null || price <= 0) return;
-                  await TenderRepository.instance.submitOffer(
+                  final state = await TenderRepository.instance.submitOffer(
                     tenderId: tender.id,
                     storeId: storeId,
                     storeName: storeName,
                     price: price,
                     note: noteController.text.trim(),
                   );
-                  if (context.mounted) {
+                  if (context.mounted && state is FeatureSuccess<void>) {
                     Navigator.of(context).pop();
                     ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('تم إرسال العرض ✅')));
+                  } else if (context.mounted && state is FeatureFailure<void>) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(state.message)));
                   }
                 },
                 child: Text('إرسال العرض', style: GoogleFonts.cairo(color: Colors.white)),

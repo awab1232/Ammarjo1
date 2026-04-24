@@ -275,7 +275,7 @@ class _TenderRequestScreenState extends State<TenderRequestScreen> {
       final userName = profile?.displayName ??
           (UserSession.currentEmail.isNotEmpty ? UserSession.currentEmail : 'مستخدم');
 
-      final tenderId = await TenderRepository.instance.createTender(
+      final tenderState = await TenderRepository.instance.createTender(
         imageBytesList: List<Uint8List>.unmodifiable(_imageBytesList),
         categoryId: type.id,
         categoryLabel: type.name,
@@ -286,19 +286,25 @@ class _TenderRequestScreenState extends State<TenderRequestScreen> {
         storeTypeKey: type.key,
         storeTypeName: type.name,
       );
+      final tenderId = switch (tenderState) {
+        FeatureSuccess(:final data) => data,
+        FeatureFailure() => '',
+        _ => '',
+      };
+      if (tenderId.isEmpty) {
+        _showError('تعذر إرسال المناقصة حالياً.');
+        return;
+      }
       if (!mounted) return;
-      Navigator.of(context).pushReplacement(
-        MaterialPageRoute<void>(builder: (_) => TenderOffersScreen(tenderId: tenderId)),
-      );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('تم إرسال مناقصتك بنجاح', style: GoogleFonts.tajawal()),
           backgroundColor: Colors.green.shade700,
         ),
       );
-    } on Exception catch (e) {
-      final msg = e.toString().replaceFirst('Exception: ', '').trim();
-      _showError(msg.isNotEmpty ? msg : 'تعذر إرسال المناقصة حالياً.');
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute<void>(builder: (_) => TenderOffersScreen(tenderId: tenderId)),
+      );
     } on Object {
       debugPrint('Tender submission failed.');
       _showError('خطأ غير متوقع. تحقق من الاتصال وحاول لاحقاً.');

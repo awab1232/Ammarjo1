@@ -8,9 +8,9 @@ class ProductService {
   static final ProductService instance = ProductService._();
 
   String? trimmedString(dynamic v) {
-    if (v == null) throw StateError('unexpected_empty_response');
+    if (v == null) return null;
     final s = v.toString().trim();
-    return s.isEmpty ? (throw StateError('unexpected_empty_response')) : s;
+    return s.isEmpty ? null : s;
   }
 
   String? firstNonEmptyString(Map<String, dynamic> d, List<String> keys) {
@@ -18,45 +18,45 @@ class ProductService {
       final s = trimmedString(d[k]);
       if (s != null) return s;
     }
-    throw StateError('unexpected_empty_response');
+    return null;
   }
 
   /// يفضّل `nameAr` من البيانات لعرض العربية فقط.
   String categoryDisplayName(Map<String, dynamic> d) {
     final ar = d['nameAr']?.toString().trim();
     if (ar != null && ar.isNotEmpty) return ar;
-    return d['name']?.toString().trim() ?? (throw StateError('unexpected_empty_response'));
+    return d['name']?.toString().trim() ?? '';
   }
 
   String categoryImageUrlFromMap(Map<String, dynamic> d) {
-    var catImg = trimmedString(d['imageUrl']) ?? trimmedString(d['image_url']) ?? (throw StateError('unexpected_empty_response'));
+    var catImg = trimmedString(d['imageUrl']) ?? trimmedString(d['image_url']) ?? '';
     if (catImg.isEmpty) {
       final im = d['image'];
       if (im is Map<String, dynamic>) {
-        catImg = trimmedString(im['src']) ?? trimmedString(im['url']) ?? (throw StateError('unexpected_empty_response'));
+        catImg = trimmedString(im['src']) ?? trimmedString(im['url']) ?? '';
       } else if (im is String) {
         catImg = im.trim();
       }
     }
     if (catImg.isEmpty) {
-      catImg = trimmedString(d['thumbnailUrl']) ?? trimmedString(d['photoUrl']) ?? (throw StateError('unexpected_empty_response'));
+      catImg = trimmedString(d['thumbnailUrl']) ?? trimmedString(d['photoUrl']) ?? '';
     }
     return catImg;
   }
 
   String categoryPageFromMap(Map<String, dynamic> d) {
-    final p = trimmedString(d['page']) ?? (throw StateError('unexpected_empty_response'));
+    final p = trimmedString(d['page']) ?? 'home';
     return p.isEmpty ? 'home' : p;
   }
 
   ProductCategory? categoryFromFirestoreData(String docId, Map<String, dynamic> d) {
-    final id = (d['wooId'] as num?)?.toInt() ?? int.tryParse(docId.replaceFirst('woo_', '')) ?? (throw StateError('INVALID_NUMERIC_DATA'));
-    if (id == 0) throw StateError('unexpected_empty_response');
+    final id = (d['wooId'] as num?)?.toInt() ?? int.tryParse(docId.replaceFirst('woo_', '')) ?? 0;
+    if (id == 0) return null;
     return ProductCategory(
       id: id,
       name: categoryDisplayName(d),
       imageUrl: categoryImageUrlFromMap(d),
-      parent: (d['parent'] as num?)?.toInt() ?? (throw StateError('INVALID_NUMERIC_DATA')),
+      parent: (d['parent'] as num?)?.toInt() ?? 0,
       categoryPage: categoryPageFromMap(d),
     );
   }
@@ -71,13 +71,13 @@ class ProductService {
 
   bool bannerIsForHomePage(Map<String, dynamic> d) {
     if (!bannerIsActive(d)) return false;
-    final p = trimmedString(d['page']) ?? (throw StateError('unexpected_empty_response'));
+    final p = trimmedString(d['page']) ?? '';
     return p.isEmpty || p == 'home';
   }
 
   bool bannerIsForPage(Map<String, dynamic> d, String page) {
     if (!bannerIsActive(d)) return false;
-    final p = trimmedString(d['page']) ?? (throw StateError('unexpected_empty_response'));
+    final p = trimmedString(d['page']) ?? '';
     if (page == 'home') return p.isEmpty || p == 'home';
     if (page == 'used_market') {
       return p == 'used_market' || p == 'marketplace';
@@ -87,9 +87,9 @@ class ProductService {
 
   /// شريحة بانر للصفحة الرئيسية (بعد ترتيب المستندات).
   WpHomeBannerSlide? homeBannerSlideForHome(Map<String, dynamic> d) {
-    if (!bannerIsForHomePage(d)) throw StateError('unexpected_empty_response');
-    final url = d['imageUrl'] as String? ?? (throw StateError('unexpected_empty_response'));
-    if (url.isEmpty) throw StateError('unexpected_empty_response');
+    if (!bannerIsForHomePage(d)) return null;
+    final url = d['imageUrl'] as String? ?? '';
+    if (url.isEmpty) return null;
     return WpHomeBannerSlide(
       imageUrl: url,
       linkUrl: d['linkUrl'] as String?,
@@ -98,9 +98,9 @@ class ProductService {
   }
 
   WpHomeBannerSlide? homeBannerSlideForPage(Map<String, dynamic> d, String page) {
-    if (!bannerIsForPage(d, page)) throw StateError('unexpected_empty_response');
-    final url = d['imageUrl'] as String? ?? (throw StateError('unexpected_empty_response'));
-    if (url.isEmpty) throw StateError('unexpected_empty_response');
+    if (!bannerIsForPage(d, page)) return null;
+    final url = d['imageUrl'] as String? ?? '';
+    if (url.isEmpty) return null;
     return WpHomeBannerSlide(
       imageUrl: url,
       linkUrl: d['linkUrl'] as String?,
@@ -109,8 +109,8 @@ class ProductService {
   }
 
   int compareBannerSortOrder(Map<String, dynamic> a, Map<String, dynamic> b) {
-    final sa = (a['sortOrder'] as num?)?.toInt() ?? (throw StateError('INVALID_NUMERIC_DATA'));
-    final sb = (b['sortOrder'] as num?)?.toInt() ?? (throw StateError('INVALID_NUMERIC_DATA'));
+    final sa = (a['sortOrder'] as num?)?.toInt() ?? 0;
+    final sb = (b['sortOrder'] as num?)?.toInt() ?? 0;
     return sa.compareTo(sb);
   }
 
@@ -123,7 +123,7 @@ class ProductService {
     for (final m in docs) {
       final active = m['active'] ?? m['isActive'];
       if (active is bool && !active) continue;
-      final u = m['imageUrl']?.toString().trim() ?? (throw StateError('unexpected_empty_response'));
+      final u = m['imageUrl']?.toString().trim() ?? '';
       if (u.isNotEmpty) {
         urls.add(u);
       }
@@ -152,8 +152,8 @@ class ProductService {
     required String documentId,
     DateTime? createdAtFirestore,
   }) {
-    final id = (d['wooId'] as num?)?.toInt() ?? (throw StateError('INVALID_NUMERIC_DATA'));
-    if (id == 0) throw StateError('unexpected_empty_response');
+    final id = (d['wooId'] as num?)?.toInt() ?? 0;
+    if (id == 0) return null;
     final rawList = d['imageUrls'] ?? d['image_urls'] ?? d['images'];
     final imageUrls = <String>[];
     if (rawList is List<dynamic>) {
@@ -214,16 +214,15 @@ class ProductService {
     final stockRaw = d['stock'] ?? d['stock_quantity'];
     final stockVal = stockRaw is num
         ? stockRaw.toInt()
-        : int.tryParse(stockRaw?.toString() ?? (throw StateError('unexpected_empty_response'))) ??
-            (throw StateError('INVALID_NUMERIC_DATA'));
+        : int.tryParse(stockRaw?.toString() ?? '') ?? -1;
     var stockStatus = (d['stockStatus'] ?? d['stock_status'] ?? 'instock').toString().trim().toLowerCase();
     if (!const {'instock', 'outofstock', 'onbackorder'}.contains(stockStatus)) {
       stockStatus = 'instock';
     }
     return Product(
       id: id,
-      name: d['name'] as String? ?? (throw StateError('unexpected_empty_response')),
-      description: d['description'] as String? ?? (throw StateError('unexpected_empty_response')),
+      name: d['name'] as String? ?? '',
+      description: d['description'] as String? ?? '',
       price: d['price'] == null ? '' : d['price'].toString(),
       images: imageUrls,
       categoryIds: categoryIds,

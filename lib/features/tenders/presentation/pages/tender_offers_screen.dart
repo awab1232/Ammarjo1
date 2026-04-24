@@ -223,17 +223,23 @@ class TenderOffersScreen extends StatelessWidget {
                                             ) ??
                                             false;
                                         if (!ok) return;
-                                        final cartItem = await TenderRepository.instance.acceptOffer(
+                                        final acceptState = await TenderRepository.instance.acceptOffer(
                                           tenderId: tender.id,
                                           offer: offer,
                                           tenderImageUrl: tender.imageUrl,
                                           category: tender.categoryId,
                                         );
                                         if (!context.mounted) return;
-                                        context.read<StoreController>().addCartItem(cartItem);
-                                        ScaffoldMessenger.of(context).showSnackBar(
-                                          const SnackBar(content: Text('تمت إضافة عرض المناقصة للسلة ✅')),
-                                        );
+                                        if (acceptState case FeatureSuccess(:final data)) {
+                                          context.read<StoreController>().addCartItem(data);
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(content: Text('تمت إضافة عرض المناقصة للسلة ✅')),
+                                          );
+                                        } else if (acceptState case FeatureFailure(:final message)) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(content: Text(message)),
+                                          );
+                                        }
                                       },
                                       child: Text('قبول العرض', style: GoogleFonts.cairo(color: Colors.white)),
                                     ),

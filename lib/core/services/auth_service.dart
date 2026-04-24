@@ -40,7 +40,7 @@ abstract final class AuthService {
 
   /// ???? ??? ?????? ?? `users/{uid}`.
   static Future<CustomerProfile?> fetchCustomerProfile(String uid) async {
-    if (Firebase.apps.isEmpty) throw StateError('unexpected_empty_response');
+    if (Firebase.apps.isEmpty) return null;
     return UsersRepository.fetchProfileDocument(uid);
   }
 
@@ -67,10 +67,10 @@ abstract final class AuthService {
 
   static Future<Map<String, dynamic>?> getCurrentUserWithRole() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) throw StateError('unexpected_empty_response');
+    if (user == null) return null;
     try {
       final me = await BackendOrdersClient.instance.fetchAuthMe();
-      if (me == null) throw StateError('unexpected_empty_response');
+      if (me == null) return null;
       return <String, dynamic>{
         'uid': me.userId,
         'email': me.email,
@@ -80,7 +80,7 @@ abstract final class AuthService {
       };
     } on Object {
       debugPrint('Error fetching user role');
-      throw StateError('unexpected_empty_response');
+      return null;
     }
   }
 }

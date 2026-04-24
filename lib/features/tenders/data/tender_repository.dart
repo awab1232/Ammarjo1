@@ -15,7 +15,7 @@ class TenderRepository {
 
   /// إنشاء مناقصة جديدة مع ربطها بنوع المتجر (storeTypeId/Key) ليتم توجيه الإشعارات
   /// إلى المتاجر المطابقة فقط (بدلاً من بث موحد لكل المتاجر).
-  Future<String> createTender({
+  Future<FeatureState<String>> createTender({
     required List<Uint8List> imageBytesList,
     required String categoryId,
     required String categoryLabel,
@@ -37,7 +37,7 @@ class TenderRepository {
       imageBytesList: imageBytesList,
     );
     final id = row?['id']?.toString().trim() ?? '';
-    if (id.isEmpty) throw Exception('تعذر إنشاء المناقصة');
+    if (id.isEmpty) return FeatureState.failure('تعذر إنشاء المناقصة');
     unawaited(
       _notifyTargetedStores(
         tenderId: id,
@@ -49,7 +49,7 @@ class TenderRepository {
         storeTypeName: storeTypeName,
       ),
     );
-    return id;
+    return FeatureState.success(id);
   }
 
   Future<Map<String, dynamic>?> fetchTenderDocument(String tenderId) =>
@@ -155,7 +155,7 @@ class TenderRepository {
     }
   }
 
-  Future<void> submitOffer({
+  Future<FeatureState<void>> submitOffer({
     required String tenderId,
     required String storeId,
     required String storeName,
@@ -169,25 +169,26 @@ class TenderRepository {
       price: price,
       note: note,
     );
-    if (row == null) throw Exception('تعذر إرسال العرض');
+    if (row == null) return FeatureState.failure('تعذر إرسال العرض');
+    return FeatureState.success(null);
   }
 
-  Future<CartItem> acceptOffer({
+  Future<FeatureState<CartItem>> acceptOffer({
     required String tenderId,
     required TenderOffer offer,
     required String tenderImageUrl,
     required String category,
   }) async {
     final row = await BackendTenderClient.instance.acceptOffer(tenderId: tenderId, offerId: offer.id);
-    if (row == null) throw Exception('تعذر قبول العرض');
-    return CartItem.tenderOffer(
+    if (row == null) return FeatureState.failure('تعذر قبول العرض');
+    return FeatureState.success(CartItem.tenderOffer(
       tenderId: tenderId,
       category: category,
       price: offer.price,
       storeId: offer.storeId,
       storeName: offer.storeName,
       tenderImageUrl: tenderImageUrl,
-    );
+    ));
   }
 
   Future<void> closeTender(String tenderId, {String status = 'closed'}) async {

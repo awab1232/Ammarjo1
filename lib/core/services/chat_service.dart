@@ -1,11 +1,9 @@
 import 'package:flutter/foundation.dart';
 
-import '../config/chat_feature_config.dart';
-
 class ChatService {
   ChatService();
 
-  Future<String> getOrCreateChat({
+  Future<String?> getOrCreateChat({
     required String otherUserId,
     required String otherUserName,
     required String currentUserEmail,
@@ -24,7 +22,6 @@ class ChatService {
     if (kDebugMode) {
       debugPrint('ChatService disabled: chat feature flag is off');
     }
-    if (!kChatFeatureEnabled) throw Exception(kChatFeatureUnavailableMessage);
-    throw Exception(kChatFeatureUnavailableMessage);
+    return null;
   }
 }

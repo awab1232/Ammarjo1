@@ -49,7 +49,7 @@ final class BackendOrdersClient {
   }
 
   Map<String, dynamic>? _safeMap(Map<String, dynamic>? source) {
-    if (source == null) throw StateError('unexpected_empty_response');
+    if (source == null) return <String, dynamic>{};
     final out = <String, dynamic>{};
     for (final entry in source.entries) {
       final k = entry.key.toLowerCase();
@@ -90,16 +90,16 @@ final class BackendOrdersClient {
 
   /// Primary write: POST `/orders`, returns server [id] or `null` (no throw). Used when [BackendOrdersConfig.useBackendOrdersWrite].
   Future<String?> createOrderPrimary(Map<String, dynamic> payload) async {
-    if (!BackendOrdersConfig.useBackendOrdersWrite) throw StateError('unexpected_empty_response');
+    if (!BackendOrdersConfig.useBackendOrdersWrite) return null;
     final base = BackendOrdersConfig.baseUrl.trim();
     if (base.isEmpty) {
       BackendOrdersConfig.warnIfBackendBaseUrlMissing('orders_write_primary');
-      throw StateError('unexpected_empty_response');
+      return null;
     }
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) throw StateError('unexpected_empty_response');
+    if (user == null) return null;
     final String token = await _idToken(user);
-    if (token.isEmpty) throw StateError('unexpected_empty_response');
+    if (token.isEmpty) return null;
 
     final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}/orders');
     final Duration t = BackendOrdersConfig.backendOrdersWriteTimeout;
@@ -133,10 +133,10 @@ final class BackendOrdersClient {
           requestBody: payload,
           responseBody: res.body,
         );
-        throw StateError('unexpected_empty_response');
+        return null;
       }
       final decoded = jsonDecode(res.body);
-      if (decoded is! Map) throw StateError('unexpected_empty_response');
+      if (decoded is! Map) return null;
       final m = Map<String, dynamic>.from(decoded);
       final id = m['id']?.toString().trim();
       if (id != null && id.isNotEmpty) return id;
@@ -146,7 +146,7 @@ final class BackendOrdersClient {
         final oid = om['orderId']?.toString().trim();
         if (oid != null && oid.isNotEmpty) return oid;
       }
-      throw StateError('unexpected_empty_response');
+      return null;
     } on TimeoutException {
       if (kDebugMode) {
         debugPrint('BackendOrders: primary POST /orders timed out after ${t.inSeconds}s');
@@ -161,9 +161,7 @@ final class BackendOrdersClient {
         endpoint: 'POST /orders',
         requestBody: payload,
       );
-      throw StateError('unexpected_empty_response');
-    } on StateError {
-      rethrow;
+      return null;
     } on Object {
       if (kDebugMode) {
         debugPrint('BackendOrders: primary POST /orders error');
@@ -177,7 +175,7 @@ final class BackendOrdersClient {
         endpoint: 'POST /orders',
         requestBody: payload,
       );
-      throw StateError('unexpected_empty_response');
+      return null;
     }
   }
 
@@ -249,16 +247,16 @@ final class BackendOrdersClient {
     String orderId, {
     Duration? timeout,
   }) async {
-    if (!BackendOrdersConfig.useBackendOrdersRead) throw StateError('unexpected_empty_response');
+    if (!BackendOrdersConfig.useBackendOrdersRead) return null;
     final base = BackendOrdersConfig.baseUrl.trim();
     if (base.isEmpty) {
       BackendOrdersConfig.warnIfBackendBaseUrlMissing('orders_read_get');
-      throw StateError('unexpected_empty_response');
+      return null;
     }
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) throw StateError('unexpected_empty_response');
+    if (user == null) return null;
     final String token = await _idToken(user);
-    if (token.isEmpty) throw StateError('unexpected_empty_response');
+    if (token.isEmpty) return null;
 
     final uri = Uri.parse(
       '${base.replaceAll(RegExp(r'/$'), '')}/orders/${Uri.encodeComponent(orderId)}',
@@ -291,7 +289,7 @@ final class BackendOrdersClient {
           requestBody: {'orderId': orderId},
           responseBody: res.body,
         );
-        throw StateError('unexpected_empty_response');
+        return null;
       }
       final decoded = jsonDecode(res.body);
       if (decoded is Map<String, dynamic>) {
@@ -300,7 +298,7 @@ final class BackendOrdersClient {
       if (decoded is Map) {
         return Map<String, dynamic>.from(decoded);
       }
-      throw StateError('unexpected_empty_response');
+      return null;
     } on TimeoutException {
       if (kDebugMode) {
         debugPrint('BackendOrders: GET /orders/$orderId timed out after ${t.inMilliseconds}ms');
@@ -315,9 +313,7 @@ final class BackendOrdersClient {
         endpoint: 'GET /orders/:id',
         requestBody: {'orderId': orderId},
       );
-      throw StateError('unexpected_empty_response');
-    } on StateError {
-      rethrow;
+      return null;
     } on Object {
       if (kDebugMode) {
         debugPrint('BackendOrders: GET /orders/$orderId error');
@@ -332,7 +328,7 @@ final class BackendOrdersClient {
         endpoint: 'GET /orders/:id',
         requestBody: {'orderId': orderId},
       );
-      throw StateError('unexpected_empty_response');
+      return null;
     }
   }
 
@@ -385,23 +381,24 @@ final class BackendOrdersClient {
     int limit = 20,
     String? cursor,
   }) async {
-    if (!BackendOrdersConfig.useBackendOrdersRead) throw StateError('unexpected_empty_response');
-    if (!UserSession.isLoggedIn) throw StateError('unexpected_empty_response');
+    if (!BackendOrdersConfig.useBackendOrdersRead) return const <Map<String, dynamic>>[];
+    if (!UserSession.isLoggedIn) return const <Map<String, dynamic>>[];
     final base = BackendOrdersConfig.baseUrl.trim();
-    if (base.isEmpty) throw StateError('unexpected_empty_response');
+    if (base.isEmpty) return const <Map<String, dynamic>>[];
     final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}/orders').replace(
       queryParameters: {
         'limit': '$limit',
         if (cursor != null && cursor.trim().isNotEmpty) 'cursor': cursor.trim(),
       },
     );
-    final headers = await FirebaseAuthHeaderProvider.requireAuthHeaders(reason: 'orders_read_list');
+    final headers = await FirebaseAuthHeaderProvider.authHeadersIfSignedIn(reason: 'orders_read_list');
+    if (headers['Authorization'] == null || headers['Authorization']!.trim().isEmpty) {
+      return const <Map<String, dynamic>>[];
+    }
     FirebaseAuthHeaderProvider.logRequestHeaders(method: 'GET', uri: uri, headers: headers);
     final res = await http.get(uri, headers: headers).timeout(const Duration(seconds: 20));
     FirebaseAuthHeaderProvider.logDebugResponse('BackendOrdersClient GET /orders', res.statusCode, res.body);
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw StateError('unexpected_empty_response');
-    }
+    if (res.statusCode < 200 || res.statusCode >= 300) return const <Map<String, dynamic>>[];
     final trimmed = res.body.trim();
     if (trimmed.isEmpty) {
       return const <Map<String, dynamic>>[];
@@ -410,7 +407,7 @@ final class BackendOrdersClient {
     try {
       decoded = jsonDecode(trimmed);
     } on Object {
-      throw StateError('unexpected_empty_response');
+      return const <Map<String, dynamic>>[];
     }
     if (decoded is List) {
       return decoded.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
@@ -444,7 +441,7 @@ final class BackendOrdersClient {
       return token;
     } on Object {
       debugPrint('BackendOrders: getIdToken failed');
-      throw StateError('token_unavailable');
+      return '';
     }
   }
 
@@ -1393,28 +1390,32 @@ final class BackendOrdersClient {
   }
 
   Future<JsonList?> fetchCart() async {
-    if (!BackendOrdersConfig.useBackendCart) throw StateError('unexpected_empty_response');
-    final body = await _authedGetJson('/cart', flow: 'cart_list');
-    final items = body?['items'];
-    if (items is! List) throw StateError('unexpected_empty_response');
-    return items
-        .whereType<Map>()
-        .map((e) {
-          final m = Map<String, dynamic>.from(e);
-          final id = m['id']?.toString();
-          return <String, dynamic>{
-            'id': id,
-            'productId': m['productId'],
-            'variantId': m['variantId'],
-            'quantity': m['quantity'],
-            'priceSnapshot': m['priceSnapshot']?.toString(),
-            'productName': m['productName']?.toString(),
-            'imageUrl': m['imageUrl']?.toString(),
-            'storeId': m['storeId']?.toString(),
-            'storeName': m['storeName']?.toString(),
-          };
-        })
-        .toList();
+    if (!BackendOrdersConfig.useBackendCart) return <Map<String, dynamic>>[];
+    try {
+      final body = await _authedGetJson('/cart', flow: 'cart_list');
+      final items = body?['items'];
+      if (items is! List) return <Map<String, dynamic>>[];
+      return items
+          .whereType<Map>()
+          .map((e) {
+            final m = Map<String, dynamic>.from(e);
+            final id = m['id']?.toString();
+            return <String, dynamic>{
+              'id': id,
+              'productId': m['productId'],
+              'variantId': m['variantId'],
+              'quantity': m['quantity'],
+              'priceSnapshot': m['priceSnapshot']?.toString(),
+              'productName': m['productName']?.toString(),
+              'imageUrl': m['imageUrl']?.toString(),
+              'storeId': m['storeId']?.toString(),
+              'storeName': m['storeName']?.toString(),
+            };
+          })
+          .toList();
+    } on Object {
+      return <Map<String, dynamic>>[];
+    }
   }
 
   Future<bool> postCartItem({
@@ -1427,22 +1428,26 @@ final class BackendOrdersClient {
     required String storeId,
     required String storeName,
   }) async {
-    if (!BackendOrdersConfig.useBackendCart) throw StateError('unexpected_empty_response');
-    final body = await _authedPostJson(
-      '/cart/items',
-      body: <String, dynamic>{
-        'productId': productId,
-        if (variantId != null && variantId.trim().isNotEmpty) 'variantId': variantId.trim(),
-        'quantity': quantity,
-        'priceSnapshot': priceSnapshot,
-        'productName': productName,
-        if (imageUrl != null && imageUrl.trim().isNotEmpty) 'imageUrl': imageUrl.trim(),
-        'storeId': storeId,
-        'storeName': storeName,
-      },
-      flow: 'cart_add',
-    );
-    return body != null;
+    if (!BackendOrdersConfig.useBackendCart) return false;
+    try {
+      final body = await _authedPostJson(
+        '/cart/items',
+        body: <String, dynamic>{
+          'productId': productId,
+          if (variantId != null && variantId.trim().isNotEmpty) 'variantId': variantId.trim(),
+          'quantity': quantity,
+          'priceSnapshot': priceSnapshot,
+          'productName': productName,
+          if (imageUrl != null && imageUrl.trim().isNotEmpty) 'imageUrl': imageUrl.trim(),
+          'storeId': storeId,
+          'storeName': storeName,
+        },
+        flow: 'cart_add',
+      );
+      return body != null;
+    } on Object {
+      return false;
+    }
   }
 
   Future<bool> patchCartItemQuantity({required String lineId, required int quantity}) async {
