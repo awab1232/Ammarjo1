@@ -74,7 +74,7 @@ class _UnifiedChatPageState extends State<UnifiedChatPage> {
   Future<void> _syncParticipantAndShow() async {
     final store = context.read<StoreController>();
     final email =
-        store.profile?.email.trim() ?? (throw StateError('NULL_RESPONSE'));
+        store.profile?.email.trim() ?? (throw StateError('unexpected_empty_response'));
     final id = _chatId;
     if (email.isNotEmpty && id != null && Firebase.apps.isNotEmpty) {
       try {
@@ -114,7 +114,7 @@ class _UnifiedChatPageState extends State<UnifiedChatPage> {
   Future<void> _open() async {
     final store = context.read<StoreController>();
     final email =
-        store.profile?.email.trim() ?? (throw StateError('NULL_RESPONSE'));
+        store.profile?.email.trim() ?? (throw StateError('unexpected_empty_response'));
     if (email.isEmpty) {
       setState(() {
         _loading = false;
@@ -142,7 +142,7 @@ class _UnifiedChatPageState extends State<UnifiedChatPage> {
         final l = widget.listing!;
         final peerEmail = resolvePeerEmailForListing(l);
         final buyerPhone = dialablePhoneFromProfileEmail(email) ??
-            (throw StateError('NULL_RESPONSE'));
+            (throw StateError('unexpected_empty_response'));
         final id = await repo.ensureChat(
           kind: UnifiedChatKind.storeCustomer,
           contextId: l.id,
@@ -170,17 +170,17 @@ class _UnifiedChatPageState extends State<UnifiedChatPage> {
       } else if (widget.tech != null) {
         final t = widget.tech!;
         final techEmail =
-            (t.email ?? (throw StateError('NULL_RESPONSE'))).trim();
+            (t.email ?? (throw StateError('unexpected_empty_response'))).trim();
         if (techEmail.isEmpty) throw StateError('لا بريد للفني');
         final buyerPhone = dialablePhoneFromProfileEmail(email) ??
-            (throw StateError('NULL_RESPONSE'));
+            (throw StateError('unexpected_empty_response'));
         final id = await repo.ensureChat(
           kind: UnifiedChatKind.technicianCustomer,
           contextId: t.id,
           currentUserEmail: email,
           currentUserPhone: buyerPhone,
           peerEmail: techEmail,
-          peerPhone: (t.phone ?? (throw StateError('NULL_RESPONSE'))).trim(),
+          peerPhone: (t.phone ?? (throw StateError('unexpected_empty_response'))).trim(),
           technicianId: t.id,
           peerDisplayName: t.displayName,
           contextTitle: t.displayName,
@@ -214,7 +214,7 @@ class _UnifiedChatPageState extends State<UnifiedChatPage> {
   Future<void> _send() async {
     final store = context.read<StoreController>();
     final email =
-        store.profile?.email.trim() ?? (throw StateError('NULL_RESPONSE'));
+        store.profile?.email.trim() ?? (throw StateError('unexpected_empty_response'));
     final id = _chatId;
     final t = _ctrl.text.trim();
     if (email.isEmpty || id == null || t.isEmpty) return;
@@ -254,7 +254,7 @@ class _UnifiedChatPageState extends State<UnifiedChatPage> {
   Widget build(BuildContext context) {
     final store = context.watch<StoreController>();
     final myEmail =
-        store.profile?.email.trim() ?? (throw StateError('NULL_RESPONSE'));
+        store.profile?.email.trim() ?? (throw StateError('unexpected_empty_response'));
 
     return Scaffold(
       backgroundColor: AppColors.background,
@@ -487,12 +487,12 @@ class _MsgBubble extends StatelessWidget {
                   children: [
                     Text(
                       message.productTitle ??
-                          (throw StateError('NULL_RESPONSE')),
+                          (throw StateError('unexpected_empty_response')),
                       style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 16),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '${message.productPriceLabel ?? (throw StateError('NULL_RESPONSE'))} JD',
+                      '${message.productPriceLabel ?? (throw StateError('unexpected_empty_response'))} JD',
                       style: GoogleFonts.tajawal(color: AppColors.accent, fontWeight: FontWeight.w900, fontSize: 18),
                     ),
                   ],

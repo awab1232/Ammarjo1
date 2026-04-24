@@ -1,4 +1,4 @@
-﻿import 'dart:async';
+import 'dart:async';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
@@ -9,7 +9,7 @@ import 'email_service.dart';
 import '../firebase/users_repository.dart';
 import 'backend_orders_client.dart';
 
-/// مصادقة Firebase + مزامنة وثيقة `users/{uid}` مع [UsersRepository].
+/// ?????? Firebase + ?????? ????? `users/{uid}` ?? [UsersRepository].
 abstract final class AuthService {
   AuthService._();
 
@@ -25,22 +25,22 @@ abstract final class AuthService {
 
   static Future<void> signOut() => _auth.signOut();
 
-  /// يحدّث `users/{uid}` من [CustomerProfile] للمستخدم الحالي.
+  /// ????? `users/{uid}` ?? [CustomerProfile] ???????? ??????.
   static Future<void> syncUserDocumentFromProfile(CustomerProfile profile) async {
     if (Firebase.apps.isEmpty) return;
     if (_auth.currentUser == null) return;
     await UsersRepository.syncUserDocument(profile);
   }
 
-  /// يزيد نقاط الولاء للمستخدم المحدد.
+  /// ???? ???? ?????? ???????? ??????.
   static Future<void> incrementLoyaltyPoints(String uid, int amount) async {
     if (Firebase.apps.isEmpty) return;
     await UsersRepository.incrementPoints(uid, amount);
   }
 
-  /// يجلب ملف العميل من `users/{uid}`.
+  /// ???? ??? ?????? ?? `users/{uid}`.
   static Future<CustomerProfile?> fetchCustomerProfile(String uid) async {
-    if (Firebase.apps.isEmpty) throw StateError('NULL_RESPONSE');
+    if (Firebase.apps.isEmpty) throw StateError('unexpected_empty_response');
     return UsersRepository.fetchProfileDocument(uid);
   }
 
@@ -58,7 +58,7 @@ abstract final class AuthService {
     try {
       await EmailService.instance.sendPasswordReset(
         target,
-        'تم إرسال رابط إعادة تعيين كلمة المرور من Firebase إلى بريدك الإلكتروني.',
+        '?? ????? ???? ????? ????? ???? ?????? ?? Firebase ??? ????? ??????????.',
       );
     } on Object {
       debugPrint('AuthService.sendPasswordResetEmail email notification failed');
@@ -67,10 +67,10 @@ abstract final class AuthService {
 
   static Future<Map<String, dynamic>?> getCurrentUserWithRole() async {
     final user = FirebaseAuth.instance.currentUser;
-    if (user == null) throw StateError('NULL_RESPONSE');
+    if (user == null) throw StateError('unexpected_empty_response');
     try {
       final me = await BackendOrdersClient.instance.fetchAuthMe();
-      if (me == null) throw StateError('NULL_RESPONSE');
+      if (me == null) throw StateError('unexpected_empty_response');
       return <String, dynamic>{
         'uid': me.userId,
         'email': me.email,
@@ -80,7 +80,7 @@ abstract final class AuthService {
       };
     } on Object {
       debugPrint('Error fetching user role');
-      throw StateError('NULL_RESPONSE');
+      throw StateError('unexpected_empty_response');
     }
   }
 }

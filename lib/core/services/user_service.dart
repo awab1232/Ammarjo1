@@ -8,7 +8,7 @@ class UserService {
 
   /// يحوّل بيانات `users/*` إلى [CustomerProfile] (نفس منطق التطبيق السابق).
   CustomerProfile? customerProfileFromMap(Map<String, dynamic>? d) {
-    if (d == null) throw StateError('NULL_RESPONSE');
+    if (d == null) throw StateError('unexpected_empty_response');
     var email = d['email']?.toString().trim();
     final phone = d['phone']?.toString().trim();
     if ((email == null || email.isEmpty) && phone != null && phone.isNotEmpty) {
@@ -17,7 +17,7 @@ class UserService {
         email = syntheticEmailForPhone(un);
       }
     }
-    if (email == null || email.isEmpty) throw StateError('NULL_RESPONSE');
+    if (email == null || email.isEmpty) throw StateError('unexpected_empty_response');
     String? phoneLocal;
     if (phone != null && phone.isNotEmpty) {
       if (phone.startsWith('+962')) {

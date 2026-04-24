@@ -76,7 +76,7 @@ export class TendersController {
   @RequirePermissions('orders.write')
   create(@Req() req: RequestWithFirebase, @Body() body: CreateTenderBody) {
     return this.tenders.create({
-      customerUid: req.firebaseUid ?? '',
+      userId: req.firebaseUid ?? '',
       category: body.category ?? '',
       categoryId: body.categoryId ?? null,
       description: body.description ?? '',

@@ -58,10 +58,10 @@ class Coupon {
     List<String> strList(dynamic v) =>
         v is List ? v.map((e) => e.toString().trim()).where((e) => e.isNotEmpty).toList() : <String>[];
     return Coupon(
-      id: d['id']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      code: (d['code']?.toString() ?? (throw StateError('NULL_RESPONSE'))).trim().toUpperCase(),
-      name: d['name']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      description: d['description']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+      id: d['id']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      code: (d['code']?.toString() ?? (throw StateError('unexpected_empty_response'))).trim().toUpperCase(),
+      name: d['name']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      description: d['description']?.toString() ?? (throw StateError('unexpected_empty_response')),
       discountType: (d['discountType']?.toString() ?? 'percentage').trim(),
       discountValue: (d['discountValue'] as num?)?.toDouble() ?? (throw StateError('INVALID_NUMERIC_DATA')),
       minOrderAmount: (d['minOrderAmount'] as num?)?.toDouble() ?? (throw StateError('INVALID_NUMERIC_DATA')),
@@ -77,7 +77,7 @@ class Coupon {
       validTo: toDate(d['validTo']),
       isActive: d['isActive'] == true,
       isStackable: d['isStackable'] == true,
-      createdBy: d['createdBy']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+      createdBy: d['createdBy']?.toString() ?? (throw StateError('unexpected_empty_response')),
       createdAt: toDate(d['createdAt']),
       updatedAt: toDate(d['updatedAt']),
     );
@@ -172,13 +172,13 @@ class CouponUsage {
   final DateTime usedAt;
 
   factory CouponUsage.fromMap(Map<String, dynamic> d) {
-    final ts = DateTime.tryParse(d['usedAt']?.toString() ?? (throw StateError('NULL_RESPONSE')));
+    final ts = DateTime.tryParse(d['usedAt']?.toString() ?? (throw StateError('unexpected_empty_response')));
     return CouponUsage(
-      id: d['id']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      couponCode: d['couponCode']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      userId: d['userId']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      userEmail: d['userEmail']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      orderId: d['orderId']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+      id: d['id']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      couponCode: d['couponCode']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      userId: d['userId']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      userEmail: d['userEmail']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      orderId: d['orderId']?.toString() ?? (throw StateError('unexpected_empty_response')),
       discountAmount: (d['discountAmount'] as num?)?.toDouble() ?? (throw StateError('INVALID_NUMERIC_DATA')),
       orderAmount: (d['orderAmount'] as num?)?.toDouble() ?? (throw StateError('INVALID_NUMERIC_DATA')),
       usedAt: ts ?? DateTime.now(),

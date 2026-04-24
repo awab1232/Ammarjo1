@@ -21,10 +21,10 @@ class CalculatorMetadata {
       }
     }
     return CalculatorMetadata(
-      region: j['region']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      standard: j['standard']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+      region: j['region']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      standard: j['standard']?.toString() ?? (throw StateError('unexpected_empty_response')),
       dataSources: list,
-      lastUpdated: j['last_updated']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+      lastUpdated: j['last_updated']?.toString() ?? (throw StateError('unexpected_empty_response')),
     );
   }
 }
@@ -44,12 +44,12 @@ class MaterialComponent {
   factory MaterialComponent.fromJson(Map<String, dynamic> j) {
     final q = j['quantity'];
     return MaterialComponent(
-      material: j['material']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+      material: j['material']?.toString() ?? (throw StateError('unexpected_empty_response')),
       quantity: q is num
           ? q.toDouble()
-          : double.tryParse(q?.toString() ?? (throw StateError('NULL_RESPONSE'))) ??
+          : double.tryParse(q?.toString() ?? (throw StateError('unexpected_empty_response'))) ??
               (throw StateError('INVALID_NUMERIC_DATA')),
-      unit: j['unit']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+      unit: j['unit']?.toString() ?? (throw StateError('unexpected_empty_response')),
     );
   }
 }
@@ -68,12 +68,12 @@ class PackageSize {
   factory PackageSize.fromJson(Map<String, dynamic> j) {
     final c = j['coverage'];
     return PackageSize(
-      size: j['size']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+      size: j['size']?.toString() ?? (throw StateError('unexpected_empty_response')),
       coverage: c is num
           ? c.toDouble()
-          : double.tryParse(c?.toString() ?? (throw StateError('NULL_RESPONSE'))) ??
+          : double.tryParse(c?.toString() ?? (throw StateError('unexpected_empty_response'))) ??
               (throw StateError('INVALID_NUMERIC_DATA')),
-      unit: j['unit']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+      unit: j['unit']?.toString() ?? (throw StateError('unexpected_empty_response')),
     );
   }
 }
@@ -118,14 +118,14 @@ class ConstructionItem {
     }
     final w = j['waste_factor'];
     return ConstructionItem(
-      id: j['id']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      nameAr: j['name_ar']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      unit: j['unit']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+      id: j['id']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      nameAr: j['name_ar']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      unit: j['unit']?.toString() ?? (throw StateError('unexpected_empty_response')),
       wasteFactor: w is num
           ? w.toDouble()
-          : double.tryParse(w?.toString() ?? (throw StateError('NULL_RESPONSE'))) ??
+          : double.tryParse(w?.toString() ?? (throw StateError('unexpected_empty_response'))) ??
               (throw StateError('INVALID_NUMERIC_DATA')),
-      expertTip: j['expert_tip']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+      expertTip: j['expert_tip']?.toString() ?? (throw StateError('unexpected_empty_response')),
       components: comps,
       availableSizes: sizes,
     );
@@ -152,8 +152,8 @@ class ConstructionCategory {
       }
     }
     return ConstructionCategory(
-      id: j['id']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      nameAr: j['name_ar']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+      id: j['id']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      nameAr: j['name_ar']?.toString() ?? (throw StateError('unexpected_empty_response')),
       items: items,
     );
   }

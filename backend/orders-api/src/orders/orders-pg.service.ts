@@ -340,13 +340,13 @@ export class OrdersPgService implements OnModuleDestroy {
 
       await client.query(
         `INSERT INTO orders (
-          order_id, user_id, store_id, items,
+          order_id, user_id, store_id, store_id_uuid, items,
           subtotal_numeric, shipping_numeric, total_numeric,
           currency, write_source, customer_email, status,
           billing, delivery_address, list_title, payload,
           delivery_lat, delivery_lng, updated_at
         ) VALUES (
-          $1, $2, $3, $4::jsonb,
+          $1, $2, $3, $3::uuid, $4::jsonb,
           $5, $6, $7,
           $8, $9, $10, $11,
           $12::jsonb, $13, $14, $15::jsonb,
@@ -355,6 +355,7 @@ export class OrdersPgService implements OnModuleDestroy {
         ON CONFLICT (order_id) DO UPDATE SET
           user_id = EXCLUDED.user_id,
           store_id = EXCLUDED.store_id,
+          store_id_uuid = EXCLUDED.store_id_uuid,
           items = EXCLUDED.items,
           subtotal_numeric = EXCLUDED.subtotal_numeric,
           shipping_numeric = EXCLUDED.shipping_numeric,
@@ -664,7 +665,7 @@ export class OrdersPgService implements OnModuleDestroy {
             return client.query(
               `SELECT o.payload, o.created_at, o.order_id
                FROM orders o
-               WHERE o.store_id = $1
+               WHERE o.store_id_uuid = $1::uuid
                ORDER BY o.created_at DESC, o.order_id DESC
                LIMIT $2`,
               [sid, fetchN],
@@ -677,7 +678,7 @@ export class OrdersPgService implements OnModuleDestroy {
                     o.delivery_manual_retries,
                     NULL::text AS driver_name, NULL::text AS driver_phone
              FROM orders o
-             WHERE o.store_id = $1
+             WHERE o.store_id_uuid = $1::uuid
              ORDER BY o.created_at DESC, o.order_id DESC
              LIMIT $2`,
             [sid, fetchN],
@@ -687,7 +688,7 @@ export class OrdersPgService implements OnModuleDestroy {
           return client.query(
             `SELECT o.payload, o.created_at, o.order_id
              FROM orders o
-             WHERE o.store_id = $1
+             WHERE o.store_id_uuid = $1::uuid
                AND (o.created_at, o.order_id) < ($2::timestamptz, $3::text)
              ORDER BY o.created_at DESC, o.order_id DESC
              LIMIT $4`,
@@ -701,7 +702,7 @@ export class OrdersPgService implements OnModuleDestroy {
                   o.delivery_manual_retries,
                   NULL::text AS driver_name, NULL::text AS driver_phone
            FROM orders o
-           WHERE o.store_id = $1
+           WHERE o.store_id_uuid = $1::uuid
              AND (o.created_at, o.order_id) < ($2::timestamptz, $3::text)
            ORDER BY o.created_at DESC, o.order_id DESC
            LIMIT $4`,

@@ -61,20 +61,20 @@ class WholesalerModel {
     final dd = data['deliveryDays'];
     final df = data['deliveryFee'];
     return WholesalerModel(
-      id: (data['id'] ?? (throw StateError('NULL_RESPONSE'))).toString(),
-      ownerId: (data['ownerId'] ?? data['owner_id'] ?? (throw StateError('NULL_RESPONSE'))).toString(),
-      name: (data['name'] ?? (throw StateError('NULL_RESPONSE'))).toString(),
-      logo: (data['logo'] ?? data['logoUrl'] ?? (throw StateError('NULL_RESPONSE'))).toString(),
-      coverImage: (data['coverImage'] ?? data['cover_image'] ?? (throw StateError('NULL_RESPONSE'))).toString(),
-      description: (data['description'] ?? (throw StateError('NULL_RESPONSE'))).toString(),
-      category: (data['category'] ?? (throw StateError('NULL_RESPONSE'))).toString(),
-      city: (data['city'] ?? (throw StateError('NULL_RESPONSE'))).toString(),
-      phone: (data['phone'] ?? (throw StateError('NULL_RESPONSE'))).toString(),
-      email: (data['email'] ?? (throw StateError('NULL_RESPONSE'))).toString(),
+      id: (data['id'] ?? (throw StateError('unexpected_empty_response'))).toString(),
+      ownerId: (data['ownerId'] ?? data['owner_id'] ?? (throw StateError('unexpected_empty_response'))).toString(),
+      name: (data['name'] ?? (throw StateError('unexpected_empty_response'))).toString(),
+      logo: (data['logo'] ?? data['logoUrl'] ?? (throw StateError('unexpected_empty_response'))).toString(),
+      coverImage: (data['coverImage'] ?? data['cover_image'] ?? (throw StateError('unexpected_empty_response'))).toString(),
+      description: (data['description'] ?? (throw StateError('unexpected_empty_response'))).toString(),
+      category: (data['category'] ?? (throw StateError('unexpected_empty_response'))).toString(),
+      city: (data['city'] ?? (throw StateError('unexpected_empty_response'))).toString(),
+      phone: (data['phone'] ?? (throw StateError('unexpected_empty_response'))).toString(),
+      email: (data['email'] ?? (throw StateError('unexpected_empty_response'))).toString(),
       status: (data['status'] ?? 'pending').toString(),
       commission: commissionRaw is num
           ? commissionRaw.toDouble()
-          : double.tryParse(commissionRaw?.toString() ?? (throw StateError('NULL_RESPONSE'))) ??
+          : double.tryParse(commissionRaw?.toString() ?? (throw StateError('unexpected_empty_response'))) ??
               (throw StateError('INVALID_NUMERIC_DATA')),
       products: parsedProducts,
       createdAt: created is String ? (DateTime.tryParse(created)?.toLocal() ?? DateTime.now()) : DateTime.now(),

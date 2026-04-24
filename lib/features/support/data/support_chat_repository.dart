@@ -108,7 +108,7 @@ class SupportChatRepository {
   Future<SupportTicket?> fetchTicket(String ticketId) async {
     final res = await http.get(_uri('/support/tickets', {'id': ticketId.trim()}), headers: await _headers());
     if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw StateError('NULL_RESPONSE');
+      throw StateError('unexpected_empty_response');
     }
     dynamic decoded;
     try {
@@ -118,7 +118,7 @@ class SupportChatRepository {
     }
     if (decoded is Map<String, dynamic>) return SupportTicket.fromMap(decoded);
     if (decoded is Map) return SupportTicket.fromMap(Map<String, dynamic>.from(decoded));
-    throw StateError('NULL_RESPONSE');
+    throw StateError('unexpected_empty_response');
   }
 
   Future<void> sendMessage({

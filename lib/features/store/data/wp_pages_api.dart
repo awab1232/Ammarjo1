@@ -22,7 +22,7 @@ Future<WpPageContent?> fetchWpPageBySlug(String slug) async {
   }
   final decoded = jsonDecodeUtf8Response(response);
   if (decoded is! List<dynamic> || decoded.isEmpty) {
-    throw StateError('NULL_RESPONSE');
+    throw StateError('unexpected_empty_response');
   }
   final map = decoded.first as Map<String, dynamic>;
   final title = (map['title'] is Map && (map['title'] as Map)['rendered'] != null)

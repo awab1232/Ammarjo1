@@ -65,7 +65,7 @@ export class CartService {
     if (!uid) throw new BadRequestException('user required');
     return this.withClient(async (client) => {
       const q = await client.query(
-        `SELECT id, product_id, variant_id, quantity, price_snapshot, product_name, image_url, store_id, store_name, created_at, updated_at
+        `SELECT id, product_id, variant_id, quantity, price_snapshot, product_name, image_url, store_id_uuid::text AS store_id, store_name, created_at, updated_at
          FROM cart_items WHERE user_id = $1 ORDER BY created_at ASC`,
         [uid],
       );
@@ -108,7 +108,8 @@ export class CartService {
     if (!Number.isFinite(qty) || qty <= 0) throw new BadRequestException('invalid_quantity');
     const pid = Math.floor(Number(body.productId));
     if (!Number.isFinite(pid) || pid <= 0) throw new BadRequestException('invalid_product_id');
-    const storeId = (body.storeId ?? 'ammarjo').trim() || 'ammarjo';
+    const storeId = (body.storeId ?? '').trim();
+    if (storeId.length === 0) throw new BadRequestException('store_id_required');
     const storeName = (body.storeName ?? 'متجر').trim() || 'متجر';
     const variantKey = body.variantId != null && String(body.variantId).trim() !== '' ? String(body.variantId).trim() : null;
     const price = String(body.priceSnapshot ?? '').trim();
@@ -120,7 +121,7 @@ export class CartService {
       const existing = await client.query(
         `SELECT id, quantity FROM cart_items
          WHERE user_id = $1 AND product_id = $2 AND COALESCE(variant_id, '') = COALESCE($3::text, '')
-           AND store_id = $4
+           AND store_id_uuid = $4::uuid
          LIMIT 1`,
         [uid, pid, variantKey, storeId],
       );
@@ -133,7 +134,7 @@ export class CartService {
              product_name = COALESCE(NULLIF($4::text, ''), product_name),
              image_url = COALESCE($5, image_url)
            WHERE id = $1::uuid AND user_id = $6
-           RETURNING id, product_id, variant_id, quantity, price_snapshot, product_name, image_url, store_id, store_name, created_at, updated_at`,
+           RETURNING id, product_id, variant_id, quantity, price_snapshot, product_name, image_url, store_id_uuid::text AS store_id, store_name, created_at, updated_at`,
           [curId, nextQty, price, body.productName ?? '', body.imageUrl ?? null, uid],
         );
         const row = u.rows[0];
@@ -143,9 +144,9 @@ export class CartService {
 
       const ins = await client.query(
         `INSERT INTO cart_items (
-           user_id, product_id, variant_id, quantity, price_snapshot, product_name, image_url, store_id, store_name
-         ) VALUES ($1, $2, $3, $4, $5::numeric, $6, $7, $8, $9)
-         RETURNING id, product_id, variant_id, quantity, price_snapshot, product_name, image_url, store_id, store_name, created_at, updated_at`,
+           user_id, product_id, variant_id, quantity, price_snapshot, product_name, image_url, store_id, store_id_uuid, store_name
+         ) VALUES ($1, $2, $3, $4, $5::numeric, $6, $7, $8, $8::uuid, $9)
+         RETURNING id, product_id, variant_id, quantity, price_snapshot, product_name, image_url, store_id_uuid::text AS store_id, store_name, created_at, updated_at`,
         [
           uid,
           pid,
@@ -177,18 +178,19 @@ export class CartService {
 
     return this.withClient(async (client) => {
       const sel = await client.query(
-        `SELECT product_id, store_id FROM cart_items WHERE id = $1::uuid AND user_id = $2 LIMIT 1`,
+        `SELECT product_id, store_id_uuid::text AS store_id FROM cart_items WHERE id = $1::uuid AND user_id = $2 LIMIT 1`,
         [id, uid],
       );
       if (sel.rows.length === 0) throw new NotFoundException();
       const productId = Number(sel.rows[0]['product_id'] ?? 0);
-      const storeId = String(sel.rows[0]['store_id'] ?? 'ammarjo');
+      const storeId = String(sel.rows[0]['store_id'] ?? '');
+      if (storeId.length === 0) throw new BadRequestException('store_id_required');
       await this.assertStockOk(client, productId, storeId);
 
       const u = await client.query(
         `UPDATE cart_items SET quantity = $3, updated_at = NOW()
          WHERE id = $1::uuid AND user_id = $2
-         RETURNING id, product_id, variant_id, quantity, price_snapshot, product_name, image_url, store_id, store_name, created_at, updated_at`,
+         RETURNING id, product_id, variant_id, quantity, price_snapshot, product_name, image_url, store_id_uuid::text AS store_id, store_name, created_at, updated_at`,
         [id, uid, qty],
       );
       const row = u.rows[0];

@@ -51,7 +51,7 @@ class Promotion {
 
   factory Promotion.fromMap(Map<String, dynamic> d) {
     DateTime parseTs(dynamic v, DateTime fallback) =>
-        DateTime.tryParse(v?.toString() ?? (throw StateError('NULL_RESPONSE'))) ?? fallback;
+        DateTime.tryParse(v?.toString() ?? (throw StateError('unexpected_empty_response'))) ?? fallback;
     final rawDays = d['daysOfWeek'];
     final days = <int>[];
     if (rawDays is List) {
@@ -69,10 +69,10 @@ class Promotion {
       }
     }
     return Promotion(
-      id: d['id']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      name: (d['name'] ?? (throw StateError('NULL_RESPONSE'))).toString(),
+      id: d['id']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      name: (d['name'] ?? (throw StateError('unexpected_empty_response'))).toString(),
       description:
-          (d['description'] ?? (throw StateError('NULL_RESPONSE'))).toString(),
+          (d['description'] ?? (throw StateError('unexpected_empty_response'))).toString(),
       type: (d['type'] ?? 'percentage').toString(),
       value: (d['value'] is num)
           ? (d['value'] as num).toDouble()
@@ -105,9 +105,9 @@ class Promotion {
       isActive: d['isActive'] != false,
       isStackable: d['isStackable'] == true,
       createdAt: DateTime.tryParse(
-        d['createdAt']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+        d['createdAt']?.toString() ?? (throw StateError('unexpected_empty_response')),
       ),
-      createdBy: (d['createdBy'] ?? (throw StateError('NULL_RESPONSE'))).toString(),
+      createdBy: (d['createdBy'] ?? (throw StateError('unexpected_empty_response'))).toString(),
     );
   }
 

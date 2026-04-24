@@ -79,13 +79,13 @@ final class BackendNotificationsClient {
 
   Future<Map<String, dynamic>?> _authedGet(String path, {Map<String, String>? query}) async {
     final req = await _request(path, query: query);
-    if (req == null) throw StateError('NULL_RESPONSE');
+    if (req == null) throw StateError('unexpected_empty_response');
     final res = await http.get(req.$1, headers: req.$2);
-    if (res.statusCode < 200 || res.statusCode >= 300) throw StateError('NULL_RESPONSE');
+    if (res.statusCode < 200 || res.statusCode >= 300) throw StateError('unexpected_empty_response');
     final decoded = jsonDecode(res.body);
     if (decoded is Map<String, dynamic>) return decoded;
     if (decoded is Map) return Map<String, dynamic>.from(decoded);
-    throw StateError('NULL_RESPONSE');
+    throw StateError('unexpected_empty_response');
   }
 
   String _platformLabel() {
@@ -102,10 +102,10 @@ final class BackendNotificationsClient {
 
   Future<Map<String, dynamic>?> _authedPatch(String path, Map<String, dynamic> body) async {
     final req = await _request(path);
-    if (req == null) throw StateError('NULL_RESPONSE');
+    if (req == null) throw StateError('unexpected_empty_response');
     final headers = <String, String>{...req.$2, 'Content-Type': 'application/json'};
     final res = await http.patch(req.$1, headers: headers, body: jsonEncode(body));
-    if (res.statusCode < 200 || res.statusCode >= 300) throw StateError('NULL_RESPONSE');
+    if (res.statusCode < 200 || res.statusCode >= 300) throw StateError('unexpected_empty_response');
     if (res.body.trim().isEmpty) return <String, dynamic>{};
     final decoded = jsonDecode(res.body);
     if (decoded is Map<String, dynamic>) return decoded;
@@ -116,14 +116,14 @@ final class BackendNotificationsClient {
   Future<Map<String, dynamic>?> _internalPost(String path, Map<String, dynamic> body) async {
     final base = BackendOrdersConfig.baseUrl.trim();
     final key = const String.fromEnvironment('INTERNAL_API_KEY', defaultValue: '').trim();
-    if (base.isEmpty || key.isEmpty) throw StateError('NULL_RESPONSE');
+    if (base.isEmpty || key.isEmpty) throw StateError('unexpected_empty_response');
     final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}$path');
     final res = await http.post(
       uri,
       headers: <String, String>{'Content-Type': 'application/json', 'x-internal-api-key': key},
       body: jsonEncode(body),
     );
-    if (res.statusCode < 200 || res.statusCode >= 300) throw StateError('NULL_RESPONSE');
+    if (res.statusCode < 200 || res.statusCode >= 300) throw StateError('unexpected_empty_response');
     if (res.body.trim().isEmpty) return <String, dynamic>{};
     final decoded = jsonDecode(res.body);
     if (decoded is Map<String, dynamic>) return decoded;
@@ -133,7 +133,7 @@ final class BackendNotificationsClient {
 
   Future<(Uri, Map<String, String>)?> _request(String path, {Map<String, String>? query}) async {
     final base = BackendOrdersConfig.baseUrl.trim();
-    if (base.isEmpty) throw StateError('NULL_RESPONSE');
+    if (base.isEmpty) throw StateError('unexpected_empty_response');
     final authHeaders = await FirebaseAuthHeaderProvider.requireAuthHeaders(
       reason: 'backend_notifications:$path',
     );

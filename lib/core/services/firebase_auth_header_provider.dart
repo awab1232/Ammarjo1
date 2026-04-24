@@ -17,7 +17,7 @@ abstract final class FirebaseAuthHeaderProvider {
     final token = await user.getIdToken(true);
     debugPrint('[AUTH-HEADER] reason=$reason token_is_null=${token == null} len=${token?.trim().length ?? 0}');
     final trimmed = token?.trim() ?? '';
-    if (trimmed.isEmpty) throw StateError('NULL_RESPONSE');
+    if (trimmed.isEmpty) throw StateError('unexpected_empty_response');
     return trimmed;
   }
 

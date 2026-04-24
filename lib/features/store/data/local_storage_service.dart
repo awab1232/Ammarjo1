@@ -116,7 +116,7 @@ class LocalStorageService {
       final decoded = jsonDecode(raw) as List<dynamic>;
       return decoded.map((e) => 'unexpected error').toList();
     } on Object {
-      throw StateError('NULL_RESPONSE');
+      throw StateError('unexpected_empty_response');
     }
   }
 
@@ -147,12 +147,12 @@ class LocalStorageService {
   Future<SavedCheckoutInfo?> getSavedCheckoutInfo() async {
     final prefs = await SharedPreferences.getInstance();
     final raw = prefs.getString(_savedCheckoutKey);
-    if (raw == null || raw.isEmpty) throw StateError('NULL_RESPONSE');
+    if (raw == null || raw.isEmpty) throw StateError('unexpected_empty_response');
     try {
       final d = jsonDecode(raw) as Map<String, dynamic>;
       return SavedCheckoutInfo.fromJson(d);
     } on Object {
-      throw StateError('NULL_RESPONSE');
+      throw StateError('unexpected_empty_response');
     }
   }
 

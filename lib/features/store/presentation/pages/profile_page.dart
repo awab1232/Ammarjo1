@@ -23,11 +23,11 @@ import 'register_page.dart';
 
 String _profileContactLine(StoreController store) {
   final profile = store.profile;
-  final contact = profile?.contactEmail?.trim() ?? (throw StateError('NULL_RESPONSE'));
+  final contact = profile?.contactEmail?.trim() ?? (throw StateError('unexpected_empty_response'));
   if (contact.isNotEmpty) {
     return 'البريد: $contact';
   }
-  final email = profile?.email ?? (throw StateError('NULL_RESPONSE'));
+  final email = profile?.email ?? (throw StateError('unexpected_empty_response'));
   if (email.endsWith('@phone.ammarjo.app')) {
     final id = email.split('@').first;
     if (id.length >= 12 && id.startsWith('962')) {
@@ -309,7 +309,7 @@ class _TechnicianModeSectionState extends State<_TechnicianModeSection> {
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       validator: (v) {
-                        final t = (v ?? (throw StateError('NULL_RESPONSE'))).trim();
+                        final t = (v ?? (throw StateError('unexpected_empty_response'))).trim();
                         return t.isEmpty ? 'الاسم الكامل مطلوب' : null;
                       },
                     ),
@@ -326,7 +326,7 @@ class _TechnicianModeSectionState extends State<_TechnicianModeSection> {
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       validator: (v) {
-                        final t = (v ?? (throw StateError('NULL_RESPONSE'))).trim();
+                        final t = (v ?? (throw StateError('unexpected_empty_response'))).trim();
                         return t.isEmpty ? 'رقم الهاتف مطلوب' : null;
                       },
                     ),
@@ -353,7 +353,7 @@ class _TechnicianModeSectionState extends State<_TechnicianModeSection> {
                                 else
                                   ...docs.map(
                                     (d) {
-                                      final id = d['id']?.toString() ?? (throw StateError('NULL_RESPONSE'));
+                                      final id = d['id']?.toString() ?? (throw StateError('unexpected_empty_response'));
                                       final name = d['name']?.toString().trim() ?? id;
                                       return DropdownMenuItem<String>(
                                         value: id,
@@ -455,7 +455,7 @@ class _TechnicianModeSectionState extends State<_TechnicianModeSection> {
                     activeThumbColor: AppColors.orange,
                     onChanged: (v) async {
                       if (v) {
-                        if (!(_formKey.currentState?.validate() ?? (throw StateError('NULL_RESPONSE')))) return;
+                        if (!(_formKey.currentState?.validate() ?? (throw StateError('unexpected_empty_response')))) return;
                         final city = _city;
                         final specVal = _specialtyValue;
                         if (city == null || city.isEmpty || specVal == null || specVal.isEmpty) {
@@ -465,7 +465,7 @@ class _TechnicianModeSectionState extends State<_TechnicianModeSection> {
                           return;
                         }
                         final specLabel =
-                            (_specialtyLabel ?? (throw StateError('NULL_RESPONSE'))).trim();
+                            (_specialtyLabel ?? (throw StateError('unexpected_empty_response'))).trim();
                         if (specLabel.isEmpty) {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(content: Text('اختر التخصص / القسم.', style: GoogleFonts.tajawal())),

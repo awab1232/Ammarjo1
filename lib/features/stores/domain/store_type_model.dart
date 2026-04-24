@@ -19,9 +19,9 @@ class StoreTypeModel {
 
   factory StoreTypeModel.fromMap(Map<String, dynamic> raw) {
     return StoreTypeModel(
-      id: raw['id']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      name: raw['name']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      key: raw['key']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+      id: raw['id']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      name: raw['name']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      key: raw['key']?.toString() ?? (throw StateError('unexpected_empty_response')),
       icon: raw['icon']?.toString(),
       image: raw['image']?.toString(),
       displayOrder: (raw['displayOrder'] as num?)?.toInt() ?? 0,

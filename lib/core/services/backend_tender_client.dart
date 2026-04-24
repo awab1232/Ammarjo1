@@ -49,9 +49,9 @@ final class BackendTenderClient {
   /// Hard delete for a tender (customer owner only, enforced server-side).
   Future<Map<String, dynamic>?> deleteTender(String tenderId) async {
     final req = await _request('/tenders/${Uri.encodeComponent(tenderId)}');
-    if (req == null) throw StateError('NULL_RESPONSE');
+    if (req == null) throw StateError('unexpected_empty_response');
     final res = await http.delete(req.$1, headers: req.$2);
-    if (res.statusCode < 200 || res.statusCode >= 300) throw StateError('NULL_RESPONSE');
+    if (res.statusCode < 200 || res.statusCode >= 300) throw StateError('unexpected_empty_response');
     if (res.body.trim().isEmpty) return <String, dynamic>{};
     final decoded = jsonDecode(res.body);
     if (decoded is Map<String, dynamic>) return decoded;
@@ -61,7 +61,7 @@ final class BackendTenderClient {
 
   Future<Map<String, dynamic>?> fetchTender(String tenderId) async {
     final id = tenderId.trim();
-    if (id.isEmpty) throw StateError('NULL_RESPONSE');
+    if (id.isEmpty) throw StateError('unexpected_empty_response');
     return _authedGet('/tenders/${Uri.encodeComponent(id)}');
   }
 
@@ -142,7 +142,7 @@ final class BackendTenderClient {
 
   Future<Map<String, dynamic>?> _authedGet(String path, {Map<String, String>? query}) async {
     final req = await _request(path, query: query);
-    if (req == null) throw StateError('NULL_RESPONSE');
+    if (req == null) throw StateError('unexpected_empty_response');
     final res = await http.get(req.$1, headers: req.$2);
     if (res.statusCode < 200 || res.statusCode >= 300) {
       if (res.statusCode == 401) {
@@ -156,12 +156,12 @@ final class BackendTenderClient {
     final decoded = jsonDecode(res.body);
     if (decoded is Map<String, dynamic>) return decoded;
     if (decoded is Map) return Map<String, dynamic>.from(decoded);
-    throw StateError('NULL_RESPONSE');
+    throw StateError('unexpected_empty_response');
   }
 
   Future<Map<String, dynamic>?> _authedPost(String path, Map<String, dynamic> body) async {
     final req = await _request(path);
-    if (req == null) throw StateError('NULL_RESPONSE');
+    if (req == null) throw StateError('unexpected_empty_response');
     final headers = <String, String>{...req.$2, 'Content-Type': 'application/json'};
     final res = await http.post(req.$1, headers: headers, body: jsonEncode(body));
     if (res.statusCode < 200 || res.statusCode >= 300) {
@@ -182,7 +182,7 @@ final class BackendTenderClient {
 
   Future<Map<String, dynamic>?> _authedPatch(String path, Map<String, dynamic> body) async {
     final req = await _request(path);
-    if (req == null) throw StateError('NULL_RESPONSE');
+    if (req == null) throw StateError('unexpected_empty_response');
     final headers = <String, String>{...req.$2, 'Content-Type': 'application/json'};
     final res = await http.patch(req.$1, headers: headers, body: jsonEncode(body));
     if (res.statusCode < 200 || res.statusCode >= 300) {
@@ -203,7 +203,7 @@ final class BackendTenderClient {
 
   Future<(Uri, Map<String, String>)?> _request(String path, {Map<String, String>? query}) async {
     final base = BackendOrdersConfig.baseUrl.trim();
-    if (base.isEmpty) throw StateError('NULL_RESPONSE');
+    if (base.isEmpty) throw StateError('unexpected_empty_response');
     final authHeaders = await FirebaseAuthHeaderProvider.requireAuthHeaders(reason: 'backend_tender:$path');
     final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}$path').replace(queryParameters: query);
     FirebaseAuthHeaderProvider.logRequestHeaders(method: 'REQUEST', uri: uri, headers: authHeaders);

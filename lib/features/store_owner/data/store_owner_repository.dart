@@ -50,17 +50,17 @@ abstract final class StoreOwnerRepository {
       return <String, String>{...auth, 'Content-Type': 'application/json'};
     } on Object {
       debugPrint('[StoreOwnerRepository] no signed-in user — request degraded');
-      throw StateError('NULL_RESPONSE');
+      throw StateError('unexpected_empty_response');
     }
   }
 
   static Future<dynamic> _httpGetJson(String path) async {
     if (_baseUrl.isEmpty) {
       BackendOrdersConfig.warnIfBackendBaseUrlMissing('store_owner');
-      throw StateError('NULL_RESPONSE');
+      throw StateError('unexpected_empty_response');
     }
     final headers = await _authHeadersOptional();
-    if (headers == null) throw StateError('NULL_RESPONSE');
+    if (headers == null) throw StateError('unexpected_empty_response');
     try {
       final uri = Uri.parse('$_baseUrl$path');
       final res = await http.get(uri, headers: headers);
@@ -71,23 +71,23 @@ abstract final class StoreOwnerRepository {
           extra: {'method': 'GET', 'path': path},
         );
         debugPrint('[StoreOwnerRepository] GET $path failed ${res.statusCode}');
-        throw StateError('NULL_RESPONSE');
+        throw StateError('unexpected_empty_response');
       }
-      if (res.body.trim().isEmpty) throw StateError('NULL_RESPONSE');
+      if (res.body.trim().isEmpty) throw StateError('unexpected_empty_response');
       return jsonDecode(res.body);
     } on Object {
       debugPrint('[StoreOwnerRepository] GET $path error');
-      throw StateError('NULL_RESPONSE');
+      throw StateError('unexpected_empty_response');
     }
   }
 
   static Future<dynamic> _httpPostJson(String path, Map<String, dynamic> body) async {
     if (_baseUrl.isEmpty) {
       BackendOrdersConfig.warnIfBackendBaseUrlMissing('store_owner');
-      throw StateError('NULL_RESPONSE');
+      throw StateError('unexpected_empty_response');
     }
     final headers = await _authHeadersOptional();
-    if (headers == null) throw StateError('NULL_RESPONSE');
+    if (headers == null) throw StateError('unexpected_empty_response');
     try {
       final uri = Uri.parse('$_baseUrl$path');
       final res = await http.post(uri, headers: headers, body: jsonEncode(body));
@@ -98,23 +98,23 @@ abstract final class StoreOwnerRepository {
           extra: {'method': 'POST', 'path': path},
         );
         debugPrint('[StoreOwnerRepository] POST $path failed ${res.statusCode}');
-        throw StateError('NULL_RESPONSE');
+        throw StateError('unexpected_empty_response');
       }
-      if (res.body.trim().isEmpty) throw StateError('NULL_RESPONSE');
+      if (res.body.trim().isEmpty) throw StateError('unexpected_empty_response');
       return jsonDecode(res.body);
     } on Object {
       debugPrint('[StoreOwnerRepository] POST $path error');
-      throw StateError('NULL_RESPONSE');
+      throw StateError('unexpected_empty_response');
     }
   }
 
   static Future<dynamic> _httpPatchJson(String path, Map<String, dynamic> body) async {
     if (_baseUrl.isEmpty) {
       BackendOrdersConfig.warnIfBackendBaseUrlMissing('store_owner');
-      throw StateError('NULL_RESPONSE');
+      throw StateError('unexpected_empty_response');
     }
     final headers = await _authHeadersOptional();
-    if (headers == null) throw StateError('NULL_RESPONSE');
+    if (headers == null) throw StateError('unexpected_empty_response');
     try {
       final uri = Uri.parse('$_baseUrl$path');
       final res = await http.patch(uri, headers: headers, body: jsonEncode(body));
@@ -125,13 +125,13 @@ abstract final class StoreOwnerRepository {
           extra: {'method': 'PATCH', 'path': path},
         );
         debugPrint('[StoreOwnerRepository] PATCH $path failed ${res.statusCode}');
-        throw StateError('NULL_RESPONSE');
+        throw StateError('unexpected_empty_response');
       }
-      if (res.body.trim().isEmpty) throw StateError('NULL_RESPONSE');
+      if (res.body.trim().isEmpty) throw StateError('unexpected_empty_response');
       return jsonDecode(res.body);
     } on Object {
       debugPrint('[StoreOwnerRepository] PATCH $path error');
-      throw StateError('NULL_RESPONSE');
+      throw StateError('unexpected_empty_response');
     }
   }
 
@@ -159,9 +159,9 @@ abstract final class StoreOwnerRepository {
   }
 
   static OwnerEntityDoc _ownerDocFromOrderPayload(Map<String, dynamic> raw) {
-    final id = raw['orderId']?.toString() ?? (throw StateError('NULL_RESPONSE'));
+    final id = raw['orderId']?.toString() ?? (throw StateError('unexpected_empty_response'));
     final m = Map<String, dynamic>.from(raw);
-    final s = m['status']?.toString() ?? (throw StateError('NULL_RESPONSE'));
+    final s = m['status']?.toString() ?? (throw StateError('unexpected_empty_response'));
     var ar = OrderStatus.toArabicForDisplay(s);
     if (ar == 'ملغي') ar = 'إلغاء';
     m['status'] = ar;
@@ -174,8 +174,8 @@ abstract final class StoreOwnerRepository {
     final m = <String, String>{};
     for (final e in items) {
       if (e is Map) {
-        final id = e['id']?.toString() ?? (throw StateError('NULL_RESPONSE'));
-        final name = e['name']?.toString() ?? (throw StateError('NULL_RESPONSE'));
+        final id = e['id']?.toString() ?? (throw StateError('unexpected_empty_response'));
+        final name = e['name']?.toString() ?? (throw StateError('unexpected_empty_response'));
         if (id.isNotEmpty) m[id] = name;
       }
     }
@@ -190,7 +190,7 @@ abstract final class StoreOwnerRepository {
     for (final e in items) {
       if (e is! Map) continue;
       final p = Map<String, dynamic>.from(e);
-      final id = p['id']?.toString() ?? (throw StateError('NULL_RESPONSE'));
+      final id = p['id']?.toString() ?? (throw StateError('unexpected_empty_response'));
       final catId = p['categoryId']?.toString();
       final shelf = (catId != null && catNames.containsKey(catId)) ? catNames[catId]! : (catId ?? 'عام');
       final images = p['images'];
@@ -203,9 +203,9 @@ abstract final class StoreOwnerRepository {
       final stock = (p['stock'] as num?)?.toInt() ?? (throw StateError('INVALID_NUMERIC_DATA'));
       final data = <String, dynamic>{
         'name': p['name'],
-        'description': p['description'] ?? (throw StateError('NULL_RESPONSE')),
+        'description': p['description'] ?? (throw StateError('unexpected_empty_response')),
         'price': p['price'],
-        'hasVariants': p['hasVariants'] ?? (throw StateError('NULL_RESPONSE')),
+        'hasVariants': p['hasVariants'] ?? (throw StateError('unexpected_empty_response')),
         'variants': p['variants'] ?? <dynamic>[],
         'image_urls': urls,
         'shelfCategory': shelf,
@@ -217,8 +217,8 @@ abstract final class StoreOwnerRepository {
       out.add(OwnerEntityDoc(id, data));
     }
     out.sort((a, b) {
-      final ca = a.data()['createdAt']?.toString() ?? (throw StateError('NULL_RESPONSE'));
-      final cb = b.data()['createdAt']?.toString() ?? (throw StateError('NULL_RESPONSE'));
+      final ca = a.data()['createdAt']?.toString() ?? (throw StateError('unexpected_empty_response'));
+      final cb = b.data()['createdAt']?.toString() ?? (throw StateError('unexpected_empty_response'));
       return cb.compareTo(ca);
     });
     return out;
@@ -231,15 +231,15 @@ abstract final class StoreOwnerRepository {
     for (final e in items) {
       if (e is! Map) continue;
       final c = Map<String, dynamic>.from(e);
-      final id = c['id']?.toString() ?? (throw StateError('NULL_RESPONSE'));
+      final id = c['id']?.toString() ?? (throw StateError('unexpected_empty_response'));
       final data = <String, dynamic>{
         'name': c['name'],
         'createdAt': c['createdAt'],
       };
       out.add(OwnerEntityDoc(id, data));
     }
-    out.sort((a, b) => (a.data()['name']?.toString() ?? (throw StateError('NULL_RESPONSE'))).compareTo(
-          b.data()['name']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+    out.sort((a, b) => (a.data()['name']?.toString() ?? (throw StateError('unexpected_empty_response'))).compareTo(
+          b.data()['name']?.toString() ?? (throw StateError('unexpected_empty_response')),
         ));
     return out;
   }
@@ -251,8 +251,8 @@ abstract final class StoreOwnerRepository {
     }
     final m = Map<String, dynamic>.from(raw);
     final data = <String, dynamic>{
-      'name': m['name'] ?? (throw StateError('NULL_RESPONSE')),
-      'description': m['description'] ?? (throw StateError('NULL_RESPONSE')),
+      'name': m['name'] ?? (throw StateError('unexpected_empty_response')),
+      'description': m['description'] ?? (throw StateError('unexpected_empty_response')),
       'phone': m['phone']?.toString() ?? '',
       'deliveryTime': '',
       'coverImage': (m['imageUrl'] ?? m['coverImage'] ?? '').toString(),
@@ -328,8 +328,8 @@ abstract final class StoreOwnerRepository {
     for (final e in ordersRaw) {
       if (e is! Map) continue;
       final row = Map<String, dynamic>.from(e);
-      final oid = row['orderId']?.toString() ?? (throw StateError('NULL_RESPONSE'));
-      final dt = DateTime.tryParse(row['recordedAt']?.toString() ?? (throw StateError('NULL_RESPONSE')));
+      final oid = row['orderId']?.toString() ?? (throw StateError('unexpected_empty_response'));
+      final dt = DateTime.tryParse(row['recordedAt']?.toString() ?? (throw StateError('unexpected_empty_response')));
       list.add(
         OwnerEntityDoc(oid, <String, dynamic>{
           'orderTotal': row['orderTotal'],
@@ -384,7 +384,7 @@ abstract final class StoreOwnerRepository {
   static Future<String?> storeIdForCurrentUser() async {
     final me = await BackendOrdersClient.instance.fetchAuthMe();
     final id = me?.storeId?.trim();
-    if (id == null || id.isEmpty) throw StateError('NULL_RESPONSE');
+    if (id == null || id.isEmpty) throw StateError('unexpected_empty_response');
     return id;
   }
 
@@ -401,7 +401,7 @@ abstract final class StoreOwnerRepository {
     final docs = await fetchProducts(storeId);
     final set = <String>{};
     for (final d in docs) {
-      final c = d.data()['shelfCategory']?.toString().trim() ?? (throw StateError('NULL_RESPONSE'));
+      final c = d.data()['shelfCategory']?.toString().trim() ?? (throw StateError('unexpected_empty_response'));
       if (c.isNotEmpty) set.add(c);
     }
     return set;
@@ -518,7 +518,7 @@ abstract final class StoreOwnerRepository {
       if (e is! Map) continue;
       final p = Map<String, dynamic>.from(e);
       if (p['categoryId']?.toString() == categoryDocId) {
-        final pid = p['id']?.toString() ?? (throw StateError('NULL_RESPONSE'));
+        final pid = p['id']?.toString() ?? (throw StateError('unexpected_empty_response'));
         if (pid.isNotEmpty) {
           await _httpPatchJson('/stores/${storeId.trim()}/products/$pid', <String, dynamic>{
             'categoryId': null,
@@ -536,22 +536,22 @@ abstract final class StoreOwnerRepository {
     for (final e in items) {
       if (e is! Map) continue;
       final m = Map<String, dynamic>.from(e);
-      final id = m['id']?.toString() ?? (throw StateError('NULL_RESPONSE'));
+      final id = m['id']?.toString() ?? (throw StateError('unexpected_empty_response'));
       final vu = m['validUntil']?.toString();
       final cr = m['createdAt']?.toString();
       final data = <String, dynamic>{
         'title': m['title'],
-        'description': m['description'] ?? (throw StateError('NULL_RESPONSE')),
+        'description': m['description'] ?? (throw StateError('unexpected_empty_response')),
         'discountPercent': m['discountPercent'],
         'validUntil': vu,
-        'imageUrl': m['imageUrl'] ?? (throw StateError('NULL_RESPONSE')),
+        'imageUrl': m['imageUrl'] ?? (throw StateError('unexpected_empty_response')),
         'createdAt': cr,
       };
       out.add(OwnerEntityDoc(id, data));
     }
     out.sort((a, b) {
-      final ta = a.data()['createdAt']?.toString() ?? (throw StateError('NULL_RESPONSE'));
-      final tb = b.data()['createdAt']?.toString() ?? (throw StateError('NULL_RESPONSE'));
+      final ta = a.data()['createdAt']?.toString() ?? (throw StateError('unexpected_empty_response'));
+      final tb = b.data()['createdAt']?.toString() ?? (throw StateError('unexpected_empty_response'));
       return tb.compareTo(ta);
     });
     return out;
@@ -697,40 +697,40 @@ abstract final class StoreOwnerRepository {
   }
 
   static Future<Map<String, dynamic>?> getHybridStoreBuilder(String storeId) async {
-    if (!enableHybridStoreBuilder) throw StateError('NULL_RESPONSE');
+    if (!enableHybridStoreBuilder) throw StateError('unexpected_empty_response');
     final raw = await _httpGetJson('/store-builder/${storeId.trim()}');
     if (raw is Map<String, dynamic>) return raw;
-    throw StateError('NULL_RESPONSE');
+    throw StateError('unexpected_empty_response');
   }
 
   static Future<Map<String, dynamic>?> bootstrapHybridStoreBuilder({
     required String storeId,
   }) async {
-    if (!enableHybridStoreBuilder) throw StateError('NULL_RESPONSE');
+    if (!enableHybridStoreBuilder) throw StateError('unexpected_empty_response');
     final raw = await _httpPostJson('/store-builder/bootstrap', {
       'storeId': storeId.trim(),
     });
     if (raw is Map<String, dynamic>) return raw;
-    throw StateError('NULL_RESPONSE');
+    throw StateError('unexpected_empty_response');
   }
 
   static Future<Map<String, dynamic>?> setHybridStoreMode({
     required String storeId,
     required String mode,
   }) async {
-    if (!enableHybridStoreBuilder) throw StateError('NULL_RESPONSE');
+    if (!enableHybridStoreBuilder) throw StateError('unexpected_empty_response');
     final raw = await _httpPostJson('/store-builder/${storeId.trim()}/mode', {
       'mode': mode,
     });
     if (raw is Map<String, dynamic>) return raw;
-    throw StateError('NULL_RESPONSE');
+    throw StateError('unexpected_empty_response');
   }
 
   static Future<Map<String, dynamic>?> getHybridSuggestions(String storeId) async {
-    if (!enableHybridStoreBuilder) throw StateError('NULL_RESPONSE');
+    if (!enableHybridStoreBuilder) throw StateError('unexpected_empty_response');
     final raw = await _httpPostJson('/ai/store/suggestions', {'storeId': storeId.trim()});
     if (raw is Map<String, dynamic>) return raw;
-    throw StateError('NULL_RESPONSE');
+    throw StateError('unexpected_empty_response');
   }
 
   static Future<Map<String, dynamic>?> addHybridCategory({
@@ -739,14 +739,14 @@ abstract final class StoreOwnerRepository {
     String? imageUrl,
     String? parentId,
   }) async {
-    if (!enableHybridStoreBuilder) throw StateError('NULL_RESPONSE');
+    if (!enableHybridStoreBuilder) throw StateError('unexpected_empty_response');
     final raw = await _httpPostJson('/store-builder/${storeId.trim()}/categories', {
       'name': name.trim(),
       if (imageUrl != null && imageUrl.trim().isNotEmpty) 'imageUrl': imageUrl.trim(),
       if (parentId != null && parentId.trim().isNotEmpty) 'parentId': parentId.trim(),
     });
     if (raw is Map<String, dynamic>) return raw;
-    throw StateError('NULL_RESPONSE');
+    throw StateError('unexpected_empty_response');
   }
 
   static Future<Map<String, dynamic>?> updateHybridCategory({
@@ -755,13 +755,13 @@ abstract final class StoreOwnerRepository {
     String? name,
     String? imageUrl,
   }) async {
-    if (!enableHybridStoreBuilder) throw StateError('NULL_RESPONSE');
+    if (!enableHybridStoreBuilder) throw StateError('unexpected_empty_response');
     final raw = await _httpPatchJson('/store-builder/${storeId.trim()}/categories/${categoryId.trim()}', {
       if (name != null) 'name': name.trim(),
       if (imageUrl != null) 'imageUrl': imageUrl.trim(),
     });
     if (raw is Map<String, dynamic>) return raw;
-    throw StateError('NULL_RESPONSE');
+    throw StateError('unexpected_empty_response');
   }
 
   static Future<void> deleteHybridCategory({

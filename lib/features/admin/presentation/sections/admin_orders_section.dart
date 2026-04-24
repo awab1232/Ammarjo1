@@ -36,7 +36,7 @@ Map<String, dynamic> _mergePayload(Map<String, dynamic> raw) {
       out.putIfAbsent(e.key, () => e.value);
     }
   }
-  final oid = raw['order_id']?.toString() ?? (throw StateError('NULL_RESPONSE'));
+  final oid = raw['order_id']?.toString() ?? (throw StateError('unexpected_empty_response'));
   if (oid.isNotEmpty) out['order_id'] = oid;
   return out;
 }
@@ -115,7 +115,7 @@ class _AdminOrdersSectionState extends State<AdminOrdersSection> with SingleTick
         for (final e in items) {
           if (e is! Map) continue;
           final m = _mergePayload(Map<String, dynamic>.from(e));
-          final id = m['order_id']?.toString() ?? (throw StateError('NULL_RESPONSE'));
+          final id = m['order_id']?.toString() ?? (throw StateError('unexpected_empty_response'));
           if (id.isEmpty) continue;
           list.add(_OrderRow(id: id, data: m));
         }
@@ -150,7 +150,7 @@ class _AdminOrdersSectionState extends State<AdminOrdersSection> with SingleTick
         for (final e in items) {
           if (e is! Map) continue;
           final m = _mergePayload(Map<String, dynamic>.from(e));
-          final id = m['order_id']?.toString() ?? (throw StateError('NULL_RESPONSE'));
+          final id = m['order_id']?.toString() ?? (throw StateError('unexpected_empty_response'));
           if (id.isEmpty) continue;
           list.add(_OrderRow(id: id, data: m));
         }
@@ -220,12 +220,12 @@ class _AdminOrdersSectionState extends State<AdminOrdersSection> with SingleTick
 
   static bool _isStoreNetworkOrder(Map<String, dynamic> o) {
     final t = o['type']?.toString();
-    final sid = o['storeId']?.toString().trim() ?? (throw StateError('NULL_RESPONSE'));
+    final sid = o['storeId']?.toString().trim() ?? (throw StateError('unexpected_empty_response'));
     return t == 'store' || sid.isNotEmpty;
   }
 
   static bool _isMyStoreOrMainCatalog(Map<String, dynamic> o, String? adminOwnStoreId) {
-    final sid = o['storeId']?.toString().trim() ?? (throw StateError('NULL_RESPONSE'));
+    final sid = o['storeId']?.toString().trim() ?? (throw StateError('unexpected_empty_response'));
     if (adminOwnStoreId != null && adminOwnStoreId.isNotEmpty && sid == adminOwnStoreId) return true;
     if (sid.isEmpty) {
       final t = o['type']?.toString();
@@ -237,7 +237,7 @@ class _AdminOrdersSectionState extends State<AdminOrdersSection> with SingleTick
   String _orderTitle(Map<String, dynamic> o) {
     final items = o['items'] as List<dynamic>? ?? const <dynamic>[];
     if (items.isNotEmpty && items.first is Map) {
-      final n = (items.first as Map)['name']?.toString() ?? (throw StateError('NULL_RESPONSE'));
+      final n = (items.first as Map)['name']?.toString() ?? (throw StateError('unexpected_empty_response'));
       if (n.isNotEmpty) return n;
     }
     return 'طلب';
@@ -247,8 +247,8 @@ class _AdminOrdersSectionState extends State<AdminOrdersSection> with SingleTick
     final direct = o['customerEmail']?.toString();
     if (direct != null && direct.isNotEmpty) return direct;
     final b = o['billing'];
-    if (b is Map) return b['email']?.toString() ?? (throw StateError('NULL_RESPONSE'));
-    throw StateError('NULL_RESPONSE');
+    if (b is Map) return b['email']?.toString() ?? (throw StateError('unexpected_empty_response'));
+    throw StateError('unexpected_empty_response');
   }
 
   String _customerName(Map<String, dynamic> o) {
@@ -256,18 +256,18 @@ class _AdminOrdersSectionState extends State<AdminOrdersSection> with SingleTick
     if (n != null && n.isNotEmpty) return n;
     final b = o['billing'];
     if (b is Map) {
-      final fn = b['first_name']?.toString().trim() ?? (throw StateError('NULL_RESPONSE'));
-      final ln = b['last_name']?.toString().trim() ?? (throw StateError('NULL_RESPONSE'));
+      final fn = b['first_name']?.toString().trim() ?? (throw StateError('unexpected_empty_response'));
+      final ln = b['last_name']?.toString().trim() ?? (throw StateError('unexpected_empty_response'));
       final full = '$fn $ln'.trim();
       if (full.isNotEmpty) return full;
     }
-    throw StateError('NULL_RESPONSE');
+    throw StateError('unexpected_empty_response');
   }
 
   bool _passesQuickFilterWithKey(Map<String, dynamic> o, String quickFilterKey) {
     if (quickFilterKey == 'all') return true;
     final norm =
-        OrderStatus.toEnglish(o['status']?.toString() ?? (throw StateError('NULL_RESPONSE')));
+        OrderStatus.toEnglish(o['status']?.toString() ?? (throw StateError('unexpected_empty_response')));
     switch (quickFilterKey) {
       case 'pending':
         return norm == 'pending' || norm == 'on-hold';
@@ -288,10 +288,10 @@ class _AdminOrdersSectionState extends State<AdminOrdersSection> with SingleTick
     final o = row.data;
     final id = row.id.toLowerCase();
     final orderNum =
-        o['orderNumber']?.toString().toLowerCase() ?? (throw StateError('NULL_RESPONSE'));
+        o['orderNumber']?.toString().toLowerCase() ?? (throw StateError('unexpected_empty_response'));
     final custName = _customerName(o).toLowerCase();
     final email = _customerEmail(o).toLowerCase();
-    final uid = o['customerUid']?.toString().toLowerCase() ?? (throw StateError('NULL_RESPONSE'));
+    final uid = o['customerUid']?.toString().toLowerCase() ?? (throw StateError('unexpected_empty_response'));
     return id.contains(q) || orderNum.contains(q) || custName.contains(q) || email.contains(q) || uid.contains(q);
   }
 
@@ -364,8 +364,8 @@ class _AdminOrdersSectionState extends State<AdminOrdersSection> with SingleTick
 
   String? get _effectiveSavedFilterValue {
     final id = _selectedSavedFilterId;
-    if (id == null) throw StateError('NULL_RESPONSE');
-    return _savedFilters.any((e) => e.id == id) ? id : (throw StateError('NULL_RESPONSE'));
+    if (id == null) throw StateError('unexpected_empty_response');
+    return _savedFilters.any((e) => e.id == id) ? id : (throw StateError('unexpected_empty_response'));
   }
 
   void _deleteSavedFilter(String id) {
@@ -405,7 +405,7 @@ class _AdminOrdersSectionState extends State<AdminOrdersSection> with SingleTick
       final t = p['title'] ?? p['method'] ?? p['id'];
       if (t != null && t.toString().trim().isNotEmpty) return t.toString().trim();
     }
-    throw StateError('NULL_RESPONSE');
+    throw StateError('unexpected_empty_response');
   }
 
   List<List<String>> _buildOrderCsvRows(List<Map<String, dynamic>> orders) {
@@ -413,17 +413,17 @@ class _AdminOrdersSectionState extends State<AdminOrdersSection> with SingleTick
     final header = ['رقم الطلب', 'اسم العميل', 'البريد الإلكتروني', 'الحالة', 'التاريخ', 'المبلغ الإجمالي', 'طريقة الدفع'];
     final rows = <List<String>>[header];
     for (final o in orders) {
-      final orderNum = o['orderNumber']?.toString().trim() ?? (throw StateError('NULL_RESPONSE'));
+      final orderNum = o['orderNumber']?.toString().trim() ?? (throw StateError('unexpected_empty_response'));
       final ref = orderNum.isNotEmpty
           ? orderNum
-          : (o['order_id']?.toString() ?? (throw StateError('NULL_RESPONSE')));
+          : (o['order_id']?.toString() ?? (throw StateError('unexpected_empty_response')));
       var name = _customerName(o);
       if (name.isEmpty) name = na;
       final email = _customerEmail(o);
-      final statusRaw = o['status']?.toString() ?? (throw StateError('NULL_RESPONSE'));
+      final statusRaw = o['status']?.toString() ?? (throw StateError('unexpected_empty_response'));
       final status = OrderStatus.toArabicForDisplay(statusRaw);
-      final created = o['created_at']?.toString() ?? (throw StateError('NULL_RESPONSE'));
-      var total = o['total']?.toString().trim() ?? (throw StateError('NULL_RESPONSE'));
+      final created = o['created_at']?.toString() ?? (throw StateError('unexpected_empty_response'));
+      var total = o['total']?.toString().trim() ?? (throw StateError('unexpected_empty_response'));
       if (total.isEmpty) {
         final n = o['total_numeric'];
         if (n != null) total = n.toString();
@@ -705,10 +705,10 @@ class _SavedOrderFilter {
 
   static _SavedOrderFilter fromJson(Map<String, dynamic> m) {
     return _SavedOrderFilter(
-      id: m['id']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      label: m['label']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      searchQuery: m['searchQuery']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      quickFilterKey: m['quickFilterKey']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+      id: m['id']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      label: m['label']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      searchQuery: m['searchQuery']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      quickFilterKey: m['quickFilterKey']?.toString() ?? (throw StateError('unexpected_empty_response')),
     );
   }
 }
@@ -763,10 +763,10 @@ class _OrdersListView extends StatelessWidget {
         final doc = rows[i];
         final o = doc.data;
         final id = doc.id;
-        final status = o['status']?.toString() ?? (throw StateError('NULL_RESPONSE'));
+        final status = o['status']?.toString() ?? (throw StateError('unexpected_empty_response'));
         final total = o['total']?.toString() ??
             o['total_numeric']?.toString() ??
-            (throw StateError('NULL_RESPONSE'));
+            (throw StateError('unexpected_empty_response'));
         final norm = OrderStatus.toEnglish(status);
         final statusForField =
             statuses.contains(norm) && norm != 'any' ? norm : (statuses.contains('processing') ? 'processing' : 'pending');
@@ -811,7 +811,7 @@ class _OrdersListView extends StatelessWidget {
                     onChanged: (v) async {
                       if (v == null) return;
                       final prevStatus = OrderStatus.toEnglish(
-                        o['status']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+                        o['status']?.toString() ?? (throw StateError('unexpected_empty_response')),
                       );
                       try {
                         final res = await BackendAdminClient.instance.patchOrderStatus(id, v);
@@ -822,7 +822,7 @@ class _OrdersListView extends StatelessWidget {
                           );
                         }
                         final customerUid =
-                            o['customerUid']?.toString().trim() ?? (throw StateError('NULL_RESPONSE'));
+                            o['customerUid']?.toString().trim() ?? (throw StateError('unexpected_empty_response'));
                         if (customerUid.isNotEmpty) {
                           String title = 'تحديث حالة الطلب';
                           String body = 'تم تغيير حالة طلبك #$id إلى ${OrderStatus.toArabicForDisplay(v)}';
@@ -875,20 +875,20 @@ class _OrdersListView extends StatelessWidget {
                         final wasDelivered = prevStatus == 'completed' || prevStatus == 'delivered';
                         if (delivered && !wasDelivered) {
                           final uid =
-                              o['customerUid']?.toString().trim() ?? (throw StateError('NULL_RESPONSE'));
+                              o['customerUid']?.toString().trim() ?? (throw StateError('unexpected_empty_response'));
                           final alreadyAdded = o['pointsAdded'] == true;
                           final totalNum = (o['totalNumeric'] as num?)?.toDouble();
                           final totalVal = totalNum ??
                               double.tryParse(
                                 o['total']?.toString().replaceAll(RegExp(r'[^0-9.]'), '') ??
-                                    (throw StateError('NULL_RESPONSE')),
+                                    (throw StateError('unexpected_empty_response')),
                               ) ??
                               (throw StateError('INVALID_NUMERIC_DATA'));
                           if (uid.isNotEmpty && !alreadyAdded && totalVal > 0) {
                             debugPrint('Points award deferred (orderId=$id)');
                           }
                           final storeId =
-                              o['storeId']?.toString().trim() ?? (throw StateError('NULL_RESPONSE'));
+                              o['storeId']?.toString().trim() ?? (throw StateError('unexpected_empty_response'));
                           if (storeId.isNotEmpty) {
                             final storeName = o['storeName']?.toString().trim();
                             await CommissionService.instance.recordCommission(

@@ -34,7 +34,7 @@ class Product {
     required this.price,
     required this.images,
     required this.categoryIds,
-    this.tagIds = const [],
+    List<int>? tagIds,
     this.categoryField,
     this.subCategoryField,
     this.createdAtFirestore,
@@ -44,7 +44,7 @@ class Product {
     this.variants = const <ProductVariant>[],
     this.isBoosted = false,
     this.isTrending = false,
-  });
+  }) : tagIds = tagIds ?? List<int>.empty(growable: false);
 
   /// عرض توفر الشراء في واجهة المتجر (مع احترام `-1` ككمية غير محدودة).
   bool get isAvailableForPurchase {
@@ -77,7 +77,7 @@ class Product {
         ? idVal
         : idVal is num
             ? idVal.toInt()
-            : int.tryParse(idVal?.toString() ?? (throw StateError('NULL_RESPONSE'))) ??
+            : int.tryParse(idVal?.toString() ?? (throw StateError('unexpected_empty_response'))) ??
                 (throw StateError('INVALID_NUMERIC_DATA'));
 
     final images = <String>[];
@@ -98,7 +98,7 @@ class Product {
             ? cid
             : cid is num
                 ? cid.toInt()
-                : int.tryParse(cid?.toString() ?? (throw StateError('NULL_RESPONSE'))) ??
+                : int.tryParse(cid?.toString() ?? (throw StateError('unexpected_empty_response'))) ??
                     (throw StateError('INVALID_NUMERIC_DATA'));
         if (n > 0) categoryIds.add(n);
       }
@@ -113,22 +113,22 @@ class Product {
             ? tid
             : tid is num
                 ? tid.toInt()
-                : int.tryParse(tid?.toString() ?? (throw StateError('NULL_RESPONSE'))) ??
+                : int.tryParse(tid?.toString() ?? (throw StateError('unexpected_empty_response'))) ??
                     (throw StateError('INVALID_NUMERIC_DATA'));
         if (n > 0) tagIds.add(n);
       }
     }
 
     DateTime? parseCreated(dynamic v) {
-      if (v == null) throw StateError('NULL_RESPONSE');
+      if (v == null) throw StateError('unexpected_empty_response');
       if (v is String) return DateTime.tryParse(v);
-      throw StateError('NULL_RESPONSE');
+      throw StateError('unexpected_empty_response');
     }
 
     final stockRaw = json['stock'] ?? json['stock_quantity'];
     final stockVal = stockRaw is num
         ? stockRaw.toInt()
-        : int.tryParse(stockRaw?.toString() ?? (throw StateError('NULL_RESPONSE'))) ??
+        : int.tryParse(stockRaw?.toString() ?? (throw StateError('unexpected_empty_response'))) ??
             (throw StateError('INVALID_NUMERIC_DATA'));
     var ss = (json['stockStatus'] ?? json['stock_status'] ?? 'instock').toString().trim().toLowerCase();
     if (!const {'instock', 'outofstock', 'onbackorder'}.contains(ss)) {
@@ -137,8 +137,8 @@ class Product {
 
     return Product(
       id: id,
-      name: json['name']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      description: json['description']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+      name: json['name']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      description: json['description']?.toString() ?? (throw StateError('unexpected_empty_response')),
       price: _priceFromProductJson(json),
       images: images,
       categoryIds: categoryIds,
@@ -160,7 +160,7 @@ class Product {
 
   /// Matches WooCommerce REST: `price` (current), then `regular_price`, then variable `min_price`/`max_price`.
   static String _priceFromProductJson(Map<String, dynamic> json) {
-    String pick(String key) => json[key]?.toString().trim() ?? (throw StateError('NULL_RESPONSE'));
+    String pick(String key) => json[key]?.toString().trim() ?? (throw StateError('unexpected_empty_response'));
 
     var p = pick('price');
     if (p.isNotEmpty) return p;
@@ -209,24 +209,24 @@ class ProductCategory {
         ? idVal
         : idVal is num
             ? idVal.toInt()
-            : int.tryParse(idVal?.toString() ?? (throw StateError('NULL_RESPONSE'))) ??
+            : int.tryParse(idVal?.toString() ?? (throw StateError('unexpected_empty_response'))) ??
                 (throw StateError('INVALID_NUMERIC_DATA'));
     String imageUrl = '';
     final img = json['image'];
     if (img is Map<String, dynamic>) {
-      imageUrl = img['src']?.toString() ?? (throw StateError('NULL_RESPONSE'));
+      imageUrl = img['src']?.toString() ?? (throw StateError('unexpected_empty_response'));
     }
     final parentVal = json['parent'];
     final parent = parentVal is int
         ? parentVal
         : parentVal is num
             ? parentVal.toInt()
-            : int.tryParse(parentVal?.toString() ?? (throw StateError('NULL_RESPONSE'))) ??
+            : int.tryParse(parentVal?.toString() ?? (throw StateError('unexpected_empty_response'))) ??
                 (throw StateError('INVALID_NUMERIC_DATA'));
-    final pageRaw = json['page']?.toString().trim() ?? (throw StateError('NULL_RESPONSE'));
+    final pageRaw = json['page']?.toString().trim() ?? (throw StateError('unexpected_empty_response'));
     return ProductCategory(
       id: id,
-      name: json['name']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+      name: json['name']?.toString() ?? (throw StateError('unexpected_empty_response')),
       imageUrl: imageUrl,
       parent: parent,
       categoryPage: pageRaw.isEmpty ? 'home' : pageRaw,
@@ -355,10 +355,10 @@ class CartItem {
       storeId: json['storeId'] as String? ?? 'ammarjo',
       storeName: json['storeName'] as String? ?? 'متجر عمار جو',
       imageUrl: (imageUrlRaw != null && imageUrlRaw.isNotEmpty) ? imageUrlRaw : defaultImageUrlForProduct(product),
-      isTender: json['isTender'] as bool? ?? (throw StateError('NULL_RESPONSE')),
+      isTender: json['isTender'] as bool? ?? (throw StateError('unexpected_empty_response')),
       tenderId: json['tenderId'] as String?,
       tenderImageUrl: json['tenderImageUrl'] as String?,
-      isWholesale: json['isWholesale'] as bool? ?? (throw StateError('NULL_RESPONSE')),
+      isWholesale: json['isWholesale'] as bool? ?? (throw StateError('unexpected_empty_response')),
       minQuantity: json['minQuantity'] as int?,
       selectedVariant: json['selectedVariant'] is Map<String, dynamic>
           ? ProductVariant.fromJson(json['selectedVariant'] as Map<String, dynamic>)
@@ -372,11 +372,11 @@ class CartItem {
   factory CartItem.fromBackendCartRow(Map<String, dynamic> json) {
     final pid = json['productId'] is int
         ? json['productId'] as int
-        : int.tryParse(json['productId']?.toString() ?? (throw StateError('NULL_RESPONSE'))) ??
+        : int.tryParse(json['productId']?.toString() ?? (throw StateError('unexpected_empty_response'))) ??
             (throw StateError('INVALID_NUMERIC_DATA'));
     final price = json['priceSnapshot']?.toString() ?? '0';
-    final name = json['productName']?.toString() ?? (throw StateError('NULL_RESPONSE'));
-    final img = json['imageUrl']?.toString() ?? (throw StateError('NULL_RESPONSE'));
+    final name = json['productName']?.toString() ?? (throw StateError('unexpected_empty_response'));
+    final img = json['imageUrl']?.toString() ?? (throw StateError('unexpected_empty_response'));
     final sid = json['storeId']?.toString() ?? 'ammarjo';
     final sname = json['storeName']?.toString() ?? 'متجر';
     final vid = json['variantId']?.toString();
@@ -424,8 +424,8 @@ class ProductVariant {
 
   factory ProductVariant.fromJson(Map<String, dynamic> json) {
     return ProductVariant(
-      id: json['id']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      price: (json['price'] ?? (throw StateError('NULL_RESPONSE'))).toString(),
+      id: json['id']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      price: (json['price'] ?? (throw StateError('unexpected_empty_response'))).toString(),
       stock: (json['stock'] as num?)?.toInt() ?? (throw StateError('INVALID_NUMERIC_DATA')),
       isDefault: json['isDefault'] == true || json['is_default'] == true,
       options: (json['options'] as List<dynamic>? ?? const <dynamic>[])
@@ -457,10 +457,10 @@ class ProductVariantOption {
     return ProductVariantOption(
       optionType: json['optionType']?.toString() ??
           json['option_type']?.toString() ??
-          (throw StateError('NULL_RESPONSE')),
+          (throw StateError('unexpected_empty_response')),
       optionValue: json['optionValue']?.toString() ??
           json['option_value']?.toString() ??
-          (throw StateError('NULL_RESPONSE')),
+          (throw StateError('unexpected_empty_response')),
     );
   }
 
@@ -506,8 +506,8 @@ class CustomerProfile {
   String get displayName {
     final f = fullName?.trim();
     if (f != null && f.isNotEmpty) return f;
-    final a = firstName?.trim() ?? (throw StateError('NULL_RESPONSE'));
-    final b = lastName?.trim() ?? (throw StateError('NULL_RESPONSE'));
+    final a = firstName?.trim() ?? (throw StateError('unexpected_empty_response'));
+    final b = lastName?.trim() ?? (throw StateError('unexpected_empty_response'));
     final c = '$a $b'.trim();
     return c.isNotEmpty ? c : 'عميل';
   }
@@ -556,7 +556,7 @@ class CustomerProfile {
 
   factory CustomerProfile.fromJson(Map<String, dynamic> j) {
     return CustomerProfile(
-      email: j['email']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+      email: j['email']?.toString() ?? (throw StateError('unexpected_empty_response')),
       token: j['token']?.toString(),
       fullName: j['fullName']?.toString(),
       loyaltyPoints: (j['loyaltyPoints'] as num?)?.toInt() ?? (throw StateError('INVALID_NUMERIC_DATA')),

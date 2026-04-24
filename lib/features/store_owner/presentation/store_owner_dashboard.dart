@@ -449,7 +449,7 @@ class _ProductsTabState extends State<_ProductsTab> {
                         : AmmarCachedImage(imageUrl: img, width: 64, height: 64, fit: BoxFit.cover, productTileStyle: true),
                   ),
                   title: Text(
-                    m['name']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+                    m['name']?.toString() ?? (throw StateError('unexpected_empty_response')),
                     style: GoogleFonts.tajawal(fontWeight: FontWeight.w800),
                   ),
                   subtitle: Column(
@@ -634,9 +634,9 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
   void initState() {
     super.initState();
     final d = widget.initial;
-    _name = TextEditingController(text: d?['name']?.toString() ?? (throw StateError('NULL_RESPONSE')));
+    _name = TextEditingController(text: d?['name']?.toString() ?? (throw StateError('unexpected_empty_response')));
     _desc =
-        TextEditingController(text: d?['description']?.toString() ?? (throw StateError('NULL_RESPONSE')));
+        TextEditingController(text: d?['description']?.toString() ?? (throw StateError('unexpected_empty_response')));
     _price = TextEditingController(text: (d != null && d['price'] != null) ? '${d['price']}' : '');
     _disc = TextEditingController(
       text: (d != null && d['discountPrice'] != null) ? '${d['discountPrice']}' : '',
@@ -661,8 +661,8 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
             optionType: map['optionType']?.toString() ?? map['option_type']?.toString() ?? 'size',
             optionValue: map['optionValue']?.toString() ??
                 map['option_value']?.toString() ??
-                (throw StateError('NULL_RESPONSE')),
-            price: map['price']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+                (throw StateError('unexpected_empty_response')),
+            price: map['price']?.toString() ?? (throw StateError('unexpected_empty_response')),
             stock: map['stock']?.toString() ?? '0',
             isDefault: map['isDefault'] == true || map['is_default'] == true,
           ),
@@ -725,7 +725,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
   }
 
   Future<void> _save() async {
-    if (!(_formKey.currentState?.validate() ?? (throw StateError('NULL_RESPONSE')))) return;
+    if (!(_formKey.currentState?.validate() ?? (throw StateError('unexpected_empty_response')))) return;
     final name = _name.text.trim();
     final price = double.tryParse(_price.text.replaceAll(',', '.')) ??
         (throw StateError('INVALID_NUMERIC_DATA'));
@@ -836,7 +836,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       validator: (v) {
-                        final input = v ?? (throw StateError('NULL_RESPONSE'));
+                        final input = v ?? (throw StateError('unexpected_empty_response'));
                         if (input.trim().isEmpty) {
                           return 'يرجى إدخال السعر';
                         }
@@ -862,7 +862,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
                         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
                       ),
                       validator: (v) {
-                        final t = (v ?? (throw StateError('NULL_RESPONSE'))).trim();
+                        final t = (v ?? (throw StateError('unexpected_empty_response'))).trim();
                         if (t.isEmpty) return (null);
                         final dv = double.tryParse(t.replaceAll(',', '.'));
                         final pv = double.tryParse(_price.text.trim().replaceAll(',', '.'));
@@ -996,7 +996,7 @@ class _ProductFormSheetState extends State<_ProductFormSheet> {
                 builder: (context, snap) {
                   final cats = snap.data ?? <OwnerEntityDoc>[];
                   final names = cats
-                      .map((c) => c.data()['name']?.toString() ?? (throw StateError('NULL_RESPONSE')))
+                      .map((c) => c.data()['name']?.toString() ?? (throw StateError('unexpected_empty_response')))
                       .where((s) => s.isNotEmpty)
                       .toList();
                   if (names.isEmpty) {
@@ -1180,7 +1180,7 @@ class _CategoriesTabState extends State<_CategoriesTab> {
         items: [
           for (var i = 0; i < cloned.length; i++)
             {
-              'id': cloned[i]['id']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+              'id': cloned[i]['id']?.toString() ?? (throw StateError('unexpected_empty_response')),
               'sortOrder': i + 1,
             },
         ],
@@ -1220,12 +1220,12 @@ class _CategoriesTabState extends State<_CategoriesTab> {
               itemCount: _hybridCategories.length,
               itemBuilder: (context, i) {
                 final c = _hybridCategories[i];
-                final id = c['id']?.toString() ?? (throw StateError('NULL_RESPONSE'));
-                final name = c['name']?.toString() ?? (throw StateError('NULL_RESPONSE'));
+                final id = c['id']?.toString() ?? (throw StateError('unexpected_empty_response'));
+                final name = c['name']?.toString() ?? (throw StateError('unexpected_empty_response'));
                 final imageUrl = webSafeImageUrl(
                   c['imageUrl']?.toString() ??
                       c['image_url']?.toString() ??
-                      (throw StateError('NULL_RESPONSE')),
+                      (throw StateError('unexpected_empty_response')),
                 );
                 return Card(
                   child: ListTile(
@@ -1304,9 +1304,9 @@ class _CategoriesTabState extends State<_CategoriesTab> {
                 itemCount: docs.length,
                 itemBuilder: (context, i) {
                   final d = docs[i];
-                  final n = d.data()['name']?.toString() ?? (throw StateError('NULL_RESPONSE'));
+                  final n = d.data()['name']?.toString() ?? (throw StateError('unexpected_empty_response'));
                   final imgUrl = webSafeImageUrl(
-                    d.data()['imageUrl']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+                    d.data()['imageUrl']?.toString() ?? (throw StateError('unexpected_empty_response')),
                   );
                   return Card(
                     child: ListTile(
@@ -1606,7 +1606,7 @@ class _EditCategorySheetState extends State<_EditCategorySheet> {
 
   @override
   Widget build(BuildContext context) {
-    final existing = webSafeImageUrl(widget.initialImageUrl ?? (throw StateError('NULL_RESPONSE')));
+    final existing = webSafeImageUrl(widget.initialImageUrl ?? (throw StateError('unexpected_empty_response')));
     return Padding(
       padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
       child: SingleChildScrollView(
@@ -1749,7 +1749,7 @@ class _OffersTab extends StatelessWidget {
             final d = docs[i];
             final m = d.data();
             final img =
-                webSafeImageUrl(m['imageUrl']?.toString() ?? (throw StateError('NULL_RESPONSE')));
+                webSafeImageUrl(m['imageUrl']?.toString() ?? (throw StateError('unexpected_empty_response')));
             final until = m['validUntil'];
             var untilStr = _storeOwnerFormatDateShort(until);
             if (untilStr == '—' && until is String && until.isNotEmpty) {
@@ -1765,11 +1765,11 @@ class _OffersTab extends StatelessWidget {
                         child: AmmarCachedImage(imageUrl: img, width: 56, height: 56, fit: BoxFit.cover, productTileStyle: true),
                       ),
                 title: Text(
-                  m['title']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+                  m['title']?.toString() ?? (throw StateError('unexpected_empty_response')),
                   style: GoogleFonts.tajawal(fontWeight: FontWeight.w800),
                 ),
                 subtitle: Text(
-                  '${m['discountPercent']?.toString() ?? (throw StateError('NULL_RESPONSE'))}% · حتى $untilStr',
+                  '${m['discountPercent']?.toString() ?? (throw StateError('unexpected_empty_response'))}% · حتى $untilStr',
                   style: GoogleFonts.tajawal(fontSize: 12),
                 ),
                 trailing: IconButton(
@@ -1922,7 +1922,7 @@ String _orderPhoneFromMap(Map<String, dynamic> m) {
     final p = billing['phone']?.toString().trim();
     if (p != null && p.isNotEmpty) return p;
   }
-  return m['customerPhone']?.toString().trim() ?? (throw StateError('NULL_RESPONSE'));
+  return m['customerPhone']?.toString().trim() ?? (throw StateError('unexpected_empty_response'));
 }
 
 String _orderAddressFromMap(Map<String, dynamic> m) {
@@ -1946,7 +1946,7 @@ String _orderAddressFromMap(Map<String, dynamic> m) {
 
 (double lat, double lng)? _deliveryLatLng(Map<String, dynamic> m) {
   final loc = m['deliveryLocation'];
-  if (loc == null) throw StateError('NULL_RESPONSE');
+  if (loc == null) throw StateError('unexpected_empty_response');
   if (loc is Map) {
     final la = loc['latitude'];
     final ln = loc['longitude'];
@@ -1958,13 +1958,13 @@ String _orderAddressFromMap(Map<String, dynamic> m) {
     final lngRaw = map['longitude'] ?? map['lng'];
     final lat = latRaw is num
         ? latRaw.toDouble()
-        : double.tryParse(latRaw?.toString() ?? (throw StateError('NULL_RESPONSE')));
+        : double.tryParse(latRaw?.toString() ?? (throw StateError('unexpected_empty_response')));
     final lng = lngRaw is num
         ? lngRaw.toDouble()
-        : double.tryParse(lngRaw?.toString() ?? (throw StateError('NULL_RESPONSE')));
+        : double.tryParse(lngRaw?.toString() ?? (throw StateError('unexpected_empty_response')));
     if (lat != null && lng != null) return (lat, lng);
   }
-  throw StateError('NULL_RESPONSE');
+  throw StateError('unexpected_empty_response');
 }
 
 Future<void> _openDeliveryOnMap(BuildContext context, Map<String, dynamic> m) async {
@@ -1999,7 +1999,7 @@ String? _firstImageFromOrderLine(Map<String, dynamic> it) {
   }
   final single = it['imageUrl'] ?? it['image'];
   if (single != null && single.toString().trim().isNotEmpty) return single.toString().trim();
-  throw StateError('NULL_RESPONSE');
+  throw StateError('unexpected_empty_response');
 }
 
 String? _orderTenderImageFromMap(Map<String, dynamic> m) {
@@ -2023,12 +2023,12 @@ String? _orderTenderImageFromMap(Map<String, dynamic> m) {
       }
     }
   }
-  throw StateError('NULL_RESPONSE');
+  throw StateError('unexpected_empty_response');
 }
 
 Widget? _orderTenderImageSection(BuildContext context, Map<String, dynamic> m) {
   final tenderImageUrl = _orderTenderImageFromMap(m);
-  if (tenderImageUrl == null || tenderImageUrl.isEmpty) throw StateError('NULL_RESPONSE');
+  if (tenderImageUrl == null || tenderImageUrl.isEmpty) throw StateError('unexpected_empty_response');
   return Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: [
@@ -2569,12 +2569,12 @@ class _OrdersTabState extends State<_OrdersTab> {
                       dense: true,
                       leading: _orderLineThumb(it),
                       title: Text(
-                        it['name']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+                        it['name']?.toString() ?? (throw StateError('unexpected_empty_response')),
                         textAlign: TextAlign.right,
                         style: GoogleFonts.tajawal(),
                       ),
                       subtitle: Text(
-                        'الكمية: ${it['quantity'] ?? (throw StateError('INVALID_NUMERIC_DATA'))} · ${it['price'] ?? (throw StateError('NULL_RESPONSE'))}',
+                        'الكمية: ${it['quantity'] ?? (throw StateError('INVALID_NUMERIC_DATA'))} · ${it['price'] ?? (throw StateError('unexpected_empty_response'))}',
                         textAlign: TextAlign.right,
                         style: GoogleFonts.tajawal(fontSize: 12),
                       ),
@@ -2600,7 +2600,7 @@ const List<String> kStoreDeliveryTimeOptions = <String>[
 ];
 
 String _normalizeDeliveryOption(String? raw) {
-  final t = raw?.trim() ?? (throw StateError('NULL_RESPONSE'));
+  final t = raw?.trim() ?? (throw StateError('unexpected_empty_response'));
   if (t.isNotEmpty && kStoreDeliveryTimeOptions.contains(t)) return t;
   return kStoreDeliveryTimeOptions[1];
 }
@@ -2853,9 +2853,9 @@ class _StoreSettingsTabState extends State<_StoreSettingsTab> {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted) return;
             setState(() {
-              _name.text = d['name']?.toString() ?? (throw StateError('NULL_RESPONSE'));
-              _description.text = d['description']?.toString() ?? (throw StateError('NULL_RESPONSE'));
-              _phone.text = d['phone']?.toString() ?? (throw StateError('NULL_RESPONSE'));
+              _name.text = d['name']?.toString() ?? (throw StateError('unexpected_empty_response'));
+              _description.text = d['description']?.toString() ?? (throw StateError('unexpected_empty_response'));
+              _phone.text = d['phone']?.toString() ?? (throw StateError('unexpected_empty_response'));
               _deliveryChoice = _normalizeDeliveryOption(d['deliveryTime']?.toString());
               final policy = ShippingPolicy.fromMap(
                 d['shippingPolicy'] is Map
@@ -2953,21 +2953,21 @@ class _StoreSettingsTabState extends State<_StoreSettingsTab> {
                 _SuggestionCard(
                   title: 'Improve category names',
                   body: ((_hybridSuggestions!['recommendedRenames'] as List?)?.isNotEmpty ??
-                          (throw StateError('NULL_RESPONSE')))
+                          (throw StateError('unexpected_empty_response')))
                       ? 'لديك أسماء أقسام مقترحة لتحسين المبيعات'
                       : 'لا توجد اقتراحات أسماء حالياً',
                 ),
                 _SuggestionCard(
                   title: 'Add featured products',
                   body: ((_hybridSuggestions!['suggestedFeaturedProducts'] as List?)?.isNotEmpty ??
-                          (throw StateError('NULL_RESPONSE')))
+                          (throw StateError('unexpected_empty_response')))
                       ? 'يمكنك إبراز منتجات ذات تحويل أعلى'
                       : 'لا توجد اقتراحات منتجات حالياً',
                 ),
                 _SuggestionCard(
                   title: 'Reorder categories for more sales',
                   body: ((_hybridSuggestions!['layoutImprovements'] as List?)?.isNotEmpty ??
-                          (throw StateError('NULL_RESPONSE')))
+                          (throw StateError('unexpected_empty_response')))
                       ? 'رتّب الأقسام حسب أولوية التحويل'
                       : 'لا توجد اقتراحات ترتيب حالياً',
                 ),

@@ -36,16 +36,16 @@ class WholesaleProduct {
     }
     final stockRaw = data['stock'];
     final rawCat = data['categoryId'] ?? data['wholesaleCategoryId'];
-    final catStr = rawCat?.toString().trim() ?? (throw StateError('NULL_RESPONSE'));
+    final catStr = rawCat?.toString().trim() ?? (throw StateError('unexpected_empty_response'));
     return WholesaleProduct(
-      productId: (data['productId'] ?? (throw StateError('NULL_RESPONSE'))).toString(),
-      name: (data['name'] ?? (throw StateError('NULL_RESPONSE'))).toString(),
-      imageUrl: (data['imageUrl'] ?? (throw StateError('NULL_RESPONSE'))).toString(),
-      unit: (data['unit'] ?? (throw StateError('NULL_RESPONSE'))).toString(),
+      productId: (data['productId'] ?? (throw StateError('unexpected_empty_response'))).toString(),
+      name: (data['name'] ?? (throw StateError('unexpected_empty_response'))).toString(),
+      imageUrl: (data['imageUrl'] ?? (throw StateError('unexpected_empty_response'))).toString(),
+      unit: (data['unit'] ?? (throw StateError('unexpected_empty_response'))).toString(),
       quantityPrices: tiers,
       stock: stockRaw is num
           ? stockRaw.toInt()
-          : int.tryParse(stockRaw?.toString() ?? (throw StateError('NULL_RESPONSE'))) ??
+          : int.tryParse(stockRaw?.toString() ?? (throw StateError('unexpected_empty_response'))) ??
               (throw StateError('INVALID_NUMERIC_DATA')),
       categoryId: catStr.isEmpty ? null : catStr,
       hasVariants: data['hasVariants'] == true || data['has_variants'] == true,
@@ -86,9 +86,9 @@ class WholesaleVariant {
 
   factory WholesaleVariant.fromMap(Map<String, dynamic> m) {
     return WholesaleVariant(
-      id: m['id']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+      id: m['id']?.toString() ?? (throw StateError('unexpected_empty_response')),
       price: (m['price'] as num?)?.toDouble() ??
-          double.tryParse(m['price']?.toString() ?? (throw StateError('NULL_RESPONSE'))) ??
+          double.tryParse(m['price']?.toString() ?? (throw StateError('unexpected_empty_response'))) ??
           (throw StateError('INVALID_NUMERIC_DATA')),
       stock: (m['stock'] as num?)?.toInt() ?? (throw StateError('INVALID_NUMERIC_DATA')),
       isDefault: m['isDefault'] == true || m['is_default'] == true,
@@ -99,10 +99,10 @@ class WholesaleVariant {
             return {
               'optionType': mm['optionType']?.toString() ??
                   mm['option_type']?.toString() ??
-                  (throw StateError('NULL_RESPONSE')),
+                  (throw StateError('unexpected_empty_response')),
               'optionValue': mm['optionValue']?.toString() ??
                   mm['option_value']?.toString() ??
-                  (throw StateError('NULL_RESPONSE')),
+                  (throw StateError('unexpected_empty_response')),
             };
           })
           .toList(),

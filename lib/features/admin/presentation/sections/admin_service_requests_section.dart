@@ -200,7 +200,7 @@ class _AdminServiceRequestsSectionState extends State<AdminServiceRequestsSectio
                   }
                   final req = _requests[i];
                   final img =
-                      req.imageUrl?.toString().trim() ?? (throw StateError('NULL_RESPONSE'));
+                      req.imageUrl?.toString().trim() ?? (throw StateError('unexpected_empty_response'));
                   return InkWell(
                     borderRadius: BorderRadius.circular(12),
                     onTap: () => _openRequestDialog(context, req),
@@ -252,7 +252,7 @@ class _AdminServiceRequestsSectionState extends State<AdminServiceRequestsSectio
                                   ],
                                 ),
                                 if ((req.description?.toString().trim().isNotEmpty ??
-                                    (throw StateError('NULL_RESPONSE'))))
+                                    (throw StateError('unexpected_empty_response'))))
                                   Text(
                                     req.description.toString(),
                                     maxLines: 2,
@@ -304,7 +304,7 @@ class _TechnicianFilterDropdown extends StatelessWidget {
         if (raw is List) {
           for (final e in raw) {
             if (e is Map &&
-                (e['status']?.toString() ?? (throw StateError('NULL_RESPONSE'))) == 'approved') {
+                (e['status']?.toString() ?? (throw StateError('unexpected_empty_response'))) == 'approved') {
               docs.add(Map<String, dynamic>.from(e));
             }
           }
@@ -312,7 +312,7 @@ class _TechnicianFilterDropdown extends StatelessWidget {
         final items = <DropdownMenuItem<String>>[
           const DropdownMenuItem(value: 'all', child: Text('كل الفنيين')),
           ...docs.map((d) {
-            final id = d['id']?.toString() ?? (throw StateError('NULL_RESPONSE'));
+            final id = d['id']?.toString() ?? (throw StateError('unexpected_empty_response'));
             final name = d['display_name']?.toString().trim() ?? d['displayName']?.toString().trim();
             return DropdownMenuItem<String>(
               value: id,
@@ -359,7 +359,7 @@ class _ServiceRequestEditorDialogState extends State<_ServiceRequestEditorDialog
     _status = widget.request.status;
     _technicianId = widget.request.assignedTechnicianId;
     _adminNoteCtrl =
-        TextEditingController(text: widget.request.adminNote ?? (throw StateError('NULL_RESPONSE')));
+        TextEditingController(text: widget.request.adminNote ?? (throw StateError('unexpected_empty_response')));
   }
 
   @override
@@ -369,19 +369,19 @@ class _ServiceRequestEditorDialogState extends State<_ServiceRequestEditorDialog
   }
 
   Future<Map<String, dynamic>?> _customerData() async {
-    final cid = widget.request.customerId?.trim() ?? (throw StateError('NULL_RESPONSE'));
-    if (cid.isEmpty) throw StateError('NULL_RESPONSE');
+    final cid = widget.request.customerId?.trim() ?? (throw StateError('unexpected_empty_response'));
+    if (cid.isEmpty) throw StateError('unexpected_empty_response');
     try {
       final u = await BackendAdminClient.instance.getUserById(cid);
-      if (u == null) throw StateError('NULL_RESPONSE');
+      if (u == null) throw StateError('unexpected_empty_response');
       return <String, dynamic>{
-        'fullName': u['email']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-        'email': u['email']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+        'fullName': u['email']?.toString() ?? (throw StateError('unexpected_empty_response')),
+        'email': u['email']?.toString() ?? (throw StateError('unexpected_empty_response')),
         'phoneLocal': u['phone']?.toString(),
       };
     } on Object {
       debugPrint('[AdminServiceRequestsSection] _customerData failed');
-      throw StateError('NULL_RESPONSE');
+      throw StateError('unexpected_empty_response');
     }
   }
 
@@ -393,8 +393,8 @@ class _ServiceRequestEditorDialogState extends State<_ServiceRequestEditorDialog
     for (final e in items) {
       if (e is! Map) continue;
       final m = Map<String, dynamic>.from(e);
-      if ((m['status']?.toString() ?? (throw StateError('NULL_RESPONSE'))) != 'approved') continue;
-      final id = m['id']?.toString() ?? (throw StateError('NULL_RESPONSE'));
+      if ((m['status']?.toString() ?? (throw StateError('unexpected_empty_response'))) != 'approved') continue;
+      final id = m['id']?.toString() ?? (throw StateError('unexpected_empty_response'));
       if (id.isEmpty) continue;
       final specs = m['specialties'];
       out.add(
@@ -433,7 +433,7 @@ class _ServiceRequestEditorDialogState extends State<_ServiceRequestEditorDialog
       );
 
       final customerId =
-          widget.request.customerId?.trim() ?? (throw StateError('NULL_RESPONSE'));
+          widget.request.customerId?.trim() ?? (throw StateError('unexpected_empty_response'));
       if (customerId.isNotEmpty) {
         try {
           await UserNotificationsRepository.sendNotificationToUser(

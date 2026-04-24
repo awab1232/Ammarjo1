@@ -74,7 +74,7 @@ class WooOrderCreateResult {
         ? rawId
         : rawId is num
             ? rawId.toInt()
-            : int.tryParse(rawId?.toString() ?? (throw StateError('NULL_RESPONSE'))) ??
+            : int.tryParse(rawId?.toString() ?? (throw StateError('unexpected_empty_response'))) ??
                 (throw StateError('INVALID_NUMERIC_DATA'));
     final createdRaw = json['date_created']?.toString();
     DateTime? created;
@@ -83,8 +83,8 @@ class WooOrderCreateResult {
     }
     return WooOrderCreateResult(
       id: id,
-      status: json['status']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-      total: json['total']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+      status: json['status']?.toString() ?? (throw StateError('unexpected_empty_response')),
+      total: json['total']?.toString() ?? (throw StateError('unexpected_empty_response')),
       listTitle: _listTitleFromOrderJson(json),
       dateCreated: created,
     );
@@ -92,12 +92,12 @@ class WooOrderCreateResult {
 
   static String _listTitleFromOrderJson(Map<String, dynamic> json) {
     final rawId = json['id'];
-    final idStr = rawId?.toString() ?? (throw StateError('NULL_RESPONSE'));
+    final idStr = rawId?.toString() ?? (throw StateError('unexpected_empty_response'));
     final items = json['line_items'] as List<dynamic>? ?? <dynamic>[];
     if (items.isNotEmpty) {
       final first = items.first;
       if (first is Map<String, dynamic>) {
-        var name = first['name']?.toString().trim() ?? (throw StateError('NULL_RESPONSE'));
+        var name = first['name']?.toString().trim() ?? (throw StateError('unexpected_empty_response'));
         if (name.isNotEmpty) {
           if (items.length > 1) {
             name = '$name (+${items.length - 1})';
@@ -223,7 +223,7 @@ class WooApiService {
       if (decoded is Map<String, dynamic>) {
         final msg = decoded['message']?.toString() ??
             decoded['code']?.toString() ??
-            (throw StateError('NULL_RESPONSE'));
+            (throw StateError('unexpected_empty_response'));
         throw WooApiException(msg.isEmpty ? 'استجابة غير صالحة من الخادم' : msg);
       }
       throw WooApiException('تعذر قراءة قائمة المنتجات.');
@@ -255,14 +255,14 @@ class WooApiService {
   Future<Product?> fetchProductById(int id) async {
     final response = await http.get(_wcUri('products/$id'), headers: _headersForWoo());
     if (response.statusCode != 200) {
-      throw StateError('NULL_RESPONSE');
+      throw StateError('unexpected_empty_response');
     }
     try {
       final decoded = jsonDecodeUtf8Response(response);
-      if (decoded is! Map<String, dynamic>) throw StateError('NULL_RESPONSE');
+      if (decoded is! Map<String, dynamic>) throw StateError('unexpected_empty_response');
       return Product.fromJson(decoded);
     } on Object {
-      throw StateError('NULL_RESPONSE');
+      throw StateError('unexpected_empty_response');
     }
   }
 
@@ -373,7 +373,7 @@ class WooApiService {
     }
     final body = jsonDecodeUtf8Response(response) as Map<String, dynamic>;
     return CustomerProfile(
-      email: body['user_email']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+      email: body['user_email']?.toString() ?? (throw StateError('unexpected_empty_response')),
       token: body['token']?.toString(),
       fullName: body['user_display_name']?.toString(),
     );

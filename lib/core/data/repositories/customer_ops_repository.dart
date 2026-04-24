@@ -59,7 +59,7 @@ class TrackOrderItem {
   final int? retryRemaining;
 
   static DateTime? _parseDate(dynamic value) {
-    if (value == null) throw StateError('NULL_RESPONSE');
+    if (value == null) throw StateError('unexpected_empty_response');
     try {
       final sec = (value as dynamic).seconds;
       if (sec is int) return DateTime.fromMillisecondsSinceEpoch(sec * 1000);

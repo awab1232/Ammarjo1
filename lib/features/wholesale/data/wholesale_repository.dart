@@ -1,4 +1,4 @@
-﻿import 'dart:convert';
+import 'dart:convert';
 
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
@@ -26,7 +26,7 @@ class WholesaleRepository {
 
   Future<Map<String, String>> _authHeaders() async {
     if (!UserSession.isLoggedIn && FirebaseAuth.instance.currentUser == null) {
-      throw StateError('يرجى تسجيل الدخول أولاً');
+      throw StateError('???? ????? ?????? ?????');
     }
     final headers = await FirebaseAuthHeaderProvider.requireAuthHeaders(
       reason: 'wholesale_repository_auth_headers',
@@ -36,25 +36,25 @@ class WholesaleRepository {
 
   Future<dynamic> _httpGetJson(String path, {Map<String, String>? query}) async {
     if (!useBackendWholesale) throw StateError('Backend wholesale disabled');
-    if (_baseUrl.isEmpty) throw StateError('Backend URL غير مضبوط');
+    if (_baseUrl.isEmpty) throw StateError('Backend URL ??? ?????');
     final headers = await _authHeaders();
     final uri = Uri.parse('$_baseUrl$path').replace(queryParameters: query);
     final res = await http.get(uri, headers: headers).timeout(const Duration(seconds: 20));
     if (res.statusCode < 200 || res.statusCode >= 300) {
       if (res.statusCode == 401) {
-        throw StateError('انتهت الجلسة، سجل الدخول مجدداً ثم أعد المحاولة.');
+        throw StateError('????? ??????? ??? ?????? ?????? ?? ??? ????????.');
       }
       if (res.statusCode == 403) {
-        throw StateError('لا تملك صلاحية تنفيذ هذه العملية.');
+        throw StateError('?? ???? ?????? ????? ??? ???????.');
       }
-      throw StateError('فشل تحميل بيانات الجملة (${res.statusCode})');
+      throw StateError('??? ????? ?????? ?????? (${res.statusCode})');
     }
     return jsonDecode(res.body);
   }
 
   Future<Map<String, dynamic>> _httpPostJson(String path, Map<String, dynamic> body) async {
     if (!useBackendWholesale) throw StateError('Backend wholesale disabled');
-    if (_baseUrl.isEmpty) throw StateError('Backend URL غير مضبوط');
+    if (_baseUrl.isEmpty) throw StateError('Backend URL ??? ?????');
     final headers = await _authHeaders();
     final uri = Uri.parse('$_baseUrl$path');
     final res = await http
@@ -66,12 +66,12 @@ class WholesaleRepository {
         .timeout(const Duration(seconds: 25));
     if (res.statusCode < 200 || res.statusCode >= 300) {
       if (res.statusCode == 401) {
-        throw StateError('انتهت الجلسة، سجل الدخول مجدداً ثم أعد المحاولة.');
+        throw StateError('????? ??????? ??? ?????? ?????? ?? ??? ????????.');
       }
       if (res.statusCode == 403) {
-        throw StateError('لا تملك صلاحية تنفيذ هذه العملية.');
+        throw StateError('?? ???? ?????? ????? ??? ???????.');
       }
-      throw StateError('فشل تنفيذ العملية (${res.statusCode})');
+      throw StateError('??? ????? ??????? (${res.statusCode})');
     }
     final decoded = jsonDecode(res.body);
     if (decoded is Map<String, dynamic>) return decoded;
@@ -81,7 +81,7 @@ class WholesaleRepository {
 
   Future<Map<String, dynamic>> _httpPatchJson(String path, Map<String, dynamic> body) async {
     if (!useBackendWholesale) throw StateError('Backend wholesale disabled');
-    if (_baseUrl.isEmpty) throw StateError('Backend URL غير مضبوط');
+    if (_baseUrl.isEmpty) throw StateError('Backend URL ??? ?????');
     final headers = await _authHeaders();
     final uri = Uri.parse('$_baseUrl$path');
     final res = await http
@@ -93,12 +93,12 @@ class WholesaleRepository {
         .timeout(const Duration(seconds: 25));
     if (res.statusCode < 200 || res.statusCode >= 300) {
       if (res.statusCode == 401) {
-        throw StateError('انتهت الجلسة، سجل الدخول مجدداً ثم أعد المحاولة.');
+        throw StateError('????? ??????? ??? ?????? ?????? ?? ??? ????????.');
       }
       if (res.statusCode == 403) {
-        throw StateError('لا تملك صلاحية تنفيذ هذه العملية.');
+        throw StateError('?? ???? ?????? ????? ??? ???????.');
       }
-      throw StateError('فشل تنفيذ العملية (${res.statusCode})');
+      throw StateError('??? ????? ??????? (${res.statusCode})');
     }
     if (res.body.trim().isEmpty) return <String, dynamic>{};
     final decoded = jsonDecode(res.body);
@@ -109,18 +109,18 @@ class WholesaleRepository {
 
   Future<void> _httpDeleteJson(String path) async {
     if (!useBackendWholesale) throw StateError('Backend wholesale disabled');
-    if (_baseUrl.isEmpty) throw StateError('Backend URL غير مضبوط');
+    if (_baseUrl.isEmpty) throw StateError('Backend URL ??? ?????');
     final headers = await _authHeaders();
     final uri = Uri.parse('$_baseUrl$path');
     final res = await http.delete(uri, headers: headers).timeout(const Duration(seconds: 20));
     if (res.statusCode < 200 || res.statusCode >= 300) {
       if (res.statusCode == 401) {
-        throw StateError('انتهت الجلسة، سجل الدخول مجدداً ثم أعد المحاولة.');
+        throw StateError('????? ??????? ??? ?????? ?????? ?? ??? ????????.');
       }
       if (res.statusCode == 403) {
-        throw StateError('لا تملك صلاحية تنفيذ هذه العملية.');
+        throw StateError('?? ???? ?????? ????? ??? ???????.');
       }
-      throw StateError('فشل تنفيذ العملية (${res.statusCode})');
+      throw StateError('??? ????? ??????? (${res.statusCode})');
     }
   }
 
@@ -145,10 +145,10 @@ class WholesaleRepository {
         })
         .toList();
     return WholesaleProduct(
-      productId: (m['id'] ?? m['productCode'] ?? (throw StateError('NULL_RESPONSE'))).toString(),
-      name: (m['name'] ?? (throw StateError('NULL_RESPONSE'))).toString(),
-      imageUrl: (m['imageUrl'] ?? (throw StateError('NULL_RESPONSE'))).toString(),
-      unit: (m['unit'] ?? (throw StateError('NULL_RESPONSE'))).toString(),
+      productId: (m['id'] ?? m['productCode'] ?? (throw StateError('unexpected_empty_response'))).toString(),
+      name: (m['name'] ?? (throw StateError('unexpected_empty_response'))).toString(),
+      imageUrl: (m['imageUrl'] ?? (throw StateError('unexpected_empty_response'))).toString(),
+      unit: (m['unit'] ?? (throw StateError('unexpected_empty_response'))).toString(),
       quantityPrices: prices,
       stock: (m['stock'] as num?)?.toInt() ?? (throw StateError('INVALID_NUMERIC_DATA')),
       categoryId: m['categoryId']?.toString(),
@@ -251,7 +251,7 @@ class WholesaleRepository {
           .toList(),
     };
     final response = await _httpPostJson('/wholesale/orders', payload);
-    return (response['id'] ?? (throw StateError('NULL_RESPONSE'))).toString();
+    return (response['id'] ?? (throw StateError('unexpected_empty_response'))).toString();
   }
 
   Future<FeatureState<List<WholesaleOrderModel>>> getWholesalerIncomingOrders(
@@ -304,7 +304,7 @@ class WholesaleRepository {
   }) async {
     final response = await _httpGetJson('/wholesale/orders', query: {
       if (wholesalerId == null) 'storeId':
-        FirebaseAuth.instance.currentUser?.uid ?? (throw StateError('NULL_RESPONSE')),
+        FirebaseAuth.instance.currentUser?.uid ?? (throw StateError('unexpected_empty_response')),
       if ((wholesalerId ?? '').trim().isNotEmpty) 'wholesalerId': wholesalerId!.trim(),
       'limit': '$limit',
       if (cursor != null && cursor.trim().isNotEmpty) 'cursor': cursor.trim(),
@@ -359,7 +359,7 @@ class WholesaleRepository {
     final seen = <String>{};
     final out = <WholesalerCategory>[];
     for (final p in products) {
-      final c = p.categoryId?.trim() ?? (throw StateError('NULL_RESPONSE'));
+      final c = p.categoryId?.trim() ?? (throw StateError('unexpected_empty_response'));
       if (c.isEmpty || !seen.add(c)) continue;
       out.add(WholesalerCategory(id: c, name: c, order: out.length));
     }
@@ -456,7 +456,7 @@ class WholesaleRepository {
     if (me == null || uid.trim().isEmpty) return <String, dynamic>{};
     return <String, dynamic>{
       'uid': uid.trim(),
-      'email': me.email ?? (throw StateError('NULL_RESPONSE')),
+      'email': me.email ?? (throw StateError('unexpected_empty_response')),
     };
   }
 

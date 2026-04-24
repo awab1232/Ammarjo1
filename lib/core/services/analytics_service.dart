@@ -93,7 +93,7 @@ class AnalyticsService {
     for (final row in timeline) {
       final dayRaw = row['day']?.toString();
       if (dayRaw == null || dayRaw.isEmpty) {
-        throw StateError('NULL_RESPONSE');
+        throw StateError('unexpected_empty_response');
       }
       final parsed = DateTime.tryParse(dayRaw);
       if (parsed == null) {
@@ -120,8 +120,8 @@ class AnalyticsService {
       topStores: (stores ?? const <Map<String, dynamic>>[])
           .map(
             (r) => AnalyticsTopRow(
-              id: r['technicianId']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-              name: r['technicianId']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+              id: r['technicianId']?.toString() ?? (throw StateError('unexpected_empty_response')),
+              name: r['technicianId']?.toString() ?? (throw StateError('unexpected_empty_response')),
               count: (r['completed_jobs'] as num?)?.toInt() ?? (throw StateError('INVALID_NUMERIC_DATA')),
               revenue: (r['score'] as num?)?.toDouble() ?? (throw StateError('INVALID_NUMERIC_DATA')),
             ),
@@ -130,8 +130,8 @@ class AnalyticsService {
       topWholesalers: (revenue ?? const <Map<String, dynamic>>[])
           .map(
             (r) => AnalyticsTopRow(
-              id: r['requestId']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-              name: r['technicianId']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+              id: r['requestId']?.toString() ?? (throw StateError('unexpected_empty_response')),
+              name: r['technicianId']?.toString() ?? (throw StateError('unexpected_empty_response')),
               count: 1,
               revenue: (r['durationHours'] as num?)?.toDouble() ?? (throw StateError('INVALID_NUMERIC_DATA')),
             ),

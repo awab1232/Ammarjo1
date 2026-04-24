@@ -87,7 +87,7 @@ class BackendUserRepository implements UserRepository {
   @override
   Future<void> syncUserDocument(CustomerProfile profile) async {
     if (!Firebase.apps.isNotEmpty) return;
-    // Self profile uses `GET /users/me` (token); by-id uses `firebase_uid` or internal UUID + owner check, not Firebase as DB id.
+    // Profile sync is always self-scoped via Firebase identity (`/users/me`).
     final uid = FirebaseAuth.instance.currentUser?.uid.trim() ?? '';
     if (uid.isEmpty) return;
     await BackendUserClient.instance.patchUser(uid, <String, dynamic>{

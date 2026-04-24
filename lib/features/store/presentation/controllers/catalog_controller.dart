@@ -152,11 +152,11 @@ class CatalogController extends ChangeNotifier {
       final rows = rowsState.data;
       products = rows
           .map((r) => Product(
-                id: (r['id']?.toString() ?? (throw StateError('NULL_RESPONSE')))
+                id: (r['id']?.toString() ?? (throw StateError('unexpected_empty_response')))
                     .hashCode
                     .abs(),
-                name: r['name']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-                description: r['description']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+                name: r['name']?.toString() ?? (throw StateError('unexpected_empty_response')),
+                description: r['description']?.toString() ?? (throw StateError('unexpected_empty_response')),
                 price: r['price']?.toString() ?? '0',
                 images: <String>[
                   if (((r['imageUrl'] ?? r['image'])?.toString().trim() ?? '').isNotEmpty)
@@ -193,11 +193,11 @@ class CatalogController extends ChangeNotifier {
       final pageProducts = rows
           .skip(_productOffset)
           .map((r) => Product(
-                id: (r['id']?.toString() ?? (throw StateError('NULL_RESPONSE')))
+                id: (r['id']?.toString() ?? (throw StateError('unexpected_empty_response')))
                     .hashCode
                     .abs(),
-                name: r['name']?.toString() ?? (throw StateError('NULL_RESPONSE')),
-                description: r['description']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+                name: r['name']?.toString() ?? (throw StateError('unexpected_empty_response')),
+                description: r['description']?.toString() ?? (throw StateError('unexpected_empty_response')),
                 price: r['price']?.toString() ?? '0',
                 images: <String>[
                   if (((r['imageUrl'] ?? r['image'])?.toString().trim() ?? '').isNotEmpty)
@@ -239,12 +239,12 @@ class CatalogController extends ChangeNotifier {
       final rows = rowsState.data;
       categories = rows
           .map((r) => ProductCategory(
-                id: (r['id']?.toString() ?? (throw StateError('NULL_RESPONSE')))
+                id: (r['id']?.toString() ?? (throw StateError('unexpected_empty_response')))
                     .hashCode
                     .abs(),
-                name: r['name']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+                name: r['name']?.toString() ?? (throw StateError('unexpected_empty_response')),
                 parent: 0,
-                imageUrl: r['imageUrl']?.toString() ?? (throw StateError('NULL_RESPONSE')),
+                imageUrl: r['imageUrl']?.toString() ?? (throw StateError('unexpected_empty_response')),
               ))
           .toList();
     } on Object {
