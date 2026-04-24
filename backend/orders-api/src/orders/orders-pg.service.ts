@@ -1,4 +1,4 @@
-import { Injectable, OnModuleDestroy, Optional } from '@nestjs/common';
+import { Injectable, OnModuleDestroy, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { Pool, type PoolClient } from 'pg';
 import { DbRouterService } from '../infrastructure/database/db-router.service';
 import { buildPgPoolConfig } from '../infrastructure/database/pg-ssl';
@@ -340,13 +340,13 @@ export class OrdersPgService implements OnModuleDestroy {
 
       await client.query(
         `INSERT INTO orders (
-          order_id, user_id, store_id, store_id_uuid, items,
+          order_id, user_id, store_id_uuid, items,
           subtotal_numeric, shipping_numeric, total_numeric,
           currency, write_source, customer_email, status,
           billing, delivery_address, list_title, payload,
           delivery_lat, delivery_lng, updated_at
         ) VALUES (
-          $1, $2, $3, $3::uuid, $4::jsonb,
+          $1, $2, $3::uuid, $4::jsonb,
           $5, $6, $7,
           $8, $9, $10, $11,
           $12::jsonb, $13, $14, $15::jsonb,
@@ -354,7 +354,6 @@ export class OrdersPgService implements OnModuleDestroy {
         )
         ON CONFLICT (order_id) DO UPDATE SET
           user_id = EXCLUDED.user_id,
-          store_id = EXCLUDED.store_id,
           store_id_uuid = EXCLUDED.store_id_uuid,
           items = EXCLUDED.items,
           subtotal_numeric = EXCLUDED.subtotal_numeric,
@@ -399,66 +398,35 @@ export class OrdersPgService implements OnModuleDestroy {
 
   async findPayloadById(orderId: string): Promise<StoredOrder | null> {
     const client = await this.getReadClient();
-    if (!client) return null;
+    if (!client) {
+      throw new ServiceUnavailableException(
+        JSON.stringify({ code: 'orders_read_client_unavailable', scope: 'findPayloadById' }),
+      );
+    }
     try {
-      let r: {
-        rows: Array<{
-          payload: unknown;
-          created_at: Date;
-          driver_id?: string | null;
-          delivery_status?: string | null;
-          delivery_lat?: string | null;
-          delivery_lng?: string | null;
-          eta_minutes?: string | null;
-          assigned_at?: Date | null;
-          delivery_on_the_way_at?: Date | null;
-          delivery_delivered_at?: Date | null;
-          driver_name?: string | null;
-          driver_phone?: string | null;
-          delivery_manual_retries?: string | number | null;
-        }>;
-      };
-      try {
-        r = await client.query<{
-          payload: unknown;
-          created_at: Date;
-          driver_id: string | null;
-          delivery_status: string | null;
-          delivery_lat: string | null;
-          delivery_lng: string | null;
-          eta_minutes: string | null;
-          assigned_at: Date | null;
-          delivery_on_the_way_at: Date | null;
-          delivery_delivered_at: Date | null;
-          driver_name: string | null;
-          driver_phone: string | null;
-          delivery_manual_retries: string | number | null;
-        }>(
-          `SELECT o.payload, o.created_at, o.driver_id, o.delivery_status, o.delivery_lat, o.delivery_lng, o.eta_minutes, o.assigned_at,
-                  o.delivery_on_the_way_at, o.delivery_delivered_at,
-                  o.delivery_manual_retries,
-                  NULL::text AS driver_name, NULL::text AS driver_phone
-           FROM orders o
-           WHERE o.order_id = $1`,
-          [orderId.trim()],
-        );
-      } catch (e) {
-        this.logOrdersReadSqlError('findPayloadById/full', e);
-        try {
-          r = await client.query<{
-            payload: unknown;
-            created_at: Date;
-          }>(
-            `SELECT o.payload, o.created_at
-             FROM orders o
-             WHERE o.order_id = $1`,
-            [orderId.trim()],
-          );
-        } catch (e2) {
-          this.logOrdersReadSqlError('findPayloadById/compact', e2);
-          return null;
-        }
-      }
+      const r = await client.query<{
+        payload: unknown;
+        created_at: Date;
+        driver_id: string | null;
+        delivery_status: string | null;
+        delivery_lat: string | null;
+        delivery_lng: string | null;
+        eta_minutes: string | null;
+        assigned_at: Date | null;
+        delivery_on_the_way_at: Date | null;
+        delivery_delivered_at: Date | null;
+        driver_name: string | null;
+        driver_phone: string | null;
+        delivery_manual_retries: string | number | null;
+      }>(
+        `SELECT o.payload, o.created_at, o.driver_id, o.delivery_status, o.delivery_lat, o.delivery_lng, o.eta_minutes, o.assigned_at,
+                o.delivery_on_the_way_at, o.delivery_delivered_at,
+                o.delivery_manual_retries,
+                NULL::text AS driver_name, NULL::text AS driver_phone
+         FROM orders o
+         WHERE o.order_id = $1`,
+        [orderId.trim()],
+      );
       if (r.rows.length === 0) return null;
       const row = r.rows[0];
       const raw = row.payload;
@@ -479,9 +447,25 @@ export class OrdersPgService implements OnModuleDestroy {
       });
     } catch (e) {
       this.logOrdersReadSqlError('findPayloadById', e);
-      return null;
+      throw new ServiceUnavailableException(
+        JSON.stringify({ code: 'orders_query_failed', scope: 'findPayloadById', orderId: orderId.trim() }),
+      );
     } finally {
       client.release();
+    }
+  }
+
+  private async assertStrictOrderIntegrity(client: PoolClient): Promise<void> {
+    const q = await client.query(
+      `SELECT COUNT(*) AS bad_orders
+       FROM orders
+       WHERE user_id IS NULL OR btrim(user_id) = '' OR store_id_uuid IS NULL`,
+    );
+    const badOrders = Number(q.rows[0]?.['bad_orders'] ?? 0);
+    if (badOrders > 0) {
+      throw new ServiceUnavailableException(
+        JSON.stringify({ code: 'orders_integrity_violation', badOrders }),
+      );
     }
   }
 
@@ -496,13 +480,16 @@ export class OrdersPgService implements OnModuleDestroy {
   ): Promise<{ items: StoredOrder[]; nextCursor: string | null; hasMore: boolean }> {
     const client = await this.getReadClient();
     if (!client) {
-      return { items: [], nextCursor: null, hasMore: false };
+      throw new ServiceUnavailableException(
+        JSON.stringify({ code: 'orders_read_client_unavailable', scope: 'findPayloadsByUserIdPaginated' }),
+      );
     }
     const lim = Math.min(Math.max(1, limit), 50);
     const fetchN = lim + 1;
     let lastQueryText = '';
     let lastQueryParams: unknown[] = [];
     try {
+      await this.assertStrictOrderIntegrity(client);
       let r: {
         rows: Array<{
           payload: unknown;
@@ -576,32 +563,7 @@ export class OrdersPgService implements OnModuleDestroy {
           [userId.trim(), cursor.c, cursor.o, fetchN],
         );
       };
-      try {
-        r = await runQuery(false);
-      } catch (e) {
-        // Some production DBs may lag on delivery columns; fallback to core order columns.
-        console.warn(
-          '[OrdersPgService] findPayloadsByUserIdPaginated full query failed',
-          JSON.stringify({
-            query: lastQueryText,
-            params: lastQueryParams,
-          }),
-        );
-        this.logOrdersReadSqlError('findPayloadsByUserIdPaginated/full', e);
-        try {
-          r = await runQuery(true);
-        } catch (e2) {
-          console.warn(
-            '[OrdersPgService] findPayloadsByUserIdPaginated compact query failed',
-            JSON.stringify({
-              query: lastQueryText,
-              params: lastQueryParams,
-            }),
-          );
-          this.logOrdersReadSqlError('findPayloadsByUserIdPaginated/compact', e2);
-          r = { rows: [] };
-        }
-      }
+      r = await runQuery(false);
       const rows = r.rows;
       const hasMore = rows.length > lim;
       const slice = hasMore ? rows.slice(0, lim) : rows;
@@ -639,8 +601,21 @@ export class OrdersPgService implements OnModuleDestroy {
       }
       return { items, nextCursor, hasMore };
     } catch (e) {
+      console.warn(
+        '[OrdersPgService] findPayloadsByUserIdPaginated query failed',
+        JSON.stringify({
+          query: lastQueryText,
+          params: lastQueryParams,
+        }),
+      );
       this.logOrdersReadSqlError('findPayloadsByUserIdPaginated', e);
-      return { items: [], nextCursor: null, hasMore: false };
+      throw new ServiceUnavailableException(
+        JSON.stringify({
+          code: 'orders_query_failed',
+          scope: 'findPayloadsByUserIdPaginated',
+          userId: userId.trim(),
+        }),
+      );
     } finally {
       client.release();
     }
@@ -656,12 +631,15 @@ export class OrdersPgService implements OnModuleDestroy {
   ): Promise<{ items: StoredOrder[]; nextCursor: string | null; hasMore: boolean }> {
     const client = await this.getReadClient();
     if (!client) {
-      return { items: [], nextCursor: null, hasMore: false };
+      throw new ServiceUnavailableException(
+        JSON.stringify({ code: 'orders_read_client_unavailable', scope: 'findPayloadsByStoreIdPaginated' }),
+      );
     }
     const sid = storeId.trim();
     const lim = Math.min(Math.max(1, limit), 50);
     const fetchN = lim + 1;
     try {
+      await this.assertStrictOrderIntegrity(client);
       let r: {
         rows: Array<{
           payload: unknown;
@@ -730,17 +708,7 @@ export class OrdersPgService implements OnModuleDestroy {
           [sid, cursor.c, cursor.o, fetchN],
         );
       };
-      try {
-        r = await runQuery(false);
-      } catch (e) {
-        this.logOrdersReadSqlError('findPayloadsByStoreIdPaginated/full', e);
-        try {
-          r = await runQuery(true);
-        } catch (e2) {
-          this.logOrdersReadSqlError('findPayloadsByStoreIdPaginated/compact', e2);
-          r = { rows: [] };
-        }
-      }
+      r = await runQuery(false);
       const rows = r.rows;
       const hasMore = rows.length > lim;
       const slice = hasMore ? rows.slice(0, lim) : rows;
@@ -779,7 +747,13 @@ export class OrdersPgService implements OnModuleDestroy {
       return { items, nextCursor, hasMore };
     } catch (e) {
       this.logOrdersReadSqlError('findPayloadsByStoreIdPaginated', e);
-      return { items: [], nextCursor: null, hasMore: false };
+      throw new ServiceUnavailableException(
+        JSON.stringify({
+          code: 'orders_query_failed',
+          scope: 'findPayloadsByStoreIdPaginated',
+          storeId: sid,
+        }),
+      );
     } finally {
       client.release();
     }

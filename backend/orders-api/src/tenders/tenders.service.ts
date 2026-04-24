@@ -12,8 +12,7 @@ import { logAuditJson } from '../common/audit-log';
 
 export interface CreateTenderInput {
   userId: string;
-  category: string;
-  categoryId?: string | null;
+  categoryId: string;
   description: string;
   city: string;
   userName: string;
@@ -37,7 +36,7 @@ export interface SubmitOfferInput {
  * Customer-facing tenders service (public `/tenders` routes).
  *
  * Owns two tables:
- *  - `tenders`        — the tender request itself (one per customer + category).
+ *  - `tenders`        — the tender request itself.
  *  - `tender_offers`  — store replies for a given tender.
  *
  * Mutations are routed through `withClient` so schema bootstrap runs once per
@@ -80,11 +79,9 @@ export class TendersService {
     await client.query(`
       CREATE TABLE IF NOT EXISTS tenders (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-        customer_uid text NOT NULL,
-        user_id text,
+        user_id text NOT NULL,
         customer_name text NOT NULL DEFAULT '',
-        category text NOT NULL DEFAULT '',
-        category_id uuid,
+        category_id uuid NOT NULL,
         description text NOT NULL DEFAULT '',
         city text NOT NULL DEFAULT '',
         image_url text,
@@ -99,16 +96,13 @@ export class TendersService {
       );
       ALTER TABLE tenders ADD COLUMN IF NOT EXISTS user_id text;
       ALTER TABLE tenders ADD COLUMN IF NOT EXISTS category_id uuid;
-      UPDATE tenders SET user_id = customer_uid WHERE user_id IS NULL OR btrim(user_id) = '';
-      CREATE INDEX IF NOT EXISTS idx_tenders_customer ON tenders (customer_uid, updated_at DESC);
       CREATE INDEX IF NOT EXISTS idx_tenders_user_id ON tenders (user_id, updated_at DESC);
       CREATE INDEX IF NOT EXISTS idx_tenders_status_type ON tenders (status, store_type_id, updated_at DESC);
 
       CREATE TABLE IF NOT EXISTS tender_offers (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
         tender_id uuid NOT NULL REFERENCES tenders(id) ON DELETE CASCADE,
-        store_id text NOT NULL DEFAULT '',
-        store_id_uuid uuid,
+        store_id_uuid uuid NOT NULL,
         store_name text NOT NULL DEFAULT '',
         store_owner_uid text NOT NULL DEFAULT '',
         price numeric(12,2) NOT NULL DEFAULT 0,
@@ -118,11 +112,6 @@ export class TendersService {
         updated_at timestamptz NOT NULL DEFAULT now()
       );
       ALTER TABLE tender_offers ADD COLUMN IF NOT EXISTS store_id_uuid uuid;
-      UPDATE tender_offers t
-      SET store_id_uuid = s.id
-      FROM stores s
-      WHERE t.store_id_uuid IS NULL
-        AND s.id::text = t.store_id;
       CREATE INDEX IF NOT EXISTS idx_tender_offers_tender ON tender_offers (tender_id, updated_at DESC);
     `);
     this.tablesReady = true;
@@ -132,11 +121,9 @@ export class TendersService {
     const createdAt = row['created_at'] ?? null;
     return {
       id: row['id'],
-      customerUid: row['user_id'],
       userId: row['user_id'],
       userName: row['customer_name'],
       customerName: row['customer_name'],
-      category: row['category'],
       categoryId: row['category_id'],
       description: row['description'],
       city: row['city'],
@@ -169,25 +156,43 @@ export class TendersService {
     };
   }
 
+  private async assertStrictIntegrity(client: PoolClient): Promise<void> {
+    const chk = await client.query(
+      `SELECT
+         (SELECT COUNT(*) FROM tenders WHERE user_id IS NULL OR category_id IS NULL) AS bad_tenders,
+         (SELECT COUNT(*) FROM tender_offers WHERE store_id_uuid IS NULL) AS bad_offers`,
+    );
+    const badTenders = Number(chk.rows[0]?.['bad_tenders'] ?? 0);
+    const badOffers = Number(chk.rows[0]?.['bad_offers'] ?? 0);
+    if (badTenders > 0 || badOffers > 0) {
+      throw new ServiceUnavailableException(
+        JSON.stringify({
+          code: 'tenders_integrity_violation',
+          badTenders,
+          badOffers,
+        }),
+      );
+    }
+  }
+
   async create(input: CreateTenderInput): Promise<Record<string, unknown>> {
     if (!input.userId.trim()) throw new BadRequestException('missing_customer');
-    if (!input.category.trim() && !input.description.trim()) {
-      throw new BadRequestException('category_or_description_required');
-    }
+    if (!input.categoryId.trim()) throw new BadRequestException('missing_category_id');
+    if (!input.description.trim()) throw new BadRequestException('description_required');
     return this.withClient(async (client) => {
+      await this.assertStrictIntegrity(client);
       const q = await client.query(
         `INSERT INTO tenders
-           (customer_uid, user_id, customer_name, category, category_id, description, city,
+           (user_id, customer_name, category_id, description, city,
             image_url, image_base64, store_type_id, store_type_key, store_type_name)
-         VALUES ($1,$1,$2,$3, NULLIF($4,'')::uuid,$5,$6,$7,$8, NULLIF($9,'')::uuid, NULLIF($10,''), NULLIF($11,''))
-         RETURNING id::text, user_id, customer_name, category, category_id::text AS category_id, description, city,
+         VALUES ($1,$2,$3::uuid,$4,$5,$6,$7, NULLIF($8,'')::uuid, NULLIF($9,''), NULLIF($10,''))
+         RETURNING id::text, user_id, customer_name, category_id::text AS category_id, description, city,
                    image_url, store_type_id::text AS store_type_id, store_type_key, store_type_name,
                    status, accepted_offer_id::text AS accepted_offer_id, created_at, updated_at`,
         [
           input.userId.trim(),
           (input.userName || '').trim(),
-          input.category.trim(),
-          input.categoryId?.trim() || '',
+          input.categoryId.trim(),
           input.description.trim(),
           input.city.trim(),
           input.imageUrl?.trim() || null,
@@ -210,8 +215,9 @@ export class TendersService {
     if (!userId.trim()) return { items: [] };
     const lim = Math.min(200, Math.max(1, limit));
     return this.withClient(async (client) => {
+      await this.assertStrictIntegrity(client);
       const q = await client.query(
-        `SELECT id::text, user_id, customer_name, category, category_id::text AS category_id, description, city,
+        `SELECT id::text, user_id, customer_name, category_id::text AS category_id, description, city,
                 image_url, store_type_id::text AS store_type_id, store_type_key, store_type_name,
                 status, accepted_offer_id::text AS accepted_offer_id, created_at, updated_at
          FROM tenders
@@ -241,6 +247,7 @@ export class TendersService {
     const skey = (params.storeTypeKey ?? '').trim().toLowerCase();
     const city = (params.city ?? '').trim();
     return this.withClient(async (client) => {
+      await this.assertStrictIntegrity(client);
       const actorUid = (params.actorUid ?? '').trim();
       if (!actorUid) throw new BadRequestException('missing_actor_uid');
       const where: string[] = [`status = 'open'`];
@@ -283,7 +290,7 @@ export class TendersService {
       }
       vals.push(lim);
       const q = await client.query(
-        `SELECT id::text, user_id, customer_name, category, category_id::text AS category_id, description, city,
+        `SELECT id::text, user_id, customer_name, category_id::text AS category_id, description, city,
                 image_url, store_type_id::text AS store_type_id, store_type_key, store_type_name,
                 status, accepted_offer_id::text AS accepted_offer_id, created_at, updated_at
          FROM tenders
@@ -301,8 +308,9 @@ export class TendersService {
     const actor = actorUid.trim();
     if (!actor) throw new ForbiddenException('forbidden');
     return this.withClient(async (client) => {
+      await this.assertStrictIntegrity(client);
       const q = await client.query(
-        `SELECT id::text, user_id, customer_name, category, category_id::text AS category_id, description, city,
+        `SELECT id::text, user_id, customer_name, category_id::text AS category_id, description, city,
                 image_url, store_type_id::text AS store_type_id, store_type_key, store_type_name,
                 status, accepted_offer_id::text AS accepted_offer_id, created_at, updated_at,
                 EXISTS (
@@ -334,6 +342,7 @@ export class TendersService {
     const actor = actorUid.trim();
     if (!actor) throw new ForbiddenException('forbidden');
     return this.withClient(async (client) => {
+      await this.assertStrictIntegrity(client);
       const tender = await client.query(
         `SELECT user_id
          FROM tenders
@@ -400,8 +409,8 @@ export class TendersService {
       if (sel.rows.length === 0) throw new NotFoundException('tender_not_found');
       if (String(sel.rows[0]['status']) !== 'open') throw new BadRequestException('tender_closed');
       const q = await client.query(
-        `INSERT INTO tender_offers (tender_id, store_id, store_id_uuid, store_name, store_owner_uid, price, note)
-         VALUES ($1::uuid, $2, $2::uuid, $3, $4, $5, $6)
+        `INSERT INTO tender_offers (tender_id, store_id_uuid, store_name, store_owner_uid, price, note)
+         VALUES ($1::uuid, $2::uuid, $3, $4, $5, $6)
          RETURNING id::text, tender_id::text, store_id_uuid::text AS store_id_uuid, store_name, store_owner_uid,
                    price, note, status, created_at, updated_at`,
         [
@@ -438,6 +447,7 @@ export class TendersService {
     if (!allowed.has(status)) throw new BadRequestException('invalid_status');
 
     return this.withClient(async (client) => {
+      await this.assertStrictIntegrity(client);
       const tSel = await client.query(
         `SELECT user_id, status FROM tenders WHERE id = $1::uuid`,
         [tenderId.trim()],
@@ -494,6 +504,7 @@ export class TendersService {
     if (!status) throw new BadRequestException('missing_status');
     if (!['closed', 'cancelled'].includes(status)) throw new BadRequestException('invalid_status');
     return this.withClient(async (client) => {
+      await this.assertStrictIntegrity(client);
       const sel = await client.query(
         `SELECT user_id FROM tenders WHERE id = $1::uuid`,
         [tenderId.trim()],
@@ -512,6 +523,7 @@ export class TendersService {
 
   async deleteTender(customerUid: string, tenderId: string): Promise<{ ok: true }> {
     return this.withClient(async (client) => {
+      await this.assertStrictIntegrity(client);
       const sel = await client.query(
         `SELECT user_id FROM tenders WHERE id = $1::uuid`,
         [tenderId.trim()],

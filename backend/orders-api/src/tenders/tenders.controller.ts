@@ -23,7 +23,6 @@ import { getTenantContext } from '../identity/tenant-context.storage';
 import { TendersService } from './tenders.service';
 
 interface CreateTenderBody {
-  category?: string;
   categoryId?: string;
   description?: string;
   city?: string;
@@ -77,8 +76,7 @@ export class TendersController {
   create(@Req() req: RequestWithFirebase, @Body() body: CreateTenderBody) {
     return this.tenders.create({
       userId: req.firebaseUid ?? '',
-      category: body.category ?? '',
-      categoryId: body.categoryId ?? null,
+      categoryId: body.categoryId ?? '',
       description: body.description ?? '',
       city: body.city ?? '',
       userName: body.userName ?? '',

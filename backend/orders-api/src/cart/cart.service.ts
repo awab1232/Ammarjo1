@@ -53,19 +53,34 @@ export class CartService {
       priceSnapshot: String(row.price_snapshot ?? '0'),
       productName: String(row.product_name ?? ''),
       imageUrl: row.image_url != null ? String(row.image_url) : null,
-      storeId: String(row.store_id ?? ''),
+      storeId: String(row.store_id_uuid ?? ''),
       storeName: String(row.store_name ?? ''),
       createdAt: new Date(String(row.created_at)).toISOString(),
       updatedAt: new Date(String(row.updated_at)).toISOString(),
     };
   }
 
+  private async assertStrictCartIntegrity(client: PoolClient): Promise<void> {
+    const q = await client.query(
+      `SELECT COUNT(*) AS bad_cart_items
+       FROM cart_items
+       WHERE user_id IS NULL OR btrim(user_id) = '' OR store_id_uuid IS NULL`,
+    );
+    const bad = Number(q.rows[0]?.['bad_cart_items'] ?? 0);
+    if (bad > 0) {
+      throw new ServiceUnavailableException(
+        JSON.stringify({ code: 'cart_integrity_violation', badCartItems: bad }),
+      );
+    }
+  }
+
   async list(userId: string): Promise<{ items: CartItemRow[] }> {
     const uid = userId.trim();
     if (!uid) throw new BadRequestException('user required');
     return this.withClient(async (client) => {
+      await this.assertStrictCartIntegrity(client);
       const q = await client.query(
-        `SELECT id, product_id, variant_id, quantity, price_snapshot, product_name, image_url, store_id_uuid::text AS store_id, store_name, created_at, updated_at
+        `SELECT id, product_id, variant_id, quantity, price_snapshot, product_name, image_url, store_id_uuid::text AS store_id_uuid, store_name, created_at, updated_at
          FROM cart_items WHERE user_id = $1 ORDER BY created_at ASC`,
         [uid],
       );
@@ -116,6 +131,7 @@ export class CartService {
     if (!price) throw new BadRequestException('price_snapshot_required');
 
     return this.withClient(async (client) => {
+      await this.assertStrictCartIntegrity(client);
       await this.assertStockOk(client, pid, storeId);
 
       const existing = await client.query(
@@ -134,7 +150,7 @@ export class CartService {
              product_name = COALESCE(NULLIF($4::text, ''), product_name),
              image_url = COALESCE($5, image_url)
            WHERE id = $1::uuid AND user_id = $6
-           RETURNING id, product_id, variant_id, quantity, price_snapshot, product_name, image_url, store_id_uuid::text AS store_id, store_name, created_at, updated_at`,
+           RETURNING id, product_id, variant_id, quantity, price_snapshot, product_name, image_url, store_id_uuid::text AS store_id_uuid, store_name, created_at, updated_at`,
           [curId, nextQty, price, body.productName ?? '', body.imageUrl ?? null, uid],
         );
         const row = u.rows[0];
@@ -144,9 +160,9 @@ export class CartService {
 
       const ins = await client.query(
         `INSERT INTO cart_items (
-           user_id, product_id, variant_id, quantity, price_snapshot, product_name, image_url, store_id, store_id_uuid, store_name
-         ) VALUES ($1, $2, $3, $4, $5::numeric, $6, $7, $8, $8::uuid, $9)
-         RETURNING id, product_id, variant_id, quantity, price_snapshot, product_name, image_url, store_id_uuid::text AS store_id, store_name, created_at, updated_at`,
+           user_id, product_id, variant_id, quantity, price_snapshot, product_name, image_url, store_id_uuid, store_name
+         ) VALUES ($1, $2, $3, $4, $5::numeric, $6, $7, $8::uuid, $9)
+         RETURNING id, product_id, variant_id, quantity, price_snapshot, product_name, image_url, store_id_uuid::text AS store_id_uuid, store_name, created_at, updated_at`,
         [
           uid,
           pid,
@@ -177,20 +193,21 @@ export class CartService {
     if (!Number.isFinite(qty) || qty <= 0) throw new BadRequestException('invalid_quantity');
 
     return this.withClient(async (client) => {
+      await this.assertStrictCartIntegrity(client);
       const sel = await client.query(
-        `SELECT product_id, store_id_uuid::text AS store_id FROM cart_items WHERE id = $1::uuid AND user_id = $2 LIMIT 1`,
+        `SELECT product_id, store_id_uuid::text AS store_id_uuid FROM cart_items WHERE id = $1::uuid AND user_id = $2 LIMIT 1`,
         [id, uid],
       );
       if (sel.rows.length === 0) throw new NotFoundException();
       const productId = Number(sel.rows[0]['product_id'] ?? 0);
-      const storeId = String(sel.rows[0]['store_id'] ?? '');
+      const storeId = String(sel.rows[0]['store_id_uuid'] ?? '');
       if (storeId.length === 0) throw new BadRequestException('store_id_required');
       await this.assertStockOk(client, productId, storeId);
 
       const u = await client.query(
         `UPDATE cart_items SET quantity = $3, updated_at = NOW()
          WHERE id = $1::uuid AND user_id = $2
-         RETURNING id, product_id, variant_id, quantity, price_snapshot, product_name, image_url, store_id_uuid::text AS store_id, store_name, created_at, updated_at`,
+         RETURNING id, product_id, variant_id, quantity, price_snapshot, product_name, image_url, store_id_uuid::text AS store_id_uuid, store_name, created_at, updated_at`,
         [id, uid, qty],
       );
       const row = u.rows[0];
@@ -204,6 +221,7 @@ export class CartService {
     const id = lineId.trim();
     if (!uid || !id) throw new BadRequestException('invalid');
     return this.withClient(async (client) => {
+      await this.assertStrictCartIntegrity(client);
       const r = await client.query(`DELETE FROM cart_items WHERE id = $1::uuid AND user_id = $2`, [id, uid]);
       if (r.rowCount === 0) throw new NotFoundException();
       return { ok: true as const };
@@ -214,6 +232,7 @@ export class CartService {
     const uid = userId.trim();
     if (!uid) throw new BadRequestException('user required');
     await this.withClient(async (client) => {
+      await this.assertStrictCartIntegrity(client);
       await client.query(`DELETE FROM cart_items WHERE user_id = $1`, [uid]);
     });
     return { ok: true as const };

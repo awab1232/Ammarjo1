@@ -92,7 +92,7 @@ export class StoresService {
       tenantId: row.tenant_id != null ? String(row.tenant_id) : null,
       name: String(row.name ?? ''),
       description: String(row.description ?? ''),
-      category: String(row.category ?? ''),
+      category: '',
       status: String(row.status ?? 'approved'),
       isFeatured: Boolean(row.is_featured),
       isBoosted: Boolean(row.is_boosted),
@@ -130,7 +130,7 @@ export class StoresService {
   }
 
   private readonly storeColumns =
-    `id, owner_id, tenant_id, name, description, category, status,
+    `id, owner_id, tenant_id, name, description, status,
      is_featured, is_boosted, boost_expires_at, store_type, store_type_id, store_type_key,
      image_url, logo_url, created_at, opening_hours, commission_percent,
      has_own_drivers, delivery_fee, free_delivery_min_order, delivery_areas,
@@ -306,8 +306,8 @@ export class StoresService {
     }
     const id = input.id?.trim() || randomUUID();
     const inserted = await this.pool.query(
-      `INSERT INTO stores (id, owner_id, tenant_id, name, description, category, status, store_type, created_at)
-       VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, NOW())
+      `INSERT INTO stores (id, owner_id, tenant_id, name, description, status, store_type, created_at)
+       VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, NOW())
        RETURNING ${this.storeColumns}`,
       [
         id,
@@ -315,7 +315,6 @@ export class StoresService {
         input.tenantId?.trim() || null,
         input.name.trim(),
         input.description?.trim() || '',
-        input.category?.trim() || '',
         input.status?.trim() || 'approved',
         input.storeType?.trim() || 'retail',
       ],
@@ -325,7 +324,7 @@ export class StoresService {
       id: created.id,
       name: created.name,
       description: created.description,
-      category: created.category,
+      category: '',
       createdAt: created.createdAt,
     });
     this.logSensitiveAudit('CREATE_STORE', 'store', created.id);
@@ -366,21 +365,19 @@ export class StoresService {
       `UPDATE stores
        SET name = $2,
            description = $3,
-           category = $4,
-           status = $5,
-           store_type = $8,
-           opening_hours = CASE WHEN $9::text IS NULL THEN opening_hours ELSE $9::jsonb END,
-           has_own_drivers = $10,
-           delivery_fee = $11,
-           free_delivery_min_order = $12,
-           delivery_areas = $13::text[]
-       WHERE id = $1::uuid AND ($6::boolean = true OR owner_id = $7)
+           status = $4,
+           store_type = $7,
+           opening_hours = CASE WHEN $8::text IS NULL THEN opening_hours ELSE $8::jsonb END,
+           has_own_drivers = $9,
+           delivery_fee = $10,
+           free_delivery_min_order = $11,
+           delivery_areas = $12::text[]
+       WHERE id = $1::uuid AND ($5::boolean = true OR owner_id = $6)
        RETURNING ${this.storeColumns}`,
       [
         id.trim(),
         input.name?.trim() ?? current.name,
         input.description?.trim() ?? current.description,
-        input.category?.trim() ?? current.category,
         input.status?.trim() ?? current.status,
         isPrivileged,
         userId ?? '',
@@ -400,7 +397,7 @@ export class StoresService {
       id: patched.id,
       name: patched.name,
       description: patched.description,
-      category: patched.category,
+      category: '',
       createdAt: patched.createdAt,
     });
     this.logSensitiveAudit('UPDATE_STORE', 'store', patched.id);
