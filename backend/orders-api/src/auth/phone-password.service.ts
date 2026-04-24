@@ -252,65 +252,8 @@ export class PhonePasswordService {
     role: string;
     userId: string;
   }> {
-    console.log('LOGIN HIT');
-    const phone = PhonePasswordService.normalizePhone(phoneRaw ?? '');
-    if (!phone) throw new BadRequestException('invalid_phone');
-    const pwd = String(password ?? '');
-    if (pwd.length === 0) throw new BadRequestException('password_required');
-    const phoneDigits = phone.replace(/\D/g, '');
-
-    await this.ensureSchema();
-
-    const row = await this.withClient(async (client) => {
-      const r = await client.query(
-        `SELECT id, firebase_uid, password_hash, role, is_active
-         FROM users
-         WHERE phone = $1
-            OR regexp_replace(COALESCE(phone, ''), '\D', '', 'g') = $2
-         LIMIT 1`,
-        [phone, phoneDigits],
-      );
-      return r.rows[0] as
-        | { id: string; firebase_uid: string; password_hash: string | null; role: string; is_active: boolean }
-        | undefined;
-    });
-
-    if (!row) {
-      // Intentionally generic to avoid user enumeration.
-      throw new UnauthorizedException('INVALID PHONE OR PASSWORD');
-    }
-    if (!row.is_active) {
-      throw new UnauthorizedException('account_disabled');
-    }
-    if (!row.password_hash) {
-      throw new UnauthorizedException('password_not_set');
-    }
-
-    const ok = await bcrypt.compare(pwd, row.password_hash);
-    if (!ok) {
-      throw new UnauthorizedException('INVALID PHONE OR PASSWORD');
-    }
-
-    const firebaseUid = String(row.firebase_uid ?? '').trim();
-    if (!firebaseUid) {
-      throw new ServiceUnavailableException('firebase_uid_missing');
-    }
-    const userId = String(row.id ?? '').trim();
-    if (!userId) throw new ServiceUnavailableException('user_id_missing');
-    const role = String(row.role ?? 'customer').trim() || 'customer';
-
-    let customToken: string;
-    try {
-      customToken = await getFirebaseAuth().createCustomToken(firebaseUid);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : String(err);
-      this.logger.error(`[PhonePassword] createCustomToken failed uid=${firebaseUid}: ${msg}`);
-      throw new ServiceUnavailableException('token_mint_failed');
-    }
-
-    console.log('USER ROLE:', role);
-    console.log('🔥 USER ROLE:', role);
-    this.logger.log(`[PhonePassword] login_ok uid=${firebaseUid} phone=${phone} role=${role}`);
-    return { customToken, firebaseUid, phone, role, userId };
+    void phoneRaw;
+    void password;
+    throw new BadRequestException('PHONE_PASSWORD_DISABLED_USE_FIREBASE');
   }
 }

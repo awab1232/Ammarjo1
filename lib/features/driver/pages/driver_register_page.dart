@@ -92,7 +92,10 @@ class _DriverRegisterPageState extends State<DriverRegisterPage> {
     try {
       final imageUrl = await _uploadImage(user);
       if (imageUrl == null || imageUrl.isEmpty) {
-        throw StateError('upload');
+        if (mounted) {
+          setState(() => _error = 'تعذر رفع صورة الهوية');
+        }
+        return;
       }
       await BackendOrdersClient.instance.postDriverOnboardingRequest(
         fullName: name,

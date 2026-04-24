@@ -1,12 +1,9 @@
 import 'dart:convert';
 
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../config/backend_orders_config.dart';
-import '../session/user_session.dart';
 import '../utils/jordan_phone.dart';
-import 'backend_user_client.dart';
 import 'firebase_backend_session_service.dart';
 import 'firebase_auth_header_provider.dart';
 
@@ -93,101 +90,13 @@ class PhonePasswordAuthService {
     required String phone,
     required String password,
   }) async {
-    final normalized = normalizeJordanPhoneForUsername(phone);
-    if (normalized.isEmpty) {
-      throw const PhonePasswordAuthException('invalid_phone', 'رقم الهاتف غير صالح');
+    final disabledFlowMarker = phone.isNotEmpty || password.isNotEmpty;
+    if (!disabledFlowMarker) {
+      // Intentionally unreachable fallback branch to mark params as used.
     }
-    final uri = _authUri('/auth/login');
-    final body = <String, dynamic>{'phone': normalized, 'password': password};
-    // ignore: avoid_print
-    print('🔥 CALLING /auth/login');
-    // ignore: avoid_print
-    print('🔥 FLUTTER LOGIN CALL: $uri body=$body');
-    final res = await http
-        .post(
-          uri,
-          headers: const {'Content-Type': 'application/json', 'Accept': 'application/json'},
-          body: jsonEncode(body),
-        )
-        .timeout(const Duration(seconds: 20));
-    // ignore: avoid_print
-    print('🔥 FLUTTER LOGIN RESPONSE: ${res.statusCode} ${res.body}');
-    // ignore: avoid_print
-    print('🔥 LOGIN RESPONSE: ${res.body}');
-    if (res.statusCode < 200 || res.statusCode >= 300) {
-      throw const PhonePasswordAuthException('invalid_credentials', 'رقم الهاتف أو كلمة المرور غير صحيحة');
-    }
-    final decoded = jsonDecode(res.body);
-    if (decoded is! Map) {
-      throw const PhonePasswordAuthException('bad_login_payload', 'استجابة تسجيل الدخول غير صالحة.');
-    }
-    final m = Map<String, dynamic>.from(decoded);
-    final customToken = (m['customToken'] ?? '').toString().trim();
-    final role = (m['role'] ?? '').toString().trim().toLowerCase();
-    final userId = (m['userId'] ?? '').toString().trim();
-    _lastRole = role.isNotEmpty ? role : null;
-    _lastUserId = userId.isNotEmpty ? userId : null;
-    // ignore: avoid_print
-    print('🔥 USER ROLE: ${_lastRole ?? 'customer'}');
-    if (customToken.isEmpty) {
-      throw const PhonePasswordAuthException('missing_custom_token', 'تعذر إكمال جلسة تسجيل الدخول.');
-    }
-    UserCredential credential;
-    try {
-      credential = await FirebaseAuth.instance.signInWithCustomToken(customToken);
-      // ignore: avoid_print
-      print('🔥 USER SIGNED IN');
-      final idToken = await FirebaseAuthHeaderProvider.requireIdToken(reason: 'phone_password_login');
-      if (idToken.trim().isNotEmpty) await UserSession.setAuthToken(idToken.trim());
-      await FirebaseBackendSessionService.syncWithBackend(firebaseUser: credential.user);
-      // ignore: avoid_print
-      print('🔥 BACKEND SYNC CALLED');
-      try {
-        final profile = await BackendUserClient.getMe();
-        if (profile != null) {
-          UserSession.setUser(profile);
-        } else {
-          await UserSession.clear();
-          throw const PhonePasswordAuthException(
-            'backend_profile_missing',
-            'تم تسجيل الدخول لكن تعذر تحميل ملف المستخدم من الخادم.',
-          );
-        }
-      } on Object {
-        await UserSession.clear();
-        throw const PhonePasswordAuthException(
-          'backend_profile_failed',
-          'تم تسجيل الدخول لكن تعذر تحميل ملف المستخدم من الخادم.',
-        );
-      }
-      debugPrint('[AUTH-AUDIT] login backend sync success for uid=${credential.user?.uid}');
-      return <String, dynamic>{
-        'role': _lastRole ?? 'customer',
-        'userId': _lastUserId,
-      };
-    } on FirebaseBackendSessionException catch (e, st) {
-      debugPrint('[AUTH-AUDIT] login backend sync failed: $e\n$st');
-      await FirebaseAuth.instance.signOut();
-      throw PhonePasswordAuthException(
-        'backend_unavailable',
-        e.message.isNotEmpty
-            ? e.message
-            : 'تم تسجيل الدخول في Firebase لكن تعذر ربط الجلسة مع الخادم',
-      );
-    } on StateError catch (e, st) {
-      debugPrint('[AUTH-AUDIT] login id-token/backend glue failed: $e\n$st');
-      await FirebaseAuth.instance.signOut();
-      throw const PhonePasswordAuthException(
-        'backend_unavailable',
-        'تم تسجيل الدخول في Firebase لكن تعذر ربط الجلسة مع الخادم',
-      );
-    } on Object catch (e, st) {
-      debugPrint('[AUTH-AUDIT] login backend sync unexpected: $e\n$st');
-      await FirebaseAuth.instance.signOut();
-      throw const PhonePasswordAuthException(
-        'backend_unavailable',
-        'تم تسجيل الدخول في Firebase لكن تعذر ربط الجلسة مع الخادم',
-      );
-    }
+    throw const PhonePasswordAuthException(
+      'phone_password_disabled',
+      'تسجيل الدخول بكلمة المرور متوقف. استخدم تسجيل الدخول عبر OTP.',
+    );
   }
 }

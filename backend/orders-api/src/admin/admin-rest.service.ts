@@ -387,7 +387,7 @@ export class AdminRestService {
       const q = await client.query(
         `SELECT id::text, owner_id, name, category, status, store_type AS "storeType",
                 is_featured AS "isFeatured", is_boosted AS "isBoosted", boost_expires_at AS "boostExpiresAt",
-                COALESCE(commission_percent, 0)::float AS "commissionPercent",
+                CASE WHEN commission_percent IS NOT NULL THEN commission_percent ELSE 0 END::float AS "commissionPercent",
                 created_at
          FROM stores
          ORDER BY created_at DESC LIMIT $1 OFFSET $2`,
@@ -432,12 +432,12 @@ export class AdminRestService {
         `ALTER TABLE store_commission_orders ADD COLUMN IF NOT EXISTS commission_percent numeric(12,4) NOT NULL DEFAULT 0`,
       );
       const storeRow = await client.query(
-        `SELECT COALESCE(commission_percent, 0)::float AS commission_percent FROM stores WHERE id = $1::uuid LIMIT 1`,
+        `SELECT CASE WHEN commission_percent IS NOT NULL THEN commission_percent ELSE 0 END::float AS commission_percent FROM stores WHERE id = $1::uuid LIMIT 1`,
         [storeId.trim()],
       );
       if (storeRow.rows.length === 0) throw new NotFoundException();
       const agg = await client.query(
-        `SELECT COALESCE(SUM(commission_amount), 0)::numeric AS total_commission, COUNT(*)::int AS order_count
+        `SELECT CASE WHEN SUM(commission_amount) IS NOT NULL THEN SUM(commission_amount) ELSE 0 END::numeric AS total_commission, COUNT(*)::int AS order_count
          FROM store_commission_orders WHERE store_id = $1::uuid`,
         [storeId.trim()],
       );
@@ -806,7 +806,7 @@ export class AdminRestService {
            (SELECT COUNT(*)::int FROM stores) AS stores_count,
            (SELECT COUNT(*)::int FROM orders) AS orders_count,
            (SELECT COUNT(*)::int FROM service_requests) AS service_requests_count,
-           (SELECT COALESCE(SUM(total_numeric),0)::numeric FROM orders) AS orders_revenue`,
+           (SELECT CASE WHEN SUM(total_numeric) IS NOT NULL THEN SUM(total_numeric) ELSE 0 END::numeric FROM orders) AS orders_revenue`,
       );
       return (q.rows[0] ?? {}) as Record<string, unknown>;
     });
@@ -817,9 +817,9 @@ export class AdminRestService {
     return this.withClient(async (client) => {
       const q = await client.query(
         `SELECT
-           COALESCE(SUM(total_commission),0)::numeric AS total_commission,
-           COALESCE(SUM(total_paid),0)::numeric AS total_paid,
-           COALESCE(SUM(balance),0)::numeric AS outstanding_balance
+           CASE WHEN SUM(total_commission) IS NOT NULL THEN SUM(total_commission) ELSE 0 END::numeric AS total_commission,
+           CASE WHEN SUM(total_paid) IS NOT NULL THEN SUM(total_paid) ELSE 0 END::numeric AS total_paid,
+           CASE WHEN SUM(balance) IS NOT NULL THEN SUM(balance) ELSE 0 END::numeric AS outstanding_balance
          FROM store_commission_ledger`,
       );
       return (q.rows[0] ?? {}) as Record<string, unknown>;
@@ -894,7 +894,7 @@ export class AdminRestService {
       if (sq) {
         const like = `%${sq.replace(/([%_])/g, '\\$1')}%`;
         conds.push(
-          `(o.order_id ILIKE $${i} OR TRIM(CONCAT(COALESCE(o.payload->>'firstName',''), ' ', COALESCE(o.payload->>'lastName',''))) ILIKE $${i} OR COALESCE(o.payload->>'email','') ILIKE $${i})`,
+          `(o.order_id ILIKE $${i} OR TRIM(CONCAT(CASE WHEN o.payload->>'firstName' IS NOT NULL THEN o.payload->>'firstName' ELSE '' END, ' ', CASE WHEN o.payload->>'lastName' IS NOT NULL THEN o.payload->>'lastName' ELSE '' END)) ILIKE $${i} OR CASE WHEN o.payload->>'email' IS NOT NULL THEN o.payload->>'email' ELSE '' END ILIKE $${i})`,
         );
         vals.push(like);
         i++;
@@ -908,14 +908,14 @@ export class AdminRestService {
         `SELECT
            o.order_id,
            o.user_id,
-           o.store_id,
+           o.store_id_uuid,
            o.status,
            o.total_numeric,
            o.currency,
            o.created_at,
            o.payload,
-           NULLIF(TRIM(CONCAT(COALESCE(o.payload->>'firstName',''), ' ', COALESCE(o.payload->>'lastName',''))), '') AS customer_name,
-           COALESCE(o.payload->>'email','') AS customer_email,
+           NULLIF(TRIM(CONCAT(CASE WHEN o.payload->>'firstName' IS NOT NULL THEN o.payload->>'firstName' ELSE '' END, ' ', CASE WHEN o.payload->>'lastName' IS NOT NULL THEN o.payload->>'lastName' ELSE '' END)), '') AS customer_name,
+           CASE WHEN o.payload->>'email' IS NOT NULL THEN o.payload->>'email' ELSE '' END AS customer_email,
            o.driver_id,
            d.name AS driver_name,
            d.phone AS driver_phone,
@@ -946,7 +946,7 @@ export class AdminRestService {
               : String(row['created_at'] ?? ''),
           order_id: row['order_id'],
           user_id: row['user_id'],
-          store_id: row['store_id'],
+          store_id: row['store_id_uuid'],
           status: row['status'],
           total_numeric: row['total_numeric'],
           currency: row['currency'],
@@ -1087,7 +1087,7 @@ export class AdminRestService {
              city = EXCLUDED.city,
              cities = EXCLUDED.cities,
              status = 'approved',
-             approved_at = COALESCE(admin_technicians.approved_at, NOW()),
+            approved_at = CASE WHEN admin_technicians.approved_at IS NOT NULL THEN admin_technicians.approved_at ELSE NOW() END,
              updated_at = NOW()`,
           [
             tid,
@@ -1106,7 +1106,7 @@ export class AdminRestService {
             `INSERT INTO users (firebase_uid, email, role, tenant_id, store_id, wholesaler_id, store_type, is_active)
              VALUES ($1, $2, 'technician', NULL, NULL, NULL, NULL, true)
              ON CONFLICT (firebase_uid) DO UPDATE SET
-               email = COALESCE(EXCLUDED.email, users.email),
+              email = CASE WHEN EXCLUDED.email IS NOT NULL THEN EXCLUDED.email ELSE users.email END,
                role = 'technician',
                store_id = NULL,
                wholesaler_id = NULL,
@@ -1122,7 +1122,7 @@ export class AdminRestService {
                  wholesaler_id = NULL,
                  store_type = NULL,
                  is_active = true
-             WHERE lower(trim(coalesce(email, ''))) = $1`,
+             WHERE lower(trim(CASE WHEN email IS NOT NULL THEN email ELSE '' END)) = $1`,
             [email.trim().toLowerCase()],
           );
         }

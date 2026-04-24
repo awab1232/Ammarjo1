@@ -315,6 +315,9 @@ export class OrdersPgService implements OnModuleDestroy {
     const orderId = String(order.orderId).trim();
     const userId = order.customerUid != null ? String(order.customerUid) : '';
     const storeId = String(order.storeId ?? '').trim();
+    if (!storeId) {
+      throw new ServiceUnavailableException('ORDER_INVALID_NO_STORE_UUID');
+    }
     const itemsJson = JSON.stringify(order.items ?? []);
     const sub = num(order.subtotalNumeric);
     const ship = num(order.shippingNumeric);

@@ -89,7 +89,7 @@ export class StoreCommissionsService {
     rate = this.normalizeCommissionRate(settings['globalCommissionPercent'], rate);
 
     const storeQ = await client.query(
-      `SELECT store_type_key, category, COALESCE(commission_percent, 0)::float AS commission_percent
+      `SELECT store_type_key, category, commission_percent::float AS commission_percent
        FROM stores WHERE id = $1::uuid LIMIT 1`,
       [storeId.trim()],
     );
@@ -222,7 +222,7 @@ export class StoreCommissionsService {
       balance = Number(r.balance ?? 0);
     }
     const ordersQ = await this.pool.query(
-      `SELECT order_id, order_total, commission_amount, COALESCE(commission_percent, 0)::float AS commission_percent, recorded_at
+      `SELECT order_id, order_total, commission_amount, commission_percent::float AS commission_percent, recorded_at
        FROM store_commission_orders WHERE store_id = $1::uuid ORDER BY recorded_at DESC LIMIT 500`,
       [sid],
     );

@@ -59,7 +59,7 @@ export class AnalyticsService {
            (SELECT COUNT(*)::int FROM service_requests WHERE status = 'completed') AS completed_service_requests,
            (SELECT COUNT(*)::int FROM service_requests WHERE status IN ('pending','assigned','in_progress')) AS active_service_requests,
            (SELECT COUNT(DISTINCT technician_id)::int FROM service_requests WHERE technician_id IS NOT NULL AND technician_id <> '') AS total_technicians,
-           (SELECT COALESCE(AVG(rating),0)::numeric(10,4) FROM ratings_reviews WHERE target_type = 'technician') AS avg_technician_rating,
+           (SELECT CASE WHEN AVG(rating) IS NOT NULL THEN AVG(rating) ELSE 0 END::numeric(10,4) FROM ratings_reviews WHERE target_type = 'technician') AS avg_technician_rating,
            (SELECT COUNT(*)::int FROM ratings_reviews) AS total_ratings,
            (SELECT COUNT(*)::int FROM event_outbox WHERE event_type = 'message.sent') AS total_messages`,
       );
@@ -122,11 +122,11 @@ export class AnalyticsService {
          )
          SELECT
            ds.day::date::text AS day,
-           COALESCE(o.c, 0) AS orders,
-           COALESCE(sr_created.c, 0) AS service_requests_created,
-           COALESCE(sr_completed.c, 0) AS service_requests_completed,
-           COALESCE(m.c, 0) AS messages_sent,
-           COALESCE(r.c, 0) AS ratings_created
+           CASE WHEN o.c IS NOT NULL THEN o.c ELSE 0 END AS orders,
+           CASE WHEN sr_created.c IS NOT NULL THEN sr_created.c ELSE 0 END AS service_requests_created,
+           CASE WHEN sr_completed.c IS NOT NULL THEN sr_completed.c ELSE 0 END AS service_requests_completed,
+           CASE WHEN m.c IS NOT NULL THEN m.c ELSE 0 END AS messages_sent,
+           CASE WHEN r.c IS NOT NULL THEN r.c ELSE 0 END AS ratings_created
          FROM day_series ds
          LEFT JOIN o ON o.day = ds.day
          LEFT JOIN sr_created ON sr_created.day = ds.day
@@ -172,7 +172,7 @@ export class AnalyticsService {
         `SELECT
            sr.technician_id,
            COUNT(*) FILTER (WHERE sr.status = 'completed')::int AS completed_jobs,
-           COALESCE(ra.avg_rating, 0)::numeric(10,4) AS avg_rating
+           CASE WHEN ra.avg_rating IS NOT NULL THEN ra.avg_rating ELSE 0 END::numeric(10,4) AS avg_rating
          FROM service_requests sr
          LEFT JOIN ratings_aggregates ra
            ON ra.target_type = 'technician' AND ra.target_id = sr.technician_id
@@ -214,8 +214,9 @@ export class AnalyticsService {
     if (!sid) throw new BadRequestException('storeId required');
     return this.withReadClient(async (client) => {
       const q = await client.query(
-        `SELECT COUNT(*)::int AS c, COALESCE(SUM(total_numeric), 0)::numeric AS rev
-         FROM orders WHERE store_id = $1`,
+        `SELECT COUNT(*)::int AS c, SUM(total_numeric)::numeric AS rev
+         FROM orders
+         WHERE store_id_uuid = $1::uuid`,
         [sid],
       );
       const row = q.rows[0] ?? {};

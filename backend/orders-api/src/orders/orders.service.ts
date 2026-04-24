@@ -347,6 +347,10 @@ export class OrdersService implements IOrderService {
       if (owner && owner !== firebaseUid) {
         throw new NotFoundException('Order not found');
       }
+      const canonicalStoreId = String(fromPg.storeId ?? '').trim();
+      if (!canonicalStoreId) {
+        throw new ServiceUnavailableException('ORDER_INVALID_NO_STORE_UUID');
+      }
       order = fromPg;
     }
 
@@ -443,6 +447,12 @@ export class OrdersService implements IOrderService {
       limit,
       cursorDecoded,
     );
+    for (const item of items) {
+      const canonicalStoreId = String(item.storeId ?? '').trim();
+      if (!canonicalStoreId) {
+        throw new ServiceUnavailableException('ORDER_INVALID_NO_STORE_UUID');
+      }
+    }
     return {
       items,
       nextCursor,
@@ -487,6 +497,12 @@ export class OrdersService implements IOrderService {
 
     let pg: { items: StoredOrder[]; nextCursor: string | null; hasMore: boolean };
     pg = await this.pg.findPayloadsByUserIdPaginated(userId, limit, cursor);
+    for (const item of pg.items) {
+      const canonicalStoreId = String(item.storeId ?? '').trim();
+      if (!canonicalStoreId) {
+        throw new ServiceUnavailableException('ORDER_INVALID_NO_STORE_UUID');
+      }
+    }
 
     return {
       items: pg.items,

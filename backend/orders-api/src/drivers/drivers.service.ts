@@ -376,8 +376,8 @@ export class DriversService {
     const out = await this.pg.withWriteClient(async (c) => {
       const r = await c.query<{ id: string }>(
         `UPDATE drivers SET
-           name = COALESCE($2, name),
-           phone = COALESCE($3, phone)
+           name = CASE WHEN $2::text IS NULL THEN name ELSE $2 END,
+           phone = CASE WHEN $3::text IS NULL THEN phone ELSE $3 END
          WHERE auth_uid = $1
          RETURNING id`,
         [authUid.trim(), name?.trim() || null, phone?.trim() || null],
@@ -807,7 +807,7 @@ export class DriversService {
       throw new NotFoundException('Order not found');
     }
     if (order.driver_id !== driver.id) {
-      throw new ForbiddenException('Order not assigned to this driver');
+      throw new ForbiddenException('DRIVER_ACCESS_DENIED');
     }
     if (order.delivery_status !== 'assigned') {
       throw new BadRequestException(`Invalid delivery status: ${order.delivery_status ?? 'null'}`);
@@ -834,7 +834,7 @@ export class DriversService {
       throw new NotFoundException('Order not found');
     }
     if (order.driver_id !== driver.id) {
-      throw new ForbiddenException('Order not assigned to this driver');
+      throw new ForbiddenException('DRIVER_ACCESS_DENIED');
     }
 
     const tx = await this.pg.runInTransaction(async (c) => {
@@ -876,7 +876,7 @@ export class DriversService {
       throw new NotFoundException('Order not found');
     }
     if (order.driver_id !== driver.id) {
-      throw new ForbiddenException('Order not assigned to this driver');
+      throw new ForbiddenException('DRIVER_ACCESS_DENIED');
     }
     if (order.delivery_status !== 'accepted') {
       throw new BadRequestException('Order must be accepted before en route');
@@ -910,7 +910,7 @@ export class DriversService {
       throw new NotFoundException('Order not found');
     }
     if (order.driver_id !== driver.id) {
-      throw new ForbiddenException('Order not assigned to this driver');
+      throw new ForbiddenException('DRIVER_ACCESS_DENIED');
     }
     const st = order.delivery_status ?? '';
     if (st !== 'on_the_way' && st !== 'accepted') {

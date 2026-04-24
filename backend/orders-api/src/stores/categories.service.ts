@@ -112,8 +112,8 @@ export class CategoriesService {
     await this.ensureStoreAccess(storeId, 'update');
     const q = await this.pool.query(
       `UPDATE categories
-       SET name = COALESCE($3, name),
-           sort_order = COALESCE($4, sort_order)
+       SET name = CASE WHEN $3::text IS NULL THEN name ELSE $3 END,
+           sort_order = CASE WHEN $4::int IS NULL THEN sort_order ELSE $4 END
        WHERE id = $1::uuid AND store_id = $2::uuid
        RETURNING id, store_id, name, sort_order, created_at`,
       [categoryId.trim(), storeId.trim(), input.name?.trim() || null, input.orderIndex ?? null],

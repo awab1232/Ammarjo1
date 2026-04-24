@@ -348,13 +348,17 @@ export class WholesaleService {
       params.push(limit + 1);
       const q = await client.query(
         `SELECT p.*,
-            COALESCE(
-              json_agg(
+            CASE
+              WHEN json_agg(
                 json_build_object('minQty', r.min_qty, 'maxQty', r.max_qty, 'price', r.price)
                 ORDER BY r.min_qty ASC
-              ) FILTER (WHERE r.id IS NOT NULL),
-              '[]'::json
-            ) AS quantity_prices
+              ) FILTER (WHERE r.id IS NOT NULL) IS NOT NULL
+                THEN json_agg(
+                  json_build_object('minQty', r.min_qty, 'maxQty', r.max_qty, 'price', r.price)
+                  ORDER BY r.min_qty ASC
+                ) FILTER (WHERE r.id IS NOT NULL)
+              ELSE '[]'::json
+            END AS quantity_prices
          FROM wholesale_products p
          LEFT JOIN wholesale_pricing_rules r ON r.wholesale_product_id = p.id
          ${where}
@@ -384,13 +388,17 @@ export class WholesaleService {
       const params = !this.isPrivilegedRole() && this.actorRole() === 'wholesaler_owner' ? [id.trim(), actor] : [id.trim()];
       const q = await client.query(
         `SELECT p.*,
-            COALESCE(
-              json_agg(
+            CASE
+              WHEN json_agg(
                 json_build_object('minQty', r.min_qty, 'maxQty', r.max_qty, 'price', r.price)
                 ORDER BY r.min_qty ASC
-              ) FILTER (WHERE r.id IS NOT NULL),
-              '[]'::json
-            ) AS quantity_prices
+              ) FILTER (WHERE r.id IS NOT NULL) IS NOT NULL
+                THEN json_agg(
+                  json_build_object('minQty', r.min_qty, 'maxQty', r.max_qty, 'price', r.price)
+                  ORDER BY r.min_qty ASC
+                ) FILTER (WHERE r.id IS NOT NULL)
+              ELSE '[]'::json
+            END AS quantity_prices
          FROM wholesale_products p
          LEFT JOIN wholesale_pricing_rules r ON r.wholesale_product_id = p.id
          WHERE p.id = $1::uuid
@@ -436,15 +444,20 @@ export class WholesaleService {
               `SELECT pv.price,
                       pv.sku,
                       (
-                        SELECT COALESCE(
-                          json_agg(
+                        SELECT CASE
+                          WHEN json_agg(
                             json_build_object(
                               'optionType', pvo.option_type,
                               'optionValue', pvo.option_value
                             )
-                          ),
-                          '[]'::json
-                        )
+                          ) IS NOT NULL THEN json_agg(
+                            json_build_object(
+                              'optionType', pvo.option_type,
+                              'optionValue', pvo.option_value
+                            )
+                          )
+                          ELSE '[]'::json
+                        END
                         FROM product_variant_options pvo
                         WHERE pvo.variant_id = pv.id
                       ) AS options_json
@@ -702,7 +715,7 @@ export class WholesaleService {
                unit = $5,
                category_id = $6,
                stock = $7,
-               has_variants = COALESCE($8, has_variants),
+               has_variants = CASE WHEN $8 IS NOT NULL THEN $8 ELSE has_variants END,
                updated_at = NOW()
            WHERE id = $1::uuid
            RETURNING *`,

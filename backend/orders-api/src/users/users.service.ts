@@ -85,7 +85,10 @@ export class UsersService {
           `INSERT INTO users (firebase_uid, email, role, is_active)
            VALUES ($1, $2, 'customer', true)
            ON CONFLICT (firebase_uid)
-           DO UPDATE SET email = COALESCE(NULLIF(EXCLUDED.email, ''), users.email)
+           DO UPDATE SET email = CASE
+             WHEN NULLIF(EXCLUDED.email, '') IS NOT NULL THEN NULLIF(EXCLUDED.email, '')
+             ELSE users.email
+           END
            RETURNING id, firebase_uid, email, role, tenant_id, store_id, wholesaler_id, store_type, is_active`,
           [uid, email],
         );
@@ -136,34 +139,14 @@ export class UsersService {
         wholesalerId: null,
       };
     }
-    const d = decoded as Record<string, unknown> | undefined;
-    const claimStoreId =
-      d && typeof d['storeId'] === 'string' && d['storeId'].trim() ? String(d['storeId']).trim() : null;
-    const claimWholesalerId =
-      d && typeof d['wholesalerId'] === 'string' && d['wholesalerId'].trim()
-        ? String(d['wholesalerId']).trim()
-        : null;
-    const claimStoreType =
-      (d && typeof d['storeType'] === 'string' && d['storeType'].trim()
-        ? String(d['storeType']).trim()
-        : null) ??
-      (d && typeof d['store_type'] === 'string' && d['store_type'].trim()
-        ? String(d['store_type']).trim()
-        : null);
-    const claimTenantId =
-      d && typeof d['tenantId'] === 'string' && d['tenantId'].trim() ? String(d['tenantId']).trim() : null;
+    void decoded;
 
     const appRole = normalizeDbRoleToAppRole(row.role);
-    const storeId = row.store_id?.trim() || claimStoreId;
-    const wholesalerId = row.wholesaler_id?.trim() || claimWholesalerId;
-    const storeType = row.store_type?.trim() || claimStoreType;
+    const storeId = row.store_id?.trim() ?? null;
+    const wholesalerId = row.wholesaler_id?.trim() ?? null;
+    const storeType = row.store_type?.trim() ?? null;
     const tenantUuid = row.tenant_id?.trim();
-    const tenantId =
-      tenantUuid ||
-      claimTenantId ||
-      (appRole === 'store_owner' ? storeId : null) ||
-      wholesalerId ||
-      null;
+    const tenantId = tenantUuid ?? null;
 
     return {
       ...base,
@@ -212,7 +195,7 @@ export class UsersService {
     if (!e) return null;
     return this.withClient(async (client) => {
       const r = await client.query(
-        `SELECT firebase_uid FROM users WHERE lower(trim(coalesce(email, ''))) = $1 LIMIT 1`,
+        `SELECT firebase_uid FROM users WHERE lower(trim(CASE WHEN email IS NOT NULL THEN email ELSE '' END)) = $1 LIMIT 1`,
         [e],
       );
       if (r.rows.length === 0) return null;
@@ -340,7 +323,7 @@ export class UsersService {
     return this.withClient(async (client) => {
       const r = await client.query(
         `SELECT id, firebase_uid, email, role, tenant_id, store_id, wholesaler_id, store_type, is_active,
-                phone, profile_json, COALESCE(banned, false) AS banned
+                phone, profile_json, CASE WHEN banned IS NOT NULL THEN banned ELSE false END AS banned
          FROM users
          WHERE firebase_uid = $1
          LIMIT 1`,
@@ -379,7 +362,7 @@ export class UsersService {
     return this.withClient(async (client) => {
       const r = await client.query(
         `SELECT id, firebase_uid, email, role, tenant_id, store_id, wholesaler_id, store_type, is_active,
-                phone, profile_json, COALESCE(banned, false) AS banned
+                phone, profile_json, CASE WHEN banned IS NOT NULL THEN banned ELSE false END AS banned
          FROM users
          WHERE id = $1::uuid AND firebase_uid = $2
          LIMIT 1`,

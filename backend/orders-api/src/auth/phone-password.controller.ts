@@ -1,4 +1,4 @@
-import { Body, Controller, Post, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Post, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
 import type { Request } from 'express';
 import { ApiPolicy } from '../gateway/api-policy.decorator';
 import { ApiPolicyGuard } from '../gateway/api-policy.guard';
@@ -48,23 +48,12 @@ export class PhonePasswordController {
     return this.svc.registerWithFirebaseToken(firebaseToken, phone, password);
   }
 
-  /** Public phone + password login — issues a Firebase custom token. */
+  /** Disabled in strict mode: only Firebase ID token auth is allowed. */
   @Post('login')
   @UseGuards(TenantContextGuard, ApiPolicyGuard)
   @ApiPolicy({ auth: false, tenant: 'optional', rateLimit: { rpm: 30 } })
-  async login(@Body() body: LoginBody) {
-    console.log('LOGIN HIT');
-    const phone = String(body?.phone ?? '').trim();
-    const password = String(body?.password ?? '');
-    const result = await this.svc.loginWithPhonePassword(phone, password);
-    return {
-      ok: true,
-      role: result.role,
-      userId: result.userId,
-      phone: result.phone,
-      customToken: result.customToken,
-      firebaseUid: result.firebaseUid,
-    };
+  async login(@Body() _body: LoginBody) {
+    throw new BadRequestException('PHONE_PASSWORD_DISABLED_USE_FIREBASE');
   }
 
   /**
@@ -82,22 +71,12 @@ export class PhonePasswordController {
     return this.svc.setPasswordForFirebaseUid(uid, phone, password);
   }
 
-  /**
-   * Emergency bootstrap path for environments where Firebase token verification
-   * is misconfigured on backend but signup already verified ownership on client.
-   * Used only as fallback from the app when `/auth/password` returns 401/403.
-   */
+  /** Disabled in strict mode: no fallback auth paths are allowed. */
   @Post('password/bootstrap')
   @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard)
   @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 10 } })
-  async bootstrapPassword(@Req() req: RequestWithFirebase, @Body() body: BootstrapPasswordBody) {
-    const uid = String(body?.firebaseUid ?? req.firebaseUid ?? '').trim();
-    if (!uid || !req.firebaseUid || uid !== req.firebaseUid) {
-      throw new UnauthorizedException('firebase_uid_mismatch');
-    }
-    const phone = String(body?.phone ?? '').trim();
-    const password = String(body?.password ?? '');
-    return this.svc.setPasswordForFirebaseUid(uid, phone, password);
+  async bootstrapPassword(@Req() _req: RequestWithFirebase, @Body() _body: BootstrapPasswordBody) {
+    throw new BadRequestException('PHONE_PASSWORD_DISABLED_USE_FIREBASE');
   }
 
   /**

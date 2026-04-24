@@ -312,7 +312,11 @@ export class StoreBuilderService {
         `INSERT INTO store_categories (id, store_id, name, image_url, parent_id, sort_order, is_ai_generated, created_at, updated_at)
          VALUES (
            $1::uuid, $2, $3, $4, $5::uuid,
-           COALESCE((SELECT MAX(sort_order) + 1 FROM store_categories WHERE store_id = $2), 1),
+           CASE
+             WHEN (SELECT MAX(sort_order) + 1 FROM store_categories WHERE store_id = $2) IS NOT NULL
+               THEN (SELECT MAX(sort_order) + 1 FROM store_categories WHERE store_id = $2)
+             ELSE 1
+           END,
            false, NOW(), NOW()
          )
          RETURNING *`,

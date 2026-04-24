@@ -147,38 +147,20 @@ export class ProductsService {
     await this.ensureStoreAccess(storeId, 'read');
     const q = await this.pool.query(
       `SELECT p.id, p.store_id, p.category_id, p.name, p.description, p.price, p.has_variants, p.image_url, p.created_at,
-              COALESCE(
-                (
-                  SELECT pv.price
-                  FROM product_variants pv
-                  WHERE pv.product_id = p.id AND pv.is_default = true
-                  ORDER BY pv.created_at ASC
-                  LIMIT 1
-                ),
-                (
-                  SELECT MIN(pv2.price)
-                  FROM product_variants pv2
-                  WHERE pv2.product_id = p.id
-                ),
-                p.price
-              ) AS display_price,
-              COALESCE(
-                (
-                  SELECT pv.stock
-                  FROM product_variants pv
-                  WHERE pv.product_id = p.id AND pv.is_default = true
-                  ORDER BY pv.created_at ASC
-                  LIMIT 1
-                ),
-                (
-                  SELECT pv3.stock
-                  FROM product_variants pv3
-                  WHERE pv3.product_id = p.id
-                  ORDER BY pv3.price ASC, pv3.created_at ASC
-                  LIMIT 1
-                ),
-                0
-              ) AS display_stock
+              CASE
+                WHEN EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.is_default = true)
+                  THEN (SELECT pv.price FROM product_variants pv WHERE pv.product_id = p.id AND pv.is_default = true ORDER BY pv.created_at ASC LIMIT 1)
+                WHEN EXISTS (SELECT 1 FROM product_variants pv2 WHERE pv2.product_id = p.id)
+                  THEN (SELECT MIN(pv2.price) FROM product_variants pv2 WHERE pv2.product_id = p.id)
+                ELSE p.price
+              END AS display_price,
+              CASE
+                WHEN EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.is_default = true)
+                  THEN (SELECT pv.stock FROM product_variants pv WHERE pv.product_id = p.id AND pv.is_default = true ORDER BY pv.created_at ASC LIMIT 1)
+                WHEN EXISTS (SELECT 1 FROM product_variants pv3 WHERE pv3.product_id = p.id)
+                  THEN (SELECT pv3.stock FROM product_variants pv3 WHERE pv3.product_id = p.id ORDER BY pv3.price ASC, pv3.created_at ASC LIMIT 1)
+                ELSE 0
+              END AS display_stock
        FROM products p
        WHERE p.store_id = $1::uuid
        ORDER BY p.created_at DESC`,
@@ -285,11 +267,11 @@ export class ProductsService {
     }
     const q = await this.pool.query(
       `UPDATE products
-       SET category_id = COALESCE($3::uuid, category_id),
-           name = COALESCE($4, name),
-           price = COALESCE($5, price),
-           image_url = COALESCE($6, image_url),
-           has_variants = COALESCE($7, has_variants)
+       SET category_id = CASE WHEN $3::uuid IS NULL THEN category_id ELSE $3::uuid END,
+           name = CASE WHEN $4::text IS NULL THEN name ELSE $4 END,
+           price = CASE WHEN $5::numeric IS NULL THEN price ELSE $5 END,
+           image_url = CASE WHEN $6::text IS NULL THEN image_url ELSE $6 END,
+           has_variants = CASE WHEN $7::boolean IS NULL THEN has_variants ELSE $7 END
        WHERE id = $1::uuid AND store_id = $2::uuid
        RETURNING id, store_id, category_id, name, description, price, has_variants, image_url, created_at`,
       [
@@ -353,16 +335,20 @@ export class ProductsService {
     const safeLimit = Math.min(Math.max(1, limit), 200);
     const q = await this.pool.query(
       `SELECT p.id, p.store_id, p.category_id, p.name, p.description, p.price, p.has_variants, p.image_url, p.created_at,
-              COALESCE(
-                (SELECT pv.price FROM product_variants pv WHERE pv.product_id = p.id AND pv.is_default = true ORDER BY pv.created_at ASC LIMIT 1),
-                (SELECT MIN(pv2.price) FROM product_variants pv2 WHERE pv2.product_id = p.id),
-                p.price
-              ) AS display_price,
-              COALESCE(
-                (SELECT pv.stock FROM product_variants pv WHERE pv.product_id = p.id AND pv.is_default = true ORDER BY pv.created_at ASC LIMIT 1),
-                (SELECT pv3.stock FROM product_variants pv3 WHERE pv3.product_id = p.id ORDER BY pv3.price ASC, pv3.created_at ASC LIMIT 1),
-                0
-              ) AS display_stock
+              CASE
+                WHEN EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.is_default = true)
+                  THEN (SELECT pv.price FROM product_variants pv WHERE pv.product_id = p.id AND pv.is_default = true ORDER BY pv.created_at ASC LIMIT 1)
+                WHEN EXISTS (SELECT 1 FROM product_variants pv2 WHERE pv2.product_id = p.id)
+                  THEN (SELECT MIN(pv2.price) FROM product_variants pv2 WHERE pv2.product_id = p.id)
+                ELSE p.price
+              END AS display_price,
+              CASE
+                WHEN EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.is_default = true)
+                  THEN (SELECT pv.stock FROM product_variants pv WHERE pv.product_id = p.id AND pv.is_default = true ORDER BY pv.created_at ASC LIMIT 1)
+                WHEN EXISTS (SELECT 1 FROM product_variants pv3 WHERE pv3.product_id = p.id)
+                  THEN (SELECT pv3.stock FROM product_variants pv3 WHERE pv3.product_id = p.id ORDER BY pv3.price ASC, pv3.created_at ASC LIMIT 1)
+                ELSE 0
+              END AS display_stock
        FROM products p
        INNER JOIN stores s ON s.id = p.store_id
        WHERE s.status = 'approved'
@@ -377,16 +363,20 @@ export class ProductsService {
     await this.ensureEnhancedSchema();
     const q = await this.pool.query(
       `SELECT p.id, p.store_id, p.category_id, p.name, p.description, p.price, p.has_variants, p.image_url, p.created_at,
-              COALESCE(
-                (SELECT pv.price FROM product_variants pv WHERE pv.product_id = p.id AND pv.is_default = true ORDER BY pv.created_at ASC LIMIT 1),
-                (SELECT MIN(pv2.price) FROM product_variants pv2 WHERE pv2.product_id = p.id),
-                p.price
-              ) AS display_price,
-              COALESCE(
-                (SELECT pv.stock FROM product_variants pv WHERE pv.product_id = p.id AND pv.is_default = true ORDER BY pv.created_at ASC LIMIT 1),
-                (SELECT pv3.stock FROM product_variants pv3 WHERE pv3.product_id = p.id ORDER BY pv3.price ASC, pv3.created_at ASC LIMIT 1),
-                0
-              ) AS display_stock
+              CASE
+                WHEN EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.is_default = true)
+                  THEN (SELECT pv.price FROM product_variants pv WHERE pv.product_id = p.id AND pv.is_default = true ORDER BY pv.created_at ASC LIMIT 1)
+                WHEN EXISTS (SELECT 1 FROM product_variants pv2 WHERE pv2.product_id = p.id)
+                  THEN (SELECT MIN(pv2.price) FROM product_variants pv2 WHERE pv2.product_id = p.id)
+                ELSE p.price
+              END AS display_price,
+              CASE
+                WHEN EXISTS (SELECT 1 FROM product_variants pv WHERE pv.product_id = p.id AND pv.is_default = true)
+                  THEN (SELECT pv.stock FROM product_variants pv WHERE pv.product_id = p.id AND pv.is_default = true ORDER BY pv.created_at ASC LIMIT 1)
+                WHEN EXISTS (SELECT 1 FROM product_variants pv3 WHERE pv3.product_id = p.id)
+                  THEN (SELECT pv3.stock FROM product_variants pv3 WHERE pv3.product_id = p.id ORDER BY pv3.price ASC, pv3.created_at ASC LIMIT 1)
+                ELSE 0
+              END AS display_stock
        FROM products p
        INNER JOIN stores s ON s.id = p.store_id
        WHERE p.id = $1::uuid AND s.status = 'approved'
@@ -481,8 +471,9 @@ export class ProductsService {
     const total = Number(totalQ.rows[0]?.['n'] ?? 0);
     const itemsQ = await this.pool.query(
       `SELECT p.id::text, p.store_id::text AS store_id, p.sub_category_id::text AS sub_category_id,
-              p.name, p.description, p.price, COALESCE(NULLIF(p.image, ''), p.image_url) AS image,
-              COALESCE(p.stock, 0)::int AS stock,
+              p.name, p.description, p.price,
+              CASE WHEN NULLIF(p.image, '') IS NULL THEN p.image_url ELSE p.image END AS image,
+              CASE WHEN p.stock IS NULL THEN 0 ELSE p.stock END::int AS stock,
               p.is_boosted AS "isBoosted", p.is_trending AS "isTrending"
        FROM products p
        LEFT JOIN sub_categories sc ON sc.id = p.sub_category_id

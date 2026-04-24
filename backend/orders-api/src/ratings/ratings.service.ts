@@ -135,11 +135,11 @@ export class RatingsService {
     const oid = input.orderId?.trim() ?? '';
     const orderSql =
       oid.length > 0
-        ? `SELECT order_id, user_id, store_id, status, payload
+        ? `SELECT order_id, user_id, store_id_uuid, status, payload
            FROM orders
            WHERE order_id = $1
            LIMIT 1`
-        : `SELECT order_id, user_id, store_id, status, payload
+        : `SELECT order_id, user_id, store_id_uuid, status, payload
            FROM orders
            WHERE user_id = $1
              AND status IN ('delivered','completed')
@@ -163,7 +163,11 @@ export class RatingsService {
         continue;
       }
       if (input.targetType === 'store' || input.targetType === 'home_store') {
-        if (String(o.store_id ?? '').trim() === targetId) {
+        const storeIdUuid = String(o.store_id_uuid ?? '').trim();
+        if (!storeIdUuid) {
+          throw new ServiceUnavailableException('order row missing store_id_uuid');
+        }
+        if (storeIdUuid === targetId) {
           matched = true;
           break;
         }

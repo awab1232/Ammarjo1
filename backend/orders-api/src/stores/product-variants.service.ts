@@ -337,10 +337,10 @@ export class ProductVariantsService {
       }
       await this.pool.query(
         `UPDATE product_variants
-         SET sku = COALESCE($2, sku),
-             price = COALESCE($3, price),
-             stock = COALESCE($4, stock),
-             is_default = COALESCE($5, is_default)
+         SET sku = CASE WHEN $2::text IS NULL THEN sku ELSE $2 END,
+             price = CASE WHEN $3::numeric IS NULL THEN price ELSE $3 END,
+             stock = CASE WHEN $4::int IS NULL THEN stock ELSE $4 END,
+             is_default = CASE WHEN $5::boolean IS NULL THEN is_default ELSE $5 END
          WHERE id = $1::uuid`,
         [
           variantId.trim(),
