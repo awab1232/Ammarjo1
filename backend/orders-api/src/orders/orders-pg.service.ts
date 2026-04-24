@@ -367,8 +367,8 @@ export class OrdersPgService implements OnModuleDestroy {
           delivery_address = EXCLUDED.delivery_address,
           list_title = EXCLUDED.list_title,
           payload = EXCLUDED.payload,
-          delivery_lat = COALESCE(EXCLUDED.delivery_lat, orders.delivery_lat),
-          delivery_lng = COALESCE(EXCLUDED.delivery_lng, orders.delivery_lng),
+          delivery_lat = EXCLUDED.delivery_lat,
+          delivery_lng = EXCLUDED.delivery_lng,
           updated_at = NOW()`,
         [
           orderId,

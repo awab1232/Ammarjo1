@@ -136,7 +136,7 @@ export class CartService {
 
       const existing = await client.query(
         `SELECT id, quantity FROM cart_items
-         WHERE user_id = $1 AND product_id = $2 AND COALESCE(variant_id, '') = COALESCE($3::text, '')
+         WHERE user_id = $1 AND product_id = $2 AND variant_id IS NOT DISTINCT FROM $3::text
            AND store_id_uuid = $4::uuid
          LIMIT 1`,
         [uid, pid, variantKey, storeId],
@@ -147,8 +147,8 @@ export class CartService {
         const nextQty = curQty + qty;
         const u = await client.query(
           `UPDATE cart_items SET quantity = $2, price_snapshot = $3::numeric, updated_at = NOW(),
-             product_name = COALESCE(NULLIF($4::text, ''), product_name),
-             image_url = COALESCE($5, image_url)
+             product_name = CASE WHEN btrim($4::text) = '' THEN product_name ELSE $4::text END,
+             image_url = CASE WHEN $5::text IS NULL OR btrim($5::text) = '' THEN image_url ELSE $5::text END
            WHERE id = $1::uuid AND user_id = $6
            RETURNING id, product_id, variant_id, quantity, price_snapshot, product_name, image_url, store_id_uuid::text AS store_id_uuid, store_name, created_at, updated_at`,
           [curId, nextQty, price, body.productName ?? '', body.imageUrl ?? null, uid],

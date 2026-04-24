@@ -467,7 +467,7 @@ export class ServiceRequestsService {
     }
     return this.withClient(async (client) => {
       const q = await client.query<{ total: string | number }>(
-        `SELECT COALESCE(SUM(earnings_amount), 0) AS total
+        `SELECT SUM(earnings_amount) AS total
          FROM service_requests
          WHERE technician_email = $1 AND status = 'completed'`,
         [email],
@@ -508,12 +508,12 @@ export class ServiceRequestsService {
         const update = await client.query(
           `UPDATE service_requests
            SET status = $2,
-               technician_id = COALESCE($3, technician_id),
-               technician_email = COALESCE($3, technician_email),
+               technician_id = $3,
+               technician_email = $4,
                updated_at = NOW()
            WHERE id = $1::uuid
            RETURNING ${this.serviceRequestColumns}`,
-          [requestId.trim(), status, opts.technicianId ?? null],
+          [requestId.trim(), status, opts.technicianId ?? mapped.technicianId, mapped.technicianEmail],
         );
         await client.query(
           `INSERT INTO service_request_status_history (request_id, status, changed_by, created_at)

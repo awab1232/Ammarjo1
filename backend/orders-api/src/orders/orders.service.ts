@@ -125,14 +125,11 @@ export class OrdersService implements IOrderService {
           `SELECT pv.price,
                   pv.sku,
                   (
-                    SELECT COALESCE(
-                      json_agg(
-                        json_build_object(
-                          'optionType', pvo.option_type,
-                          'optionValue', pvo.option_value
-                        )
-                      ),
-                      '[]'::json
+                    SELECT json_agg(
+                      json_build_object(
+                        'optionType', pvo.option_type,
+                        'optionValue', pvo.option_value
+                      )
                     )
                     FROM product_variant_options pvo
                     WHERE pvo.variant_id = pv.id
