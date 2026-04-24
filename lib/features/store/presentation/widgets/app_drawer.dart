@@ -5,7 +5,6 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/contracts/feature_state.dart';
 import '../../../../core/data/repositories/store_repository.dart';
-import '../../../../core/data/repositories/user_repository.dart';
 import '../../../../core/session/backend_identity_controller.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../admin/data/admin_repository.dart';
@@ -241,15 +240,13 @@ class _AppDrawerBody extends StatelessWidget {
             final me = BackendIdentityController.instance.me;
             final role = me?.role.trim() ?? '';
             final storeType = me?.storeType?.trim() ?? '';
-            return FutureBuilder<Map<String, dynamic>?>(
-              future: context.read<UserRepository>().fetchUserMap(uid),
-              builder: (context, userSnap) {
             final showAdmin = adminSnap.data?.showAdminLink ?? false;
             final roleResolved = role.isNotEmpty ? role : 'customer';
             final storeTypeResolved = storeType;
 
             if (showAdmin) {
               return ListView(
+                key: const ValueKey<String>('drawer-admin'),
                 padding: EdgeInsets.zero,
                 children: [
                   drawerItem(
@@ -302,6 +299,7 @@ class _AppDrawerBody extends StatelessWidget {
               children.add(const Divider(indent: 16, endIndent: 16));
               children.add(
                 _StoreOwnerStoreTile(
+                  key: ValueKey<String>('owner-store-$storeId'),
                   storeId: storeId,
                   navigate: navigate,
                   popThen: popThen,
@@ -338,9 +336,11 @@ class _AppDrawerBody extends StatelessWidget {
               const SizedBox(height: 20),
             ]);
 
-                return ListView(padding: EdgeInsets.zero, children: children);
-              },
-            );
+                return ListView(
+                  key: ValueKey<String>('drawer-user-$roleResolved-$storeTypeResolved'),
+                  padding: EdgeInsets.zero,
+                  children: children,
+                );
           },
         );
       },
@@ -348,8 +348,9 @@ class _AppDrawerBody extends StatelessWidget {
   }
 }
 
-class _StoreOwnerStoreTile extends StatelessWidget {
+class _StoreOwnerStoreTile extends StatefulWidget {
   const _StoreOwnerStoreTile({
+    super.key,
     required this.storeId,
     required this.navigate,
     required this.popThen,
@@ -369,10 +370,39 @@ class _StoreOwnerStoreTile extends StatelessWidget {
   }) drawerItem;
 
   @override
+  State<_StoreOwnerStoreTile> createState() => _StoreOwnerStoreTileState();
+}
+
+class _StoreOwnerStoreTileState extends State<_StoreOwnerStoreTile> {
+  Future<FeatureState<StoreModel>>? _storeFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _primeFuture();
+  }
+
+  @override
+  void didUpdateWidget(covariant _StoreOwnerStoreTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.storeId != widget.storeId) {
+      _primeFuture();
+    }
+  }
+
+  void _primeFuture() {
+    if (widget.storeId.isEmpty) {
+      _storeFuture = null;
+      return;
+    }
+    _storeFuture = context.read<StoreRepository>().fetchStoreDocument(widget.storeId);
+  }
+
+  @override
   Widget build(BuildContext context) {
-    if (storeId.isEmpty) return const SizedBox.shrink();
+    if (_storeFuture == null) return const SizedBox.shrink();
     return FutureBuilder<FeatureState<StoreModel>>(
-      future: context.read<StoreRepository>().fetchStoreDocument(storeId),
+      future: _storeFuture,
       builder: (context, storeSnap) {
         if (storeSnap.hasError) return const SizedBox.shrink();
         final state = storeSnap.data;
@@ -380,12 +410,12 @@ class _StoreOwnerStoreTile extends StatelessWidget {
         final store = state.data;
         final approved = store.status == 'approved';
         if (!approved) return const SizedBox.shrink();
-        return drawerItem(
+        return widget.drawerItem(
           context,
           icon: Icons.store_outlined,
           title: 'لوحة تحكم متجري',
           color: const Color(0xFFFF6B00),
-          onTap: () => popThen(context, () => navigate(context, const StoreOwnerDashboard())),
+          onTap: () => widget.popThen(context, () => widget.navigate(context, const StoreOwnerDashboard())),
         );
       },
     );
