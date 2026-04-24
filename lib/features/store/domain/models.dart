@@ -44,7 +44,7 @@ class Product {
     this.variants = const <ProductVariant>[],
     this.isBoosted = false,
     this.isTrending = false,
-  }) : tagIds = tagIds == null ? const <int>[] : tagIds;
+  }) : tagIds = tagIds ?? const <int>[];
 
   /// عرض توفر الشراء في واجهة المتجر (مع احترام `-1` ككمية غير محدودة).
   bool get isAvailableForPurchase {

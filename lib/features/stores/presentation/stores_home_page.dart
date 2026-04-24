@@ -28,7 +28,6 @@ import 'apply_store_page.dart';
 import 'store_detail_page.dart';
 import 'widgets/store_card.dart';
 import 'widgets/stores_home_marketing_sections.dart';
-import 'widgets/stores_search_product_tile.dart';
 import '../../tenders/presentation/pages/tender_request_screen.dart';
 
 /// صور تصنيفات (شبكة المتاجر) — روابط ثابتة لعرض حقيقي.
@@ -70,7 +69,6 @@ class StoresHomePage extends StatefulWidget {
 
 class _StoresHomePageState extends State<StoresHomePage> {
   final TextEditingController _searchController = TextEditingController();
-  int _categoriesRetryKey = 0;
   String _selectedStoreCategoryName = '';
   String? _selectedStoreTypeId;
   List<StoreTypeModel> _storeTypes = const <StoreTypeModel>[];
@@ -94,13 +92,6 @@ class _StoresHomePageState extends State<StoresHomePage> {
         body: Center(child: Text('حدث خطأ في العرض')),
       );
     }
-  }
-
-  void _refreshCategories() {
-    setState(() {
-      _categoriesRetryKey++;
-      _categoriesStream = watchActiveStoreCategoriesWithFallback().asBroadcastStream();
-    });
   }
 
   /// Single scroll surface (ListView) — avoids nested sliver / scroll overlap on Android.
@@ -218,7 +209,7 @@ class _StoresHomePageState extends State<StoresHomePage> {
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 12),
                 child: StreamBuilder<FeatureState<List<StoreCategoryEntry>>>(
-                  key: ValueKey<int>(_categoriesRetryKey),
+                  key: const ValueKey<String>('stores_home_categories'),
                   stream: _categoriesStream,
                   builder: (context, catSnap) {
                     if (catSnap.hasError) {
@@ -583,14 +574,6 @@ class _StoresHomePageState extends State<StoresHomePage> {
     );
   }
 
-  int _getSearchCrossAxisCount(BuildContext context) {
-    final width = MediaQuery.of(context).size.width;
-    if (width > 1200) return 5;
-    if (width > 900) return 4;
-    if (width > 600) return 3;
-    return 2;
-  }
-
   @override
   Widget build(BuildContext context) {
     SeoService.apply(SeoService.homeFallback, updatePath: true);
@@ -904,7 +887,7 @@ class _StoresHomePageBannerCarouselState extends State<_StoresHomePageBannerCaro
                 final image = Image.network(
                   url,
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) {
+                  errorBuilder: (_, _, _) {
                     return Container(
                       color: Colors.grey.shade200,
                       height: 180,
@@ -1011,19 +994,18 @@ class _StoresHomePageBannerCarouselState extends State<_StoresHomePageBannerCaro
 }
 
 class _StoresHomeBannerUnavailable extends StatelessWidget {
-  const _StoresHomeBannerUnavailable({this.onRetry, this.compact = false});
+  const _StoresHomeBannerUnavailable({this.onRetry});
 
   final VoidCallback? onRetry;
-  final bool compact;
 
   static const String _placeholder = 'https://placehold.co/600x200/e2e8f0/94a3b8/png?text=AmmarJo';
 
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.symmetric(horizontal: compact ? 0 : 12, vertical: compact ? 0 : 8),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(compact ? 0 : 16),
+        borderRadius: BorderRadius.circular(16),
         child: Stack(
           alignment: Alignment.center,
           children: [
@@ -1059,7 +1041,7 @@ class _StoresHomeBannerUnavailable extends StatelessWidget {
                       shadows: const [Shadow(offset: Offset(0, 1), blurRadius: 4, color: Colors.black54)],
                     ),
                   ),
-                  if (onRetry != null && !compact) ...[
+                  if (onRetry != null) ...[
                     const SizedBox(height: 8),
                     FilledButton.tonal(
                       onPressed: onRetry,
