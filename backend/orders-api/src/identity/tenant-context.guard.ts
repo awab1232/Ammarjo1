@@ -10,7 +10,6 @@ import {
   type GlobalCountryCode,
 } from '../architecture/global-region-context.service';
 import { getFirebaseAuth } from '../auth/firebase-admin';
-import { verifyBackendSessionToken } from '../auth/session-token.util';
 import type { RequestWithFirebase } from '../auth/firebase-auth.guard';
 import { UsersService } from '../users/users.service';
 import { buildTenantSnapshotFromRequest } from './build-tenant-snapshot';
@@ -44,12 +43,6 @@ export class TenantContextGuard implements CanActivate {
           throw e;
         }
         throw new ServiceUnavailableException('user profile load failed');
-      }
-    } else if (req.firebaseUid) {
-      // Session-token fallback: no decoded Firebase claims available, but we still need DB RBAC context.
-      const row = await this.users.findUserByFirebaseUid(req.firebaseUid);
-      if (row) {
-        snap = this.users.mergeSnapshotWithUser(snap, row, undefined);
       }
     }
     setTenantContextSnapshot(snap);
@@ -91,11 +84,6 @@ export class TenantContextGuard implements CanActivate {
       const decoded = await getFirebaseAuth().verifyIdToken(token);
       req.firebaseUid = decoded.uid;
       req.firebaseDecoded = decoded;
-    } catch {
-      const backendSession = verifyBackendSessionToken(token);
-      if (backendSession != null) {
-        req.firebaseUid = backendSession.uid;
-      }
-    }
+    } catch {}
   }
 }

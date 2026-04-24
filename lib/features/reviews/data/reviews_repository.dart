@@ -1,13 +1,13 @@
 ﻿import 'package:flutter/foundation.dart' show debugPrint;
 import 'dart:convert';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/config/backend_orders_config.dart';
 import '../../../core/logging/backend_fallback_logger.dart';
 import '../../../core/contracts/feature_state.dart';
 import '../../../core/contracts/feature_unit.dart';
+import '../../../core/services/firebase_auth_header_provider.dart';
 import '../domain/review_model.dart';
 
 class ReviewsRepository {
@@ -29,14 +29,14 @@ class ReviewsRepository {
   }
 
   Future<FeatureState<Map<String, String>>> _authHeaders() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) return FeatureState.failure('يرجى تسجيل الدخول أولاً');
-    final token = await user.getIdToken();
-    if (token == null || token.isEmpty) return FeatureState.failure('تعذر التحقق من هوية المستخدم');
-    return FeatureState.success({
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-    });
+    try {
+      final auth = await FirebaseAuthHeaderProvider.requireAuthHeaders(reason: 'ratings_headers');
+      return FeatureState.success({...auth, 'Content-Type': 'application/json'});
+    } on StateError {
+      return FeatureState.failure('يرجى تسجيل الدخول أولاً');
+    } on Object catch (e) {
+      return FeatureState.failure('تعذر التحقق من هوية المستخدم', e);
+    }
   }
 
   Future<FeatureState<dynamic>> _httpGetJson(String path, {Map<String, String>? query}) async {

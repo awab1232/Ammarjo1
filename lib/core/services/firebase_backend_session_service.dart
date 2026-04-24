@@ -17,7 +17,6 @@ class FirebaseBackendSessionException implements Exception {
 
 abstract final class FirebaseBackendSessionService {
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
-  static const String _kBackendSessionToken = 'backend_session_token';
   static const String _kBackendLoggedIn = 'backend_logged_in';
 
   static Future<Map<String, dynamic>> syncWithBackend({
@@ -30,9 +29,9 @@ abstract final class FirebaseBackendSessionService {
     if (user == null) {
       throw const FirebaseBackendSessionException('No Firebase user session.');
     }
-    final idToken = await user.getIdToken(true);
-    debugPrint('[AUTH-AUDIT] ID Token length: ${idToken?.length ?? 0}');
-    if (idToken == null || idToken.isEmpty) {
+    final idToken = await FirebaseAuthHeaderProvider.requireIdToken(reason: 'firebase_backend_sync');
+    debugPrint('[AUTH-AUDIT] ID Token length: ${idToken.length}');
+    if (idToken.isEmpty) {
       throw const FirebaseBackendSessionException('Missing Firebase ID token.');
     }
     final base = BackendOrdersConfig.baseUrl.trim().replaceAll(RegExp(r'/$'), '');
@@ -67,15 +66,6 @@ abstract final class FirebaseBackendSessionService {
       throw FirebaseBackendSessionException('Backend auth failed (${res.statusCode}).');
     }
 
-    final token = decoded['token']?.toString().trim();
-    debugPrint('[AUTH-AUDIT] Backend session token length: ${token?.length ?? 0}');
-    if (token != null && token.isNotEmpty) {
-      await _storage.write(key: _kBackendSessionToken, value: token);
-      debugPrint('[AUTH-AUDIT] backend_token saved=true');
-    } else {
-      await _storage.delete(key: _kBackendSessionToken);
-      debugPrint('[AUTH-AUDIT] backend_token saved=false (empty token)');
-    }
     await _storage.write(key: _kBackendLoggedIn, value: 'true');
     debugPrint('[AUTH-AUDIT] logged_in flag saved=true');
     return decoded;
@@ -98,11 +88,8 @@ abstract final class FirebaseBackendSessionService {
 
   static Future<void> clear() async {
     await _storage.delete(key: _kBackendLoggedIn);
-    await _storage.delete(key: _kBackendSessionToken);
     debugPrint('[AUTH-AUDIT] secure session cleared');
   }
-
-  static Future<String?> readBackendToken() => _storage.read(key: _kBackendSessionToken);
 
   static Map<String, dynamic>? _safeDecode(String body) {
     if (body.trim().isEmpty) return <String, dynamic>{};

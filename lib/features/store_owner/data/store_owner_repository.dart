@@ -2,7 +2,6 @@ import 'dart:convert';
 import 'dart:math' show Random;
 import 'dart:typed_data';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:http/http.dart' as http;
@@ -12,6 +11,7 @@ import '../../../core/constants/order_status.dart';
 import '../../../core/contracts/feature_state.dart';
 import '../../../core/logging/backend_fallback_logger.dart';
 import '../../../core/services/backend_orders_client.dart';
+import '../../../core/services/firebase_auth_header_provider.dart';
 import '../../../core/utils/image_compress.dart';
 import 'owner_entity_doc.dart';
 
@@ -45,16 +45,13 @@ abstract final class StoreOwnerRepository {
       const bool.fromEnvironment('ENABLE_HYBRID_STORE_BUILDER', defaultValue: false);
 
   static Future<Map<String, String>?> _authHeadersOptional() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
+    try {
+      final auth = await FirebaseAuthHeaderProvider.requireAuthHeaders(reason: 'store_owner_headers');
+      return <String, String>{...auth, 'Content-Type': 'application/json'};
+    } on Object {
       debugPrint('[StoreOwnerRepository] no signed-in user — request degraded');
       throw StateError('NULL_RESPONSE');
     }
-    final token = await user.getIdToken();
-    return <String, String>{
-      'Authorization': 'Bearer $token',
-      'Content-Type': 'application/json',
-    };
   }
 
   static Future<dynamic> _httpGetJson(String path) async {

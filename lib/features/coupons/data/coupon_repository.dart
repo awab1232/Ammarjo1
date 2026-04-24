@@ -1,12 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/config/backend_orders_config.dart';
 import '../../../core/contracts/feature_state.dart';
 import '../../../core/contracts/feature_unit.dart';
+import '../../../core/services/firebase_auth_header_provider.dart';
 import '../../store/domain/models.dart';
 import '../domain/coupon_model.dart';
 
@@ -15,11 +15,8 @@ class CouponRepository {
   static final CouponRepository instance = CouponRepository._();
 
   Future<Map<String, String>> _headers() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) throw StateError('غير مسجّل');
-    final token = (await user.getIdToken()) ?? '';
-    if (token.isEmpty) throw StateError('تعذر التحقق من الهوية');
-    return {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'};
+    final auth = await FirebaseAuthHeaderProvider.requireAuthHeaders(reason: 'coupon_headers');
+    return {...auth, 'Content-Type': 'application/json'};
   }
 
   Future<FeatureState<List<Coupon>>> getCouponsPage({int limit = 30, Object? startAfter}) async {

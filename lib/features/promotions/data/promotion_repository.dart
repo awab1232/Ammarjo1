@@ -1,13 +1,13 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/config/backend_orders_config.dart';
 import '../../../core/contracts/feature_state.dart';
 import '../../../core/contracts/feature_unit.dart';
 import '../../../core/services/backend_orders_client.dart';
+import '../../../core/services/firebase_auth_header_provider.dart';
 import '../../store/domain/models.dart';
 import '../domain/promotion_model.dart';
 
@@ -16,11 +16,8 @@ class PromotionRepository {
   static final PromotionRepository instance = PromotionRepository._();
 
   Future<Map<String, String>> _headers() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) throw StateError('غير مسجّل');
-    final token = (await user.getIdToken()) ?? '';
-    if (token.isEmpty) throw StateError('تعذر التحقق من الهوية');
-    return {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'};
+    final auth = await FirebaseAuthHeaderProvider.requireAuthHeaders(reason: 'promotion_headers');
+    return {...auth, 'Content-Type': 'application/json'};
   }
 
   Future<FeatureState<List<Promotion>>> fetchActivePromotions() async {
@@ -90,8 +87,9 @@ class PromotionRepository {
   Future<FeatureState<List<Promotion>>> getPromotionsForProduct(
     int productId,
     String storeId, {
-    List<int> categoryIds = const [],
+    List<int>? categoryIds,
   }) async {
+    final safeCategoryIds = categoryIds ?? List<int>.empty(growable: false);
     final activeState = await fetchActivePromotions();
     if (activeState is! FeatureSuccess<List<Promotion>>) {
       return switch (activeState) {
@@ -104,7 +102,7 @@ class PromotionRepository {
       if (p.applicableOn == 'all') return true;
       if (p.applicableOn == 'product') return p.applicableIds.contains(productId.toString());
       if (p.applicableOn == 'store') return p.applicableIds.contains(storeId);
-      if (p.applicableOn == 'category') return categoryIds.any((c) => p.applicableIds.contains(c.toString()));
+      if (p.applicableOn == 'category') return safeCategoryIds.any((c) => p.applicableIds.contains(c.toString()));
       return false;
     }).toList());
   }

@@ -1,7 +1,6 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { UsersService } from '../users/users.service';
 import { getFirebaseAuth } from './firebase-admin';
-import { signBackendSessionToken } from './session-token.util';
 
 @Injectable()
 export class FirebaseLoginService {
@@ -28,13 +27,6 @@ export class FirebaseLoginService {
       role: user.role,
       tenant_id: user.tenant_id,
     });
-    const sessionToken = signBackendSessionToken({
-      uid: user.firebase_uid,
-      userId: user.id,
-      role: user.role,
-    });
-    console.log('[AUTH-AUDIT] Session token length:', sessionToken.length);
-
     return {
       user: {
         id: user.id,
@@ -46,7 +38,6 @@ export class FirebaseLoginService {
         tenantId: user.tenant_id,
         wholesalerId: user.wholesaler_id,
       },
-      token: sessionToken,
       authType: 'firebase_id_token',
     };
   }

@@ -10,7 +10,6 @@ import type { DecodedIdToken } from 'firebase-admin/auth';
 import { logAuditJson } from '../common/audit-log';
 import { initFirebase } from './firebase-admin';
 import { getTenantContext } from '../identity/tenant-context.storage';
-import { verifyBackendSessionToken } from './session-token.util';
 
 export type RequestWithFirebase = Request & {
   firebaseUid?: string;
@@ -54,11 +53,6 @@ export class FirebaseAuthGuard implements CanActivate {
       req.firebaseDecoded = decoded;
       return true;
     } catch {
-      const backendSession = verifyBackendSessionToken(token);
-      if (backendSession != null) {
-        req.firebaseUid = backendSession.uid;
-        return true;
-      }
       this.logAuthFailure(context, 'invalid_or_expired_firebase_id_token');
       throw new UnauthorizedException('Invalid or expired Firebase ID token');
     }

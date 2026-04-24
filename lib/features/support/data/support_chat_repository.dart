@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:http/http.dart' as http;
 
 import '../../../core/config/backend_orders_config.dart';
+import '../../../core/services/firebase_auth_header_provider.dart';
 
 class SupportMessage {
   SupportMessage({
@@ -64,11 +65,8 @@ class SupportChatRepository {
   Future<Map<String, String>> _headers() async {
     final base = BackendOrdersConfig.baseUrl.trim();
     if (base.isEmpty) throw StateError('Backend URL غير مضبوط');
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) throw StateError('غير مسجّل');
-    final token = (await user.getIdToken()) ?? '';
-    if (token.isEmpty) throw StateError('تعذر التحقق من الهوية');
-    return {'Authorization': 'Bearer $token', 'Content-Type': 'application/json'};
+    final auth = await FirebaseAuthHeaderProvider.requireAuthHeaders(reason: 'support_chat_headers');
+    return {...auth, 'Content-Type': 'application/json'};
   }
 
   Uri _uri(String path, [Map<String, String>? query]) =>

@@ -8,6 +8,7 @@ import '../session/user_session.dart';
 import '../utils/jordan_phone.dart';
 import 'backend_user_client.dart';
 import 'firebase_backend_session_service.dart';
+import 'firebase_auth_header_provider.dart';
 
 /// Thrown by [PhonePasswordAuthService] with a user-friendly Arabic message
 /// so callers can `catch` and surface it directly.
@@ -47,8 +48,8 @@ class PhonePasswordAuthService {
     if (user == null) {
       throw const PhonePasswordAuthException('missing_firebase_session', 'جلسة التحقق غير متاحة.');
     }
-    final firebaseToken = await user.getIdToken(true);
-    if (firebaseToken == null || firebaseToken.trim().isEmpty) {
+    final firebaseToken = await FirebaseAuthHeaderProvider.requireIdToken(reason: 'phone_register_after_otp');
+    if (firebaseToken.trim().isEmpty) {
       throw const PhonePasswordAuthException('missing_firebase_token', 'تعذر استخراج رمز التحقق من Firebase.');
     }
     final normalized = normalizeJordanPhoneForUsername(phone);
@@ -136,10 +137,8 @@ class PhonePasswordAuthService {
       credential = await FirebaseAuth.instance.signInWithCustomToken(customToken);
       // ignore: avoid_print
       print('🔥 USER SIGNED IN');
-      final idToken = await credential.user?.getIdToken(true);
-      if (idToken != null && idToken.trim().isNotEmpty) {
-        await UserSession.setAuthToken(idToken.trim());
-      }
+      final idToken = await FirebaseAuthHeaderProvider.requireIdToken(reason: 'phone_password_login');
+      if (idToken.trim().isNotEmpty) await UserSession.setAuthToken(idToken.trim());
       await FirebaseBackendSessionService.syncWithBackend(firebaseUser: credential.user);
       // ignore: avoid_print
       print('🔥 BACKEND SYNC CALLED');

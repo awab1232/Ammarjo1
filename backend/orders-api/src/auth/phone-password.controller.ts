@@ -59,7 +59,6 @@ export class PhonePasswordController {
     const result = await this.svc.loginWithPhonePassword(phone, password);
     return {
       ok: true,
-      token: result.token,
       role: result.role,
       userId: result.userId,
       phone: result.phone,

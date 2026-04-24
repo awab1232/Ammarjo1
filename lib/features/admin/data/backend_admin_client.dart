@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'dart:convert';
 
-import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import 'package:http/http.dart' as http;
 
 import '../../../core/config/backend_orders_config.dart';
+import '../../../core/services/firebase_auth_header_provider.dart';
 
 /// نتيجة [BackendAdminClient.patchAdminStoreCommissionPercent] — يُستدعى مسارًا تجريبيًا قد لا يكون مفعّلاً في الخادم.
 enum AdminStoreCommissionPercentPatchResult { saved, notSupported, failed }
@@ -16,10 +16,8 @@ final class BackendAdminClient {
   static final BackendAdminClient instance = BackendAdminClient._();
 
   Future<String?> _idToken() async {
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) throw StateError('NULL_RESPONSE');
     try {
-      return await user.getIdToken();
+      return await FirebaseAuthHeaderProvider.requireIdToken(reason: 'backend_admin_id_token');
     } on Object {
       debugPrint('[BackendAdminClient] getIdToken failed');
       throw StateError('NULL_RESPONSE');

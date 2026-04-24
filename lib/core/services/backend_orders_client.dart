@@ -98,8 +98,8 @@ final class BackendOrdersClient {
     }
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw StateError('NULL_RESPONSE');
-    final String? token = await _idToken(user);
-    if (token == null || token.isEmpty) throw StateError('NULL_RESPONSE');
+    final String token = await _idToken(user);
+    if (token.isEmpty) throw StateError('NULL_RESPONSE');
 
     final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}/orders');
     final Duration t = BackendOrdersConfig.backendOrdersWriteTimeout;
@@ -195,8 +195,8 @@ final class BackendOrdersClient {
       debugPrint('BackendOrders: no signed-in user, skip shadow POST');
       return;
     }
-    final String? token = await _idToken(user);
-    if (token == null || token.isEmpty) return;
+    final String token = await _idToken(user);
+    if (token.isEmpty) return;
 
     final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}/orders');
     try {
@@ -257,8 +257,8 @@ final class BackendOrdersClient {
     }
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw StateError('NULL_RESPONSE');
-    final String? token = await _idToken(user);
-    if (token == null || token.isEmpty) throw StateError('NULL_RESPONSE');
+    final String token = await _idToken(user);
+    if (token.isEmpty) throw StateError('NULL_RESPONSE');
 
     final uri = Uri.parse(
       '${base.replaceAll(RegExp(r'/$'), '')}/orders/${Uri.encodeComponent(orderId)}',
@@ -346,8 +346,8 @@ final class BackendOrdersClient {
     }
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return false;
-    final String? token = await _idToken(user);
-    if (token == null || token.isEmpty) throw StateError('NULL_RESPONSE');
+    final String token = await _idToken(user);
+    if (token.isEmpty) throw StateError('NULL_RESPONSE');
 
     final uri = Uri.parse(
       '${base.replaceAll(RegExp(r'/$'), '')}/orders/${Uri.encodeComponent(orderId)}/retry-assignment',
@@ -435,16 +435,16 @@ final class BackendOrdersClient {
     return body != null && body['ok'] == true;
   }
 
-  Future<String?> _idToken(User user) async {
+  Future<String> _idToken(User user) async {
     try {
-      final token = await user.getIdToken(true);
+      final token = await FirebaseAuthHeaderProvider.requireIdToken(reason: 'backend_orders_id_token');
       debugPrint(
-        '[AUTH-HEADER] reason=backend_orders_id_token token_is_null=${token == null} len=${token?.trim().length ?? 0}',
+        '[AUTH-HEADER] reason=backend_orders_id_token token_is_null=false len=${token.trim().length}',
       );
       return token;
     } on Object {
       debugPrint('BackendOrders: getIdToken failed');
-      throw StateError('NULL_RESPONSE');
+      throw StateError('token_unavailable');
     }
   }
 
@@ -463,7 +463,7 @@ final class BackendOrdersClient {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw StateError('NULL_RESPONSE');
     final token = await _idToken(user);
-    if (token == null || token.isEmpty) throw StateError('NULL_RESPONSE');
+    if (token.isEmpty) throw StateError('NULL_RESPONSE');
     final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}$path');
     try {
       final headers = <String, String>{
@@ -538,7 +538,7 @@ final class BackendOrdersClient {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw StateError('NULL_RESPONSE');
     final token = await _idToken(user);
-    if (token == null || token.isEmpty) throw StateError('NULL_RESPONSE');
+    if (token.isEmpty) throw StateError('NULL_RESPONSE');
     final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}$path');
     try {
       final headers = <String, String>{
@@ -598,7 +598,7 @@ final class BackendOrdersClient {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return false;
     final token = await _idToken(user);
-    if (token == null || token.isEmpty) return false;
+    if (token.isEmpty) return false;
     final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}$path');
     try {
       final headers = <String, String>{'Authorization': 'Bearer $token'};
@@ -646,7 +646,7 @@ final class BackendOrdersClient {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw StateError('NULL_RESPONSE');
     final token = await _idToken(user);
-    if (token == null || token.isEmpty) throw StateError('NULL_RESPONSE');
+    if (token.isEmpty) throw StateError('NULL_RESPONSE');
     final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}$path').replace(queryParameters: query);
     try {
       final headers = <String, String>{'Authorization': 'Bearer $token'};
@@ -1137,7 +1137,7 @@ final class BackendOrdersClient {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     final token = await _idToken(user);
-    if (token == null || token.isEmpty) return;
+    if (token.isEmpty) return;
     final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}/chat/events/message-sent');
     final payload = <String, dynamic>{
       'conversationId': conversationId,
@@ -1255,7 +1255,7 @@ final class BackendOrdersClient {
       return FeatureState.failure('not_authenticated');
     }
     final token = await _idToken(user);
-    if (token == null || token.isEmpty) {
+    if (token.isEmpty) {
       return FeatureState.failure('token_unavailable');
     }
     final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}/auth/sessions');
@@ -1985,7 +1985,7 @@ final class BackendOrdersClient {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) throw StateError('NULL_RESPONSE');
     final token = await _idToken(user);
-    if (token == null || token.isEmpty) throw StateError('NULL_RESPONSE');
+    if (token.isEmpty) throw StateError('NULL_RESPONSE');
     final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}/upload');
     try {
       final req = http.MultipartRequest('POST', uri);

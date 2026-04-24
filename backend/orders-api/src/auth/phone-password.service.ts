@@ -10,7 +10,6 @@ import { Pool, type PoolClient } from 'pg';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { buildPgPoolConfig } from '../infrastructure/database/pg-ssl';
 import { getFirebaseAuth } from './firebase-admin';
-import { signBackendSessionToken } from './session-token.util';
 
 const MIN_PASSWORD_LEN = 6;
 const MAX_PASSWORD_LEN = 128;
@@ -247,7 +246,6 @@ export class PhonePasswordService {
     phoneRaw: string,
     password: string,
   ): Promise<{
-    token: string;
     customToken: string;
     firebaseUid: string;
     phone: string;
@@ -313,7 +311,6 @@ export class PhonePasswordService {
     console.log('USER ROLE:', role);
     console.log('🔥 USER ROLE:', role);
     this.logger.log(`[PhonePassword] login_ok uid=${firebaseUid} phone=${phone} role=${role}`);
-    const token = signBackendSessionToken({ uid: firebaseUid, userId, role });
-    return { token, customToken, firebaseUid, phone, role, userId };
+    return { customToken, firebaseUid, phone, role, userId };
   }
 }

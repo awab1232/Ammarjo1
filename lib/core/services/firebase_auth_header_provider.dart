@@ -1,6 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
-import '../session/user_session.dart';
 
 /// Centralized Firebase ID token + `Authorization: Bearer <idToken>` for REST calls to NestJS.
 /// Token is obtained with [User.getIdToken] (force refresh) and attached as the sole auth mechanism.
@@ -13,9 +12,7 @@ abstract final class FirebaseAuthHeaderProvider {
     final user = FirebaseAuth.instance.currentUser;
     debugPrint('[AUTH-HEADER] reason=$reason user=${user?.uid}');
     if (user == null) {
-      final token = UserSession.authToken?.trim() ?? '';
-      if (token.isEmpty) throw StateError('NULL_RESPONSE');
-      return token;
+      throw StateError('not_authenticated');
     }
     final token = await user.getIdToken(true);
     debugPrint('[AUTH-HEADER] reason=$reason token_is_null=${token == null} len=${token?.trim().length ?? 0}');
@@ -39,9 +36,7 @@ abstract final class FirebaseAuthHeaderProvider {
     final user = FirebaseAuth.instance.currentUser;
     debugPrint('[AUTH-HEADER] optional reason=$reason user=${user?.uid}');
     if (user == null) {
-      final token = UserSession.authToken?.trim() ?? '';
-      if (token.isEmpty) return <String, String>{};
-      return <String, String>{'Authorization': 'Bearer $token'};
+      return <String, String>{};
     }
     final token = await user.getIdToken(true);
     debugPrint('[AUTH-HEADER] optional reason=$reason token_is_null=${token == null} len=${token?.trim().length ?? 0}');
