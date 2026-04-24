@@ -476,25 +476,48 @@ class _TechnicianModeSectionState extends State<_TechnicianModeSection> {
                         final specIds = <String>[
                           if (specVal.startsWith('def:')) catId else specVal,
                         ];
-                        await maint.registerTechnicianProfile(
-                          email: widget.email,
-                          fullName: _fullNameCtrl.text.trim(),
-                          phone: _phoneCtrl.text.trim(),
-                          city: city,
-                          specialtyIds: specIds,
-                          categoryId: catId,
-                          primarySpecialtyLabel: specLabel,
-                          experienceDescription: _descCtrl.text.trim(),
-                        );
-                        if (!context.mounted) return;
-                        ScaffoldMessenger.of(context).showSnackBar(
-                          SnackBar(
-                            content: Text(
-                              'تم إرسال طلب الانضمام، بانتظار موافقة الإدارة.',
-                              style: GoogleFonts.tajawal(),
+                        try {
+                          await maint.registerTechnicianProfile(
+                            email: widget.email,
+                            fullName: _fullNameCtrl.text.trim(),
+                            phone: _phoneCtrl.text.trim(),
+                            city: city,
+                            specialtyIds: specIds,
+                            categoryId: catId,
+                            primarySpecialtyLabel: specLabel,
+                            experienceDescription: _descCtrl.text.trim(),
+                          );
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'تم إرسال طلب الانضمام، بانتظار موافقة الإدارة.',
+                                style: GoogleFonts.tajawal(),
+                              ),
                             ),
-                          ),
-                        );
+                          );
+                        } on StateError catch (e) {
+                          if (!context.mounted) return;
+                          final msg = e.message.toString().trim();
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                msg.isNotEmpty ? msg : 'تعذر إرسال طلب الانضمام حالياً.',
+                                style: GoogleFonts.tajawal(),
+                              ),
+                            ),
+                          );
+                        } on Object {
+                          if (!context.mounted) return;
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'تعذر إرسال طلب الانضمام حالياً.',
+                                style: GoogleFonts.tajawal(),
+                              ),
+                            ),
+                          );
+                        }
                       } else {
                         await maint.setTechnicianMode(false);
                       }

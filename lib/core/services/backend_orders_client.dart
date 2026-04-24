@@ -480,6 +480,18 @@ final class BackendOrdersClient {
           .timeout(timeout);
       FirebaseAuthHeaderProvider.logDebugResponse('POST $path', res.statusCode, res.body);
       if (res.statusCode < 200 || res.statusCode >= 300) {
+        String reason = 'HTTP_${res.statusCode}';
+        try {
+          final decoded = jsonDecode(res.body);
+          if (decoded is Map) {
+            final msg = decoded['message']?.toString().trim() ?? '';
+            if (msg.isNotEmpty) {
+              reason = msg;
+            }
+          }
+        } on Object {
+          // Keep default reason when body is not JSON.
+        }
         BackendFallbackLogger.logBackendFallbackTriggered(
           flow: flow,
           reason: 'http_${res.statusCode}',
@@ -492,12 +504,14 @@ final class BackendOrdersClient {
           requestBody: body,
           responseBody: res.body,
         );
-        throw StateError('NULL_RESPONSE');
+        throw StateError(reason);
       }
       final decoded = jsonDecode(res.body);
       if (decoded is Map<String, dynamic>) return decoded;
       if (decoded is Map) return Map<String, dynamic>.from(decoded);
       return <String, dynamic>{};
+    } on StateError {
+      rethrow;
     } on Object {
       BackendFallbackLogger.logBackendFallbackTriggered(
         flow: flow,
@@ -505,7 +519,7 @@ final class BackendOrdersClient {
         extra: {'path': path},
       );
       await _captureApiFailure(error: StateError('POST $path failed'), endpoint: 'POST $path', requestBody: body);
-      throw StateError('NULL_RESPONSE');
+      throw StateError('REQUEST_FAILED');
     }
   }
 

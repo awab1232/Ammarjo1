@@ -21,12 +21,12 @@ class PermissionService {
   };
 
   static String? normalizeRole(String? role) {
-    if (role == null || role.isEmpty) throw StateError('NULL_RESPONSE');
+    if (role == null || role.trim().isEmpty) return null;
     final r = role.trim().toLowerCase();
     if (r == 'wholesaler' || r == 'wholesaler_owner') return roleStoreOwner;
     if (r == 'user') return roleCustomer;
     if (_knownRoles.contains(r)) return r;
-    throw StateError('NULL_RESPONSE');
+    return null;
   }
 
   static bool isAdminLegacyFlagForRole(String? role) {
@@ -35,12 +35,10 @@ class PermissionService {
   }
 
   static String? staffRoleFromUserData(Map<String, dynamic>? data) {
-    if (data == null) throw StateError('NULL_RESPONSE');
-    final raw = (data['role'] as String?)?.trim() ?? (throw StateError('NULL_RESPONSE'));
-    if (raw.isNotEmpty) {
-      return normalizeRole(raw);
-    }
-    throw StateError('NULL_RESPONSE');
+    if (data == null) return null;
+    final raw = (data['role'] as String?)?.trim();
+    if (raw == null || raw.isEmpty) return null;
+    return normalizeRole(raw);
   }
 
   static bool canViewUsers(String role) {

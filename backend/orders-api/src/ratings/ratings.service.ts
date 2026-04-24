@@ -302,39 +302,55 @@ export class RatingsService {
   async getReviewsByTarget(targetType: RatingTargetType, targetId: string): Promise<RatingReview[]> {
     this.actorIdOrThrow();
     this.assertTargetType(targetType);
-    return this.withClient(async (client) => {
-      const rows = await client.query(
-        `SELECT ${this.reviewColumns} FROM ratings_reviews
-         WHERE target_type = $1 AND target_id = $2
-         ORDER BY created_at DESC
-         LIMIT 200`,
-        [targetType, targetId.trim()],
-      );
-      return rows.rows.map((x) => this.mapReview(x as Record<string, unknown>));
-    });
+    try {
+      return await this.withClient(async (client) => {
+        const rows = await client.query(
+          `SELECT ${this.reviewColumns} FROM ratings_reviews
+           WHERE target_type = $1 AND target_id = $2
+           ORDER BY created_at DESC
+           LIMIT 200`,
+          [targetType, targetId.trim()],
+        );
+        return rows.rows.map((x) => this.mapReview(x as Record<string, unknown>));
+      });
+    } catch {
+      // Read-path fallback: avoid surfacing 5xx to clients when ratings tables/schema are unavailable.
+      return [];
+    }
   }
 
   async getAggregate(targetType: RatingTargetType, targetId: string): Promise<RatingAggregate> {
     this.actorIdOrThrow();
     this.assertTargetType(targetType);
-    return this.withClient(async (client) => {
-      const r = await client.query(
-        `SELECT ${this.aggregateColumns} FROM ratings_aggregates
-         WHERE target_type = $1 AND target_id = $2
-         LIMIT 1`,
-        [targetType, targetId.trim()],
-      );
-      if (r.rows.length === 0) {
-        return {
-          targetType,
-          targetId: targetId.trim(),
-          avgRating: 0,
-          totalReviews: 0,
-          updatedAt: new Date(0).toISOString(),
-        };
-      }
-      return this.mapAggregate(r.rows[0] as Record<string, unknown>);
-    });
+    try {
+      return await this.withClient(async (client) => {
+        const r = await client.query(
+          `SELECT ${this.aggregateColumns} FROM ratings_aggregates
+           WHERE target_type = $1 AND target_id = $2
+           LIMIT 1`,
+          [targetType, targetId.trim()],
+        );
+        if (r.rows.length === 0) {
+          return {
+            targetType,
+            targetId: targetId.trim(),
+            avgRating: 0,
+            totalReviews: 0,
+            updatedAt: new Date(0).toISOString(),
+          };
+        }
+        return this.mapAggregate(r.rows[0] as Record<string, unknown>);
+      });
+    } catch {
+      // Read-path fallback: return empty aggregate instead of 5xx.
+      return {
+        targetType,
+        targetId: targetId.trim(),
+        avgRating: 0,
+        totalReviews: 0,
+        updatedAt: new Date(0).toISOString(),
+      };
+    }
   }
 }
 
