@@ -49,9 +49,9 @@ final class BackendTenderClient {
   /// Hard delete for a tender (customer owner only, enforced server-side).
   Future<Map<String, dynamic>?> deleteTender(String tenderId) async {
     final req = await _request('/tenders/${Uri.encodeComponent(tenderId)}');
-    if (req == null) throw StateError('unexpected_empty_response');
+    if (req == null) throw Exception('unexpected_empty_response');
     final res = await http.delete(req.$1, headers: req.$2);
-    if (res.statusCode < 200 || res.statusCode >= 300) throw StateError('unexpected_empty_response');
+    if (res.statusCode < 200 || res.statusCode >= 300) throw Exception('unexpected_empty_response');
     if (res.body.trim().isEmpty) return <String, dynamic>{};
     final decoded = jsonDecode(res.body);
     if (decoded is Map<String, dynamic>) return decoded;
@@ -61,7 +61,7 @@ final class BackendTenderClient {
 
   Future<Map<String, dynamic>?> fetchTender(String tenderId) async {
     final id = tenderId.trim();
-    if (id.isEmpty) throw StateError('unexpected_empty_response');
+    if (id.isEmpty) throw Exception('unexpected_empty_response');
     return _authedGet('/tenders/${Uri.encodeComponent(id)}');
   }
 
@@ -75,24 +75,24 @@ final class BackendTenderClient {
   }
 
   Future<Map<String, dynamic>?> createTender({
-    required String category,
+    required String categoryId,
     required String description,
     required String city,
     required String userName,
     String? storeTypeId,
     String? storeTypeKey,
     String? storeTypeName,
-    Uint8List? imageBytes,
+    List<Uint8List> imageBytesList = const <Uint8List>[],
   }) async {
     return _authedPost('/tenders', <String, dynamic>{
-      'category': category,
+      'categoryId': categoryId,
       'description': description,
       'city': city,
       'userName': userName,
       if (storeTypeId != null && storeTypeId.trim().isNotEmpty) 'storeTypeId': storeTypeId.trim(),
       if (storeTypeKey != null && storeTypeKey.trim().isNotEmpty) 'storeTypeKey': storeTypeKey.trim(),
       if (storeTypeName != null && storeTypeName.trim().isNotEmpty) 'storeTypeName': storeTypeName.trim(),
-      if (imageBytes != null) 'imageBase64': base64Encode(imageBytes),
+      'imageBase64List': imageBytesList.map(base64Encode).toList(growable: false),
     });
   }
 
@@ -142,36 +142,36 @@ final class BackendTenderClient {
 
   Future<Map<String, dynamic>?> _authedGet(String path, {Map<String, String>? query}) async {
     final req = await _request(path, query: query);
-    if (req == null) throw StateError('unexpected_empty_response');
+    if (req == null) throw Exception('unexpected_empty_response');
     final res = await http.get(req.$1, headers: req.$2);
     if (res.statusCode < 200 || res.statusCode >= 300) {
       if (res.statusCode == 401) {
-        throw StateError('انتهت الجلسة، سجل الدخول مجدداً ثم أعد المحاولة.');
+        throw Exception('انتهت الجلسة، سجل الدخول مجدداً ثم أعد المحاولة.');
       }
       if (res.statusCode == 403) {
-        throw StateError('لا تملك صلاحية تنفيذ هذه العملية.');
+        throw Exception('لا تملك صلاحية تنفيذ هذه العملية.');
       }
-      throw StateError('فشل تحميل بيانات المناقصات (${res.statusCode}).');
+      throw Exception('فشل تحميل بيانات المناقصات (${res.statusCode}).');
     }
     final decoded = jsonDecode(res.body);
     if (decoded is Map<String, dynamic>) return decoded;
     if (decoded is Map) return Map<String, dynamic>.from(decoded);
-    throw StateError('unexpected_empty_response');
+    throw Exception('unexpected_empty_response');
   }
 
   Future<Map<String, dynamic>?> _authedPost(String path, Map<String, dynamic> body) async {
     final req = await _request(path);
-    if (req == null) throw StateError('unexpected_empty_response');
+    if (req == null) throw Exception('unexpected_empty_response');
     final headers = <String, String>{...req.$2, 'Content-Type': 'application/json'};
     final res = await http.post(req.$1, headers: headers, body: jsonEncode(body));
     if (res.statusCode < 200 || res.statusCode >= 300) {
       if (res.statusCode == 401) {
-        throw StateError('انتهت الجلسة، سجل الدخول مجدداً ثم أعد المحاولة.');
+        throw Exception('انتهت الجلسة، سجل الدخول مجدداً ثم أعد المحاولة.');
       }
       if (res.statusCode == 403) {
-        throw StateError('لا تملك صلاحية تنفيذ هذه العملية.');
+        throw Exception('لا تملك صلاحية تنفيذ هذه العملية.');
       }
-      throw StateError('فشل إرسال المناقصة (${res.statusCode}).');
+      throw Exception('فشل إرسال المناقصة (${res.statusCode}).');
     }
     if (res.body.trim().isEmpty) return <String, dynamic>{};
     final decoded = jsonDecode(res.body);
@@ -182,17 +182,17 @@ final class BackendTenderClient {
 
   Future<Map<String, dynamic>?> _authedPatch(String path, Map<String, dynamic> body) async {
     final req = await _request(path);
-    if (req == null) throw StateError('unexpected_empty_response');
+    if (req == null) throw Exception('unexpected_empty_response');
     final headers = <String, String>{...req.$2, 'Content-Type': 'application/json'};
     final res = await http.patch(req.$1, headers: headers, body: jsonEncode(body));
     if (res.statusCode < 200 || res.statusCode >= 300) {
       if (res.statusCode == 401) {
-        throw StateError('انتهت الجلسة، سجل الدخول مجدداً ثم أعد المحاولة.');
+        throw Exception('انتهت الجلسة، سجل الدخول مجدداً ثم أعد المحاولة.');
       }
       if (res.statusCode == 403) {
-        throw StateError('لا تملك صلاحية تنفيذ هذه العملية.');
+        throw Exception('لا تملك صلاحية تنفيذ هذه العملية.');
       }
-      throw StateError('فشل تحديث المناقصة (${res.statusCode}).');
+      throw Exception('فشل تحديث المناقصة (${res.statusCode}).');
     }
     if (res.body.trim().isEmpty) return <String, dynamic>{};
     final decoded = jsonDecode(res.body);
@@ -203,7 +203,7 @@ final class BackendTenderClient {
 
   Future<(Uri, Map<String, String>)?> _request(String path, {Map<String, String>? query}) async {
     final base = BackendOrdersConfig.baseUrl.trim();
-    if (base.isEmpty) throw StateError('unexpected_empty_response');
+    if (base.isEmpty) throw Exception('unexpected_empty_response');
     final authHeaders = await FirebaseAuthHeaderProvider.requireAuthHeaders(reason: 'backend_tender:$path');
     final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}$path').replace(queryParameters: query);
     FirebaseAuthHeaderProvider.logRequestHeaders(method: 'REQUEST', uri: uri, headers: authHeaders);

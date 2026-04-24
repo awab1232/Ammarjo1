@@ -16,8 +16,10 @@ import { plainToInstance } from 'class-transformer';
 import { validate } from 'class-validator';
 import { ApiPolicy } from '../gateway/api-policy.decorator';
 import { ApiPolicyGuard } from '../gateway/api-policy.guard';
+import { RoleGuard } from '../identity/role.guard';
 import { RbacGuard } from '../identity/rbac.guard';
 import { RequirePermissions } from '../identity/require-permissions.decorator';
+import { Roles } from '../identity/roles.decorator';
 import { TenantContextGuard } from '../identity/tenant-context.guard';
 import { FirebaseAuthGuard, type RequestWithFirebase } from '../auth/firebase-auth.guard';
 import {
@@ -37,6 +39,8 @@ export class DriversController {
   @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
   @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 60 } })
   @RequirePermissions('orders.write')
+  @UseGuards(RoleGuard)
+  @Roles('admin', 'system_internal')
   async listAvailableDrivers() {
     const drivers = await this.drivers.listAvailableDrivers();
     return { drivers };
@@ -46,6 +50,8 @@ export class DriversController {
   @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
   @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 120 } })
   @RequirePermissions('orders.write')
+  @UseGuards(RoleGuard)
+  @Roles('driver', 'admin', 'system_internal')
   async workbench(@Req() req: RequestWithFirebase) {
     return this.drivers.getWorkbench(req.firebaseUid!);
   }
@@ -96,6 +102,8 @@ export class DriversController {
   @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
   @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 600 } })
   @RequirePermissions('orders.write')
+  @UseGuards(RoleGuard)
+  @Roles('driver', 'admin', 'system_internal')
   async location(@Req() req: RequestWithFirebase, @Body() raw: Record<string, unknown>) {
     const lat = Number(raw?.lat ?? raw?.latitude);
     const lng = Number(raw?.lng ?? raw?.longitude);
@@ -112,6 +120,8 @@ export class DriversController {
   @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
   @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 60 } })
   @RequirePermissions('orders.write')
+  @UseGuards(RoleGuard)
+  @Roles('driver', 'admin', 'system_internal')
   async status(@Req() req: RequestWithFirebase, @Body() raw: unknown) {
     const dto = plainToInstance(DriverStatusDto, raw ?? {}, { enableImplicitConversion: true });
     const errors = await validate(dto);
@@ -125,6 +135,8 @@ export class DriversController {
   @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
   @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 60 } })
   @RequirePermissions('orders.write')
+  @UseGuards(RoleGuard)
+  @Roles('driver', 'admin', 'system_internal')
   async accept(@Req() req: RequestWithFirebase, @Body() raw: unknown) {
     const dto = plainToInstance(OrderIdBodyDto, raw ?? {}, { enableImplicitConversion: true });
     const errors = await validate(dto);
@@ -138,6 +150,8 @@ export class DriversController {
   @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
   @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 60 } })
   @RequirePermissions('orders.write')
+  @UseGuards(RoleGuard)
+  @Roles('driver', 'admin', 'system_internal')
   async reject(@Req() req: RequestWithFirebase, @Body() raw: unknown) {
     const dto = plainToInstance(OrderIdBodyDto, raw ?? {}, { enableImplicitConversion: true });
     const errors = await validate(dto);
@@ -151,6 +165,8 @@ export class DriversController {
   @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
   @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 30 } })
   @RequirePermissions('orders.write')
+  @UseGuards(RoleGuard)
+  @Roles('admin', 'system_internal')
   async autoAssign(@Body() raw: unknown) {
     const dto = plainToInstance(OrderIdBodyDto, raw ?? {}, { enableImplicitConversion: true });
     const errors = await validate(dto);
@@ -164,6 +180,8 @@ export class DriversController {
   @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
   @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 60 } })
   @RequirePermissions('orders.write')
+  @UseGuards(RoleGuard)
+  @Roles('driver', 'admin', 'system_internal')
   async onTheWay(@Req() req: RequestWithFirebase, @Body() raw: unknown) {
     const dto = plainToInstance(OrderIdBodyDto, raw ?? {}, { enableImplicitConversion: true });
     const errors = await validate(dto);
@@ -177,6 +195,8 @@ export class DriversController {
   @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
   @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 60 } })
   @RequirePermissions('orders.write')
+  @UseGuards(RoleGuard)
+  @Roles('driver', 'admin', 'system_internal')
   async complete(@Req() req: RequestWithFirebase, @Body() raw: unknown) {
     const dto = plainToInstance(OrderIdBodyDto, raw ?? {}, { enableImplicitConversion: true });
     const errors = await validate(dto);
@@ -190,6 +210,8 @@ export class DriversController {
   @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
   @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 30 } })
   @RequirePermissions('orders.write')
+  @UseGuards(RoleGuard)
+  @Roles('admin', 'system_internal')
   async manualAssign(
     @Param('id') orderId: string,
     @Body() raw: unknown,

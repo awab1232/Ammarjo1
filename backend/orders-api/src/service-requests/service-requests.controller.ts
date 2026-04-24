@@ -2,8 +2,10 @@ import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, Req, UseGuards
 import { FirebaseAuthGuard, type RequestWithFirebase } from '../auth/firebase-auth.guard';
 import { ApiPolicy } from '../gateway/api-policy.decorator';
 import { ApiPolicyGuard } from '../gateway/api-policy.guard';
+import { RoleGuard } from '../identity/role.guard';
 import { RbacGuard } from '../identity/rbac.guard';
 import { RequirePermissions } from '../identity/require-permissions.decorator';
+import { Roles } from '../identity/roles.decorator';
 import { TenantContextGuard } from '../identity/tenant-context.guard';
 import {
   AssignServiceRequestDto,
@@ -64,7 +66,9 @@ export class ServiceRequestsController {
   }
 
   @Post(':id/assign')
-  @RequirePermissions('orders.read')
+  @RequirePermissions('orders.write')
+  @UseGuards(RoleGuard)
+  @Roles('admin', 'system_internal')
   assign(@Param() params: ServiceRequestIdParamDto, @Body() body: AssignServiceRequestDto) {
     return this.serviceRequests.assignTechnician(params.id, body.technicianId);
   }

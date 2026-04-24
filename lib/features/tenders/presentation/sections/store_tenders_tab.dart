@@ -146,7 +146,7 @@ class _OpenTendersList extends StatelessWidget {
                       onTap: () => openImageViewer(
                         context,
                         imageUrl: tender.imageUrl,
-                        title: tender.category,
+                        title: tender.categoryId,
                       ),
                       child: ClipRRect(
                         borderRadius: BorderRadius.circular(8),
@@ -158,7 +158,7 @@ class _OpenTendersList extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(tender.category, style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                          Text(tender.categoryId, style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
                           if (tender.description.trim().isNotEmpty)
                             Text(
                               tender.description,

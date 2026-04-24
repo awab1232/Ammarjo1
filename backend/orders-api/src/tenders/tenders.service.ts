@@ -19,8 +19,7 @@ export interface CreateTenderInput {
   storeTypeId?: string | null;
   storeTypeKey?: string | null;
   storeTypeName?: string | null;
-  imageBase64?: string | null;
-  imageUrl?: string | null;
+  imageBase64List: string[];
 }
 
 export interface SubmitOfferInput {
@@ -84,8 +83,6 @@ export class TendersService {
         category_id uuid NOT NULL,
         description text NOT NULL DEFAULT '',
         city text NOT NULL DEFAULT '',
-        image_url text,
-        image_base64 text,
         store_type_id uuid,
         store_type_key text,
         store_type_name text,
@@ -98,6 +95,14 @@ export class TendersService {
       ALTER TABLE tenders ADD COLUMN IF NOT EXISTS category_id uuid;
       CREATE INDEX IF NOT EXISTS idx_tenders_user_id ON tenders (user_id, updated_at DESC);
       CREATE INDEX IF NOT EXISTS idx_tenders_status_type ON tenders (status, store_type_id, updated_at DESC);
+      CREATE TABLE IF NOT EXISTS tender_images (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        tender_id uuid NOT NULL REFERENCES tenders(id) ON DELETE CASCADE,
+        image_url text,
+        image_base64 text,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS idx_tender_images_tender_id ON tender_images (tender_id, created_at);
 
       CREATE TABLE IF NOT EXISTS tender_offers (
         id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -128,6 +133,7 @@ export class TendersService {
       description: row['description'],
       city: row['city'],
       imageUrl: row['image_url'],
+      imageUrls: Array.isArray(row['image_urls']) ? row['image_urls'] : [],
       storeTypeId: row['store_type_id'],
       storeTypeKey: row['store_type_key'],
       storeTypeName: row['store_type_name'],
@@ -179,15 +185,18 @@ export class TendersService {
     if (!input.userId.trim()) throw new BadRequestException('missing_customer');
     if (!input.categoryId.trim()) throw new BadRequestException('missing_category_id');
     if (!input.description.trim()) throw new BadRequestException('description_required');
+    if (!Array.isArray(input.imageBase64List) || input.imageBase64List.length == 0) {
+      throw new BadRequestException('missing_tender_images');
+    }
     return this.withClient(async (client) => {
       await this.assertStrictIntegrity(client);
       const q = await client.query(
         `INSERT INTO tenders
            (user_id, customer_name, category_id, description, city,
-            image_url, image_base64, store_type_id, store_type_key, store_type_name)
-         VALUES ($1,$2,$3::uuid,$4,$5,$6,$7, NULLIF($8,'')::uuid, NULLIF($9,''), NULLIF($10,''))
+            store_type_id, store_type_key, store_type_name)
+         VALUES ($1,$2,$3::uuid,$4,$5, NULLIF($6,'')::uuid, NULLIF($7,''), NULLIF($8,''))
          RETURNING id::text, user_id, customer_name, category_id::text AS category_id, description, city,
-                   image_url, store_type_id::text AS store_type_id, store_type_key, store_type_name,
+                   NULL::text AS image_url, NULL::text[] AS image_urls, store_type_id::text AS store_type_id, store_type_key, store_type_name,
                    status, accepted_offer_id::text AS accepted_offer_id, created_at, updated_at`,
         [
           input.userId.trim(),
@@ -195,13 +204,20 @@ export class TendersService {
           input.categoryId.trim(),
           input.description.trim(),
           input.city.trim(),
-          input.imageUrl?.trim() || null,
-          input.imageBase64?.trim() || null,
           input.storeTypeId?.trim() || '',
           input.storeTypeKey?.trim() || '',
           input.storeTypeName?.trim() || '',
         ],
       );
+      const tenderId = String(q.rows[0]?.['id'] ?? '').trim();
+      for (const raw of input.imageBase64List) {
+        const imageBase64 = String(raw ?? '').trim();
+        if (!imageBase64) continue;
+        await client.query(
+          `INSERT INTO tender_images (tender_id, image_base64) VALUES ($1::uuid, $2)`,
+          [tenderId, imageBase64],
+        );
+      }
       logAuditJson('audit', {
         action: 'tender_created',
         tenderId: q.rows[0]?.['id'],
@@ -218,7 +234,9 @@ export class TendersService {
       await this.assertStrictIntegrity(client);
       const q = await client.query(
         `SELECT id::text, user_id, customer_name, category_id::text AS category_id, description, city,
-                image_url, store_type_id::text AS store_type_id, store_type_key, store_type_name,
+                (SELECT ti.image_url FROM tender_images ti WHERE ti.tender_id = tenders.id ORDER BY ti.created_at ASC LIMIT 1) AS image_url,
+                (SELECT array_agg(ti.image_url ORDER BY ti.created_at ASC) FROM tender_images ti WHERE ti.tender_id = tenders.id AND ti.image_url IS NOT NULL) AS image_urls,
+                store_type_id::text AS store_type_id, store_type_key, store_type_name,
                 status, accepted_offer_id::text AS accepted_offer_id, created_at, updated_at
          FROM tenders
          WHERE user_id = $1
@@ -291,7 +309,9 @@ export class TendersService {
       vals.push(lim);
       const q = await client.query(
         `SELECT id::text, user_id, customer_name, category_id::text AS category_id, description, city,
-                image_url, store_type_id::text AS store_type_id, store_type_key, store_type_name,
+                (SELECT ti.image_url FROM tender_images ti WHERE ti.tender_id = tenders.id ORDER BY ti.created_at ASC LIMIT 1) AS image_url,
+                (SELECT array_agg(ti.image_url ORDER BY ti.created_at ASC) FROM tender_images ti WHERE ti.tender_id = tenders.id AND ti.image_url IS NOT NULL) AS image_urls,
+                store_type_id::text AS store_type_id, store_type_key, store_type_name,
                 status, accepted_offer_id::text AS accepted_offer_id, created_at, updated_at
          FROM tenders
          WHERE ${where.join(' AND ')}
@@ -311,7 +331,9 @@ export class TendersService {
       await this.assertStrictIntegrity(client);
       const q = await client.query(
         `SELECT id::text, user_id, customer_name, category_id::text AS category_id, description, city,
-                image_url, store_type_id::text AS store_type_id, store_type_key, store_type_name,
+                (SELECT ti.image_url FROM tender_images ti WHERE ti.tender_id = tenders.id ORDER BY ti.created_at ASC LIMIT 1) AS image_url,
+                (SELECT array_agg(ti.image_url ORDER BY ti.created_at ASC) FROM tender_images ti WHERE ti.tender_id = tenders.id AND ti.image_url IS NOT NULL) AS image_urls,
+                store_type_id::text AS store_type_id, store_type_key, store_type_name,
                 status, accepted_offer_id::text AS accepted_offer_id, created_at, updated_at,
                 EXISTS (
                   SELECT 1

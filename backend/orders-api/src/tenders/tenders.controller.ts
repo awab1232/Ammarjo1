@@ -30,8 +30,7 @@ interface CreateTenderBody {
   storeTypeId?: string;
   storeTypeKey?: string;
   storeTypeName?: string;
-  imageBase64?: string;
-  imageUrl?: string;
+  imageBase64List?: string[];
 }
 
 interface SubmitOfferBody {
@@ -83,8 +82,7 @@ export class TendersController {
       storeTypeId: body.storeTypeId ?? null,
       storeTypeKey: body.storeTypeKey ?? null,
       storeTypeName: body.storeTypeName ?? null,
-      imageBase64: body.imageBase64 ?? null,
-      imageUrl: body.imageUrl ?? null,
+      imageBase64List: body.imageBase64List ?? [],
     });
   }
 

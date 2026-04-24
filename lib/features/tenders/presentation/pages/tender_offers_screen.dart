@@ -87,7 +87,7 @@ class TenderOffersScreen extends StatelessWidget {
                     ],
                   ),
                 ),
-                title: Text(tender.category, style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                title: Text(tender.categoryId, style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
                 subtitle: Text(tender.timeLeft, style: GoogleFonts.cairo(color: Colors.orange)),
               ),
               Expanded(
@@ -227,7 +227,7 @@ class TenderOffersScreen extends StatelessWidget {
                                           tenderId: tender.id,
                                           offer: offer,
                                           tenderImageUrl: tender.imageUrl,
-                                          category: tender.category,
+                                          category: tender.categoryId,
                                         );
                                         if (!context.mounted) return;
                                         context.read<StoreController>().addCartItem(cartItem);

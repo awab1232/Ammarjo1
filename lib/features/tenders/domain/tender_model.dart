@@ -3,7 +3,8 @@
   final String userId;
   final String userName;
   final String imageUrl;
-  final String category;
+  final List<String> imageUrls;
+  final String categoryId;
   final String description;
   final String city;
   final String status; // open|accepted|expired|closed
@@ -17,7 +18,8 @@
     required this.userId,
     required this.userName,
     required this.imageUrl,
-    required this.category,
+    required this.imageUrls,
+    required this.categoryId,
     required this.description,
     required this.city,
     required this.status,
@@ -41,14 +43,18 @@
   factory TenderModel.fromMap(String id, Map<String, dynamic> d) {
     final createdAt = _parseDate(d['createdAt']) ?? _parseDate(d['updatedAt']) ?? DateTime.now();
     final expiresAt = _parseDate(d['expiresAt']) ?? createdAt.add(const Duration(days: 7));
-    final resolvedUserId = d['userId']?.toString() ?? d['customerUid']?.toString() ?? '';
+    final resolvedUserId = d['userId']?.toString() ?? '';
     final resolvedUserName = d['userName']?.toString() ?? d['customerName']?.toString() ?? 'مستخدم';
+    final rawImages = (d['imageUrls'] is List) ? (d['imageUrls'] as List<dynamic>) : const <dynamic>[];
+    final imageUrls = rawImages.map((e) => e.toString()).where((e) => e.trim().isNotEmpty).toList(growable: false);
+    final imageUrl = d['imageUrl']?.toString() ?? (imageUrls.isNotEmpty ? imageUrls.first : '');
     return TenderModel(
       id: id,
       userId: resolvedUserId.isNotEmpty ? resolvedUserId : 'unknown',
       userName: resolvedUserName.trim().isNotEmpty ? resolvedUserName : 'مستخدم',
-      imageUrl: d['imageUrl']?.toString() ?? '',
-      category: d['category']?.toString() ?? '',
+      imageUrl: imageUrl,
+      imageUrls: imageUrls,
+      categoryId: d['categoryId']?.toString() ?? '',
       description: d['description']?.toString() ?? '',
       city: d['city']?.toString() ?? '',
       status: d['status']?.toString() ?? 'open',

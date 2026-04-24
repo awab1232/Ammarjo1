@@ -16,8 +16,9 @@ class TenderRepository {
   /// إنشاء مناقصة جديدة مع ربطها بنوع المتجر (storeTypeId/Key) ليتم توجيه الإشعارات
   /// إلى المتاجر المطابقة فقط (بدلاً من بث موحد لكل المتاجر).
   Future<String> createTender({
-    required Uint8List imageBytes,
-    required String category,
+    required List<Uint8List> imageBytesList,
+    required String categoryId,
+    required String categoryLabel,
     required String description,
     required String city,
     required String userName,
@@ -26,21 +27,21 @@ class TenderRepository {
     String? storeTypeName,
   }) async {
     final row = await BackendTenderClient.instance.createTender(
-      category: category,
+      categoryId: categoryId,
       description: description,
       city: city,
       userName: userName,
       storeTypeId: storeTypeId,
       storeTypeKey: storeTypeKey,
       storeTypeName: storeTypeName,
-      imageBytes: imageBytes,
+      imageBytesList: imageBytesList,
     );
     final id = row?['id']?.toString().trim() ?? '';
     if (id.isEmpty) throw Exception('تعذر إنشاء المناقصة');
     unawaited(
       _notifyTargetedStores(
         tenderId: id,
-        category: category,
+        category: categoryLabel,
         city: city,
         userName: userName,
         storeTypeId: storeTypeId,
@@ -113,7 +114,7 @@ class TenderRepository {
         }
       }
       if (category.trim().isNotEmpty) {
-        list = list.where((e) => e.category == category.trim()).toList();
+        list = list.where((e) => e.categoryId == category.trim()).toList();
       }
       yield FeatureState.success(list);
     } on Object {

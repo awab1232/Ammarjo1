@@ -56,7 +56,7 @@ class MyTendersScreen extends StatelessWidget {
             itemCount: tenders.length,
             itemBuilder: (context, i) {
               final t = tenders[i];
-              final title = t.category.trim().isNotEmpty ? t.category : 'مناقصة';
+              final title = t.categoryId.trim().isNotEmpty ? t.categoryId : 'مناقصة';
               final subtitle = t.timeLeft.trim().isNotEmpty ? t.timeLeft : 'قيد المتابعة';
               return Card(
                 child: ListTile(

@@ -23,7 +23,7 @@ class TenderRequestScreen extends StatefulWidget {
 }
 
 class _TenderRequestScreenState extends State<TenderRequestScreen> {
-  Uint8List? _imageBytes;
+  final List<Uint8List> _imageBytesList = <Uint8List>[];
   StoreTypeModel? _selectedStoreType;
   final TextEditingController _descController = TextEditingController();
   bool _isLoading = false;
@@ -113,14 +113,23 @@ class _TenderRequestScreenState extends State<TenderRequestScreen> {
                     color: Colors.grey[100],
                     borderRadius: BorderRadius.circular(16),
                     border: Border.all(
-                      color: _imageBytes != null ? const Color(0xFFFF6B00) : Colors.grey.shade300,
+                      color: _imageBytesList.isNotEmpty ? const Color(0xFFFF6B00) : Colors.grey.shade300,
                       width: 2,
                     ),
                   ),
-                  child: _imageBytes != null
+                  child: _imageBytesList.isNotEmpty
                       ? ClipRRect(
                           borderRadius: BorderRadius.circular(14),
-                          child: Image.memory(_imageBytes!, fit: BoxFit.cover, width: double.infinity),
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            padding: const EdgeInsets.all(8),
+                            itemBuilder: (context, index) => ClipRRect(
+                              borderRadius: BorderRadius.circular(10),
+                              child: Image.memory(_imageBytesList[index], width: 150, fit: BoxFit.cover),
+                            ),
+                            separatorBuilder: (_, _) => const SizedBox(width: 8),
+                            itemCount: _imageBytesList.length,
+                          ),
                         )
                       : Center(
                           child: Text('اضغط لرفع صورة', style: GoogleFonts.tajawal(color: Colors.grey[600])),
@@ -227,16 +236,23 @@ class _TenderRequestScreenState extends State<TenderRequestScreen> {
 
   Future<void> _pickImage() async {
     final picker = ImagePicker();
-    final picked = await picker.pickImage(source: ImageSource.gallery, maxWidth: 1280, imageQuality: 85);
-    if (picked == null) return;
-    final bytes = await picked.readAsBytes();
+    final pickedList = await picker.pickMultiImage(maxWidth: 1280, imageQuality: 85);
+    if (pickedList.isEmpty) return;
+    final bytesList = <Uint8List>[];
+    for (final file in pickedList) {
+      bytesList.add(await file.readAsBytes());
+    }
     if (!mounted) return;
-    setState(() => _imageBytes = bytes);
+    setState(() {
+      _imageBytesList
+        ..clear()
+        ..addAll(bytesList);
+    });
   }
 
   Future<void> _submitTender() async {
-    if (_imageBytes == null) {
-      _showError('يرجى رفع صورة الطلب');
+    if (_imageBytesList.isEmpty) {
+      _showError('يرجى رفع صورة واحدة على الأقل');
       return;
     }
     final type = _selectedStoreType;
@@ -260,8 +276,9 @@ class _TenderRequestScreenState extends State<TenderRequestScreen> {
           (UserSession.currentEmail.isNotEmpty ? UserSession.currentEmail : 'مستخدم');
 
       final tenderId = await TenderRepository.instance.createTender(
-        imageBytes: _imageBytes!,
-        category: type.name,
+        imageBytesList: List<Uint8List>.unmodifiable(_imageBytesList),
+        categoryId: type.id,
+        categoryLabel: type.name,
         description: _descController.text.trim(),
         city: city,
         userName: userName,
@@ -279,8 +296,8 @@ class _TenderRequestScreenState extends State<TenderRequestScreen> {
           backgroundColor: Colors.green.shade700,
         ),
       );
-    } on StateError catch (e) {
-      final msg = e.message.toString().trim();
+    } on Exception catch (e) {
+      final msg = e.toString().replaceFirst('Exception: ', '').trim();
       _showError(msg.isNotEmpty ? msg : 'تعذر إرسال المناقصة حالياً.');
     } on Object {
       debugPrint('Tender submission failed.');
