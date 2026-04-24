@@ -14,15 +14,11 @@ import '../../../../core/widgets/feature_state_builder.dart';
 import '../../../store/domain/wp_home_banner.dart';
 import '../../../../core/firebase/user_notifications_repository.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../../core/utils/jordan_phone.dart';
 import '../../../../core/utils/web_image_url.dart';
 import '../../../../core/widgets/ammar_cached_image.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/home_page_shimmers.dart';
 import '../../../../core/widgets/premium_categories_strip.dart';
-import '../../../communication/data/unified_chat_repository.dart';
-import '../../../communication/domain/unified_chat_models.dart';
-import '../../../communication/presentation/unified_chat_page.dart';
 import '../../../../core/services/permission_service.dart';
 import '../../../../core/session/backend_identity_controller.dart';
 import '../../data/service_requests_repository.dart';
@@ -188,56 +184,19 @@ class _MaintenancePageState extends State<MaintenancePage> with AutomaticKeepAli
       );
       return;
     }
-    String? chatId;
-    try {
-      final myPhone = dialablePhoneFromProfileEmail(email) ?? '';
-      chatId = await UnifiedChatRepository.instance.ensureChat(
-        kind: UnifiedChatKind.technicianCustomer,
-        contextId: requestId,
-        currentUserEmail: email,
-        currentUserPhone: myPhone,
-        peerEmail: techEmail,
-        peerPhone: (tech.phone ?? '').trim(),
-        technicianId: tech.id,
-        peerDisplayName: tech.displayName,
-        contextTitle: 'طلب فني #$requestId',
-        contextSubtitle: categoryHint,
-        contextImageUrl: tech.photoUrl,
-        peerFirebaseUid: tech.id,
-      );
-      await ServiceRequestsRepository.instance.attachChatIdToRequest(requestId, chatId);
-      await UnifiedChatRepository.instance.sendText(
-        chatId: chatId,
-        senderEmail: email,
-        text: 'طلب خدمة جديد:\n${req.description}',
-      );
-      final uname = store.profile?.fullName?.trim().isNotEmpty == true
-          ? store.profile!.fullName!.trim()
-          : (UserSession.currentDisplayName.isNotEmpty
-              ? UserSession.currentDisplayName
-              : email.split('@').first);
-      await UserNotificationsRepository.notifyServiceRequestToTechnician(
-        technicianEmail: techEmail,
-        clientName: uname,
-        description: req.description,
-        requestId: requestId,
-        chatId: chatId,
-      );
-    } on Object {
-      debugPrint('MaintenancePage: request chat bootstrap failed.');
-    }
+    final uname = store.profile?.fullName?.trim().isNotEmpty == true
+        ? store.profile!.fullName!.trim()
+        : (UserSession.currentDisplayName.isNotEmpty
+            ? UserSession.currentDisplayName
+            : email.split('@').first);
+    await UserNotificationsRepository.notifyServiceRequestToTechnician(
+      technicianEmail: techEmail,
+      clientName: uname,
+      description: req.description,
+      requestId: requestId,
+      chatId: null,
+    );
     if (!context.mounted) return;
-    if (chatId != null && chatId.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تم إنشاء طلبك الفني. يمكنك التواصل مع الفني هنا.', style: GoogleFonts.tajawal())),
-      );
-      await Navigator.of(context).push<void>(
-        MaterialPageRoute<void>(
-          builder: (_) => UnifiedChatPage.resume(existingChatId: chatId!, threadTitle: 'طلب فني #$requestId'),
-        ),
-      );
-      return;
-    }
     final categoryName = MaintenanceServiceCategory.labelForId(categoryId);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('تم إرسال طلبك إلى $categoryName بنجاح.', style: GoogleFonts.tajawal())),

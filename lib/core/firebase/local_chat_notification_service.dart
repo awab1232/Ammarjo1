@@ -5,9 +5,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
+import '../config/chat_feature_config.dart';
 import '../services/backend_notifications_client.dart';
-import '../../features/communication/data/unified_chat_repository.dart';
-import '../../features/communication/domain/unified_chat_models.dart';
 import '../contracts/feature_state.dart';
 
 abstract final class LocalChatNotificationService {
@@ -15,13 +14,13 @@ abstract final class LocalChatNotificationService {
   static final ValueNotifier<int> unreadBadgeCount = ValueNotifier<int>(0);
   static final Set<String> _processedEventIds = <String>{};
   static StreamSubscription<User?>? _authSub;
-  static StreamSubscription<FeatureState<List<UnifiedChatThread>>>? _chatSub;
   static StreamSubscription<RemoteMessage>? _fcmSub;
   static Timer? _webPollTimer;
   static DateTime _lastPollAt = DateTime.now().toUtc().subtract(const Duration(seconds: 5));
   static bool _initialized = false;
 
   static Future<void> init() async {
+    if (!kChatFeatureEnabled) return;
     if (_initialized) return;
     _initialized = true;
     if (!kIsWeb) {
@@ -33,14 +32,13 @@ abstract final class LocalChatNotificationService {
   }
 
   static void bindAuthState() {
+    if (!kChatFeatureEnabled) return;
     _authSub?.cancel();
     _authSub = FirebaseAuth.instance.authStateChanges().listen((u) {
-      _chatSub?.cancel();
       _webPollTimer?.cancel();
       _processedEventIds.clear();
       unreadBadgeCount.value = 0;
       if (u == null) return;
-      _listenChatInbox(u);
       if (kIsWeb) {
         _startWebPolling();
       }
@@ -63,31 +61,6 @@ abstract final class LocalChatNotificationService {
         title: message.notification?.title ?? 'رسالة جديدة',
         body: message.notification?.body ?? 'لديك رسالة جديدة',
       );
-    });
-  }
-
-  static void _listenChatInbox(User u) {
-    final email = u.email?.trim();
-    if (email == null || email.isEmpty) return;
-    DateTime? latest;
-    _chatSub = UnifiedChatRepository.instance.watchInbox(email).listen((state) async {
-      if (state is! FeatureSuccess<List<UnifiedChatThread>>) return;
-      final list = state.data;
-      if (list.isEmpty) return;
-      final newest = list.first;
-      final at = newest.lastMessageAt;
-      if (latest == null) {
-        latest = at;
-        return;
-      }
-      if (at.isAfter(latest!)) {
-        latest = at;
-        unreadBadgeCount.value = unreadBadgeCount.value + 1;
-        await _showLocalNotification(
-          title: newest.contextTitle.isNotEmpty ? newest.contextTitle : 'رسالة جديدة',
-          body: newest.lastMessagePreview.isNotEmpty ? newest.lastMessagePreview : 'لديك رسالة جديدة',
-        );
-      }
     });
   }
 

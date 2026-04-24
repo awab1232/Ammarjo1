@@ -8,15 +8,11 @@ import 'package:shimmer/shimmer.dart';
 import 'package:ammar_store/core/session/user_session.dart';
 
 import '../../../../core/firebase/user_notifications_repository.dart';
-import '../../../../core/utils/jordan_phone.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_bar_back_button.dart';
 import '../../../../core/widgets/app_bottom_sheet.dart';
 import '../../../../core/widgets/empty_state_widget.dart';
 import '../../../../core/widgets/home_page_shimmers.dart';
-import '../../../communication/data/unified_chat_repository.dart';
-import '../../../communication/domain/unified_chat_models.dart';
-import '../../../communication/presentation/unified_chat_page.dart';
 import '../../data/service_requests_repository.dart';
 import '../../../store/presentation/pages/customer_delivery_settings_page.dart';
 import '../../../store/presentation/store_controller.dart';
@@ -133,51 +129,19 @@ class TechnicianListScreen extends StatelessWidget {
       technicianEmail: techEmail,
       imageBytes: req.imageBytes,
     );
-    String? chatId;
-    try {
-      final myPhone = dialablePhoneFromProfileEmail(email) ?? '';
-      chatId = await UnifiedChatRepository.instance.ensureChat(
-        kind: UnifiedChatKind.technicianCustomer,
-        contextId: requestId,
-        currentUserEmail: email,
-        currentUserPhone: myPhone,
-        peerEmail: techEmail,
-        peerPhone: (tech.phone ?? '').trim(),
-        technicianId: tech.id,
-        peerDisplayName: tech.displayName,
-        contextTitle: 'طلب فني #$requestId',
-        contextSubtitle: category.labelAr,
-        contextImageUrl: tech.photoUrl,
-        peerFirebaseUid: tech.id,
-      );
-      await ServiceRequestsRepository.instance.attachChatIdToRequest(requestId, chatId);
-      final uname = store.profile?.fullName?.trim().isNotEmpty == true
-          ? store.profile!.fullName!.trim()
-          : (UserSession.currentDisplayName.isNotEmpty
-              ? UserSession.currentDisplayName
-              : email.split('@').first);
-      await UserNotificationsRepository.notifyServiceRequestToTechnician(
-        technicianEmail: techEmail,
-        clientName: uname,
-        description: req.description,
-        requestId: requestId,
-        chatId: chatId,
-      );
-    } on Object {
-      debugPrint('TechnicianListScreen: chat bootstrap failed.');
-    }
+    final uname = store.profile?.fullName?.trim().isNotEmpty == true
+        ? store.profile!.fullName!.trim()
+        : (UserSession.currentDisplayName.isNotEmpty
+            ? UserSession.currentDisplayName
+            : email.split('@').first);
+    await UserNotificationsRepository.notifyServiceRequestToTechnician(
+      technicianEmail: techEmail,
+      clientName: uname,
+      description: req.description,
+      requestId: requestId,
+      chatId: null,
+    );
     if (!context.mounted) return;
-    if (chatId != null && chatId.isNotEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('تم إنشاء طلبك الفني. يمكنك التواصل مع الفني هنا.', style: GoogleFonts.tajawal())),
-      );
-      await Navigator.of(context).push<void>(
-        MaterialPageRoute<void>(
-          builder: (_) => UnifiedChatPage.resume(existingChatId: chatId!, threadTitle: 'طلب فني #$requestId'),
-        ),
-      );
-      return;
-    }
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text('تم إرسال الطلب بنجاح، وسيتم التواصل معك قريباً.', style: GoogleFonts.tajawal())),
     );
