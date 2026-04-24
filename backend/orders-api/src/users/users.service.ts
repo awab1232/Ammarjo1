@@ -221,6 +221,30 @@ export class UsersService {
     });
   }
 
+  /**
+   * Lightweight lookup for session-token auth path (no Firebase decoded token available).
+   * Returns null when DB is unavailable or row is missing.
+   */
+  async findUserByFirebaseUid(firebaseUid: string): Promise<AppUserRow | null> {
+    const uid = firebaseUid.trim();
+    if (!uid || !this.pool) return null;
+    try {
+      return await this.withClient(async (client) => {
+        const r = await client.query(
+          `SELECT id, firebase_uid, email, role, tenant_id, store_id, wholesaler_id, store_type, is_active
+           FROM users
+           WHERE firebase_uid = $1
+           LIMIT 1`,
+          [uid],
+        );
+        if (r.rows.length === 0) return null;
+        return this.mapRow(r.rows[0] as Record<string, unknown>);
+      });
+    } catch {
+      return null;
+    }
+  }
+
   /** Admin / support inboxes for internal broadcast (matches legacy Firestore role names where synced). */
   async listAdminFirebaseUids(): Promise<string[]> {
     return this.withClient(async (client) => {

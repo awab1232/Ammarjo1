@@ -45,6 +45,12 @@ export class TenantContextGuard implements CanActivate {
         }
         throw new ServiceUnavailableException('user profile load failed');
       }
+    } else if (req.firebaseUid) {
+      // Session-token fallback: no decoded Firebase claims available, but we still need DB RBAC context.
+      const row = await this.users.findUserByFirebaseUid(req.firebaseUid);
+      if (row) {
+        snap = this.users.mergeSnapshotWithUser(snap, row, undefined);
+      }
     }
     setTenantContextSnapshot(snap);
     if (isMultiRegionRoutingEnabled()) {
