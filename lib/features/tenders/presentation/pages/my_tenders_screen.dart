@@ -56,14 +56,19 @@ class MyTendersScreen extends StatelessWidget {
             itemCount: tenders.length,
             itemBuilder: (context, i) {
               final t = tenders[i];
+              final title = t.category.trim().isNotEmpty ? t.category : 'مناقصة';
+              final subtitle = t.timeLeft.trim().isNotEmpty ? t.timeLeft : 'قيد المتابعة';
               return Card(
                 child: ListTile(
-                  leading: ClipRRect(
-                    borderRadius: BorderRadius.circular(8),
-                    child: AmmarCachedImage(imageUrl: t.imageUrl, width: 56, height: 56),
+                  leading: SizedBox.square(
+                    dimension: 56,
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: AmmarCachedImage(imageUrl: t.imageUrl, width: 56, height: 56),
+                    ),
                   ),
-                  title: Text(t.category, style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
-                  subtitle: Text(t.timeLeft, style: GoogleFonts.cairo(color: Colors.orange)),
+                  title: Text(title, style: GoogleFonts.cairo(fontWeight: FontWeight.bold)),
+                  subtitle: Text(subtitle, style: GoogleFonts.cairo(color: Colors.orange)),
                   onTap: () {
                     Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => TenderOffersScreen(tenderId: t.id)));
                   },

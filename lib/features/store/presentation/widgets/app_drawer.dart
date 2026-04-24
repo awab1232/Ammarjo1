@@ -34,7 +34,11 @@ class AppDrawer extends StatelessWidget {
 
   void _popThen(BuildContext context, VoidCallback fn) {
     Navigator.pop(context);
-    fn();
+    // Avoid route push during drawer pointer/mouse update on web.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!context.mounted) return;
+      fn();
+    });
   }
 
   @override
