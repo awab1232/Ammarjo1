@@ -13,7 +13,7 @@ import '../../../core/contracts/feature_state.dart';
 import '../../../core/services/backend_orders_client.dart';
 import '../domain/unified_chat_models.dart';
 
-/// ??????? ?????? — ???? Firestore: `unified_chats/{chatId}/messages/{messageId}`.
+/// ??????? ?????? - ???? Firestore: `unified_chats/{chatId}/messages/{messageId}`.
 /// ??? ???????? ???????? ?????? ??????? ?? Firebase Storage ??? `unified_chats/{chatId}/...` ??? ????? ?????.
 ///
 /// ??????: `buyer_id` / `seller_id` (Firebase Auth UID)? `buyer_email` / `seller_email`?
@@ -78,14 +78,11 @@ class UnifiedChatRepository {
       return;
     }
     try {
-      await mapRef.set(
-        {
-          'uid': resolved,
-          'email': peerEmail.trim(),
-          'updatedAt': FieldValue.serverTimestamp(),
-        },
-        SetOptions(merge: true),
-      );
+      await mapRef.set({
+        'uid': resolved,
+        'email': peerEmail.trim(),
+        'updatedAt': FieldValue.serverTimestamp(),
+      }, SetOptions(merge: true));
     } on Object {
       debugPrint(
         'UnifiedChatRepository._ensureUserExistsInFirestore: failed to write firebase_uid_by_email',
@@ -102,14 +99,20 @@ class UnifiedChatRepository {
     final fromMap = d?['uid'] as String?;
     if (fromMap != null && fromMap.isNotEmpty) return fromMap;
     try {
-      final q = await _db.collection('users').where('email', isEqualTo: key).limit(1).get();
+      final q = await _db
+          .collection('users')
+          .where('email', isEqualTo: key)
+          .limit(1)
+          .get();
       if (q.docs.isEmpty) return '';
       final doc = q.docs.first;
       final data = doc.data();
       final u = data['uid'] as String? ?? doc.id;
       if (u.isNotEmpty) return u;
     } on Object {
-      debugPrint('UnifiedChatRepository._lookupPeerFirebaseUid users fallback failed');
+      debugPrint(
+        'UnifiedChatRepository._lookupPeerFirebaseUid users fallback failed',
+      );
     }
     return '';
   }
@@ -129,14 +132,14 @@ class UnifiedChatRepository {
         .limit(80)
         .snapshots()
         .map((snap) {
-      final now = DateTime.now();
-      final list = snap.docs
-          .map(UnifiedChatThread.fromDoc)
-          .where((t) => t.expiresAt.isAfter(now))
-          .toList();
-      list.sort((a, b) => b.lastMessageAt.compareTo(a.lastMessageAt));
-      return FeatureState.success(list);
-    });
+          final now = DateTime.now();
+          final list = snap.docs
+              .map(UnifiedChatThread.fromDoc)
+              .where((t) => t.expiresAt.isAfter(now))
+              .toList();
+          list.sort((a, b) => b.lastMessageAt.compareTo(a.lastMessageAt));
+          return FeatureState.success(list);
+        });
   }
 
   /// ????? ?????? ??????. ??????? `createdAt` ????????? ??? ????? ????? ?? ?? ????? `timestamp`.
@@ -149,7 +152,11 @@ class UnifiedChatRepository {
         .orderBy('createdAt', descending: false)
         .limit(30)
         .snapshots()
-        .map((s) => FeatureState.success(s.docs.map(UnifiedChatMessage.fromDoc).toList()));
+        .map(
+          (s) => FeatureState.success(
+            s.docs.map(UnifiedChatMessage.fromDoc).toList(),
+          ),
+        );
   }
 
   Future<String> ensureChat({
@@ -167,6 +174,7 @@ class UnifiedChatRepository {
     String? productCardTitle,
     String? productCardPrice,
     String? productCardImageUrl,
+
     /// ????? Firebase UID ????? ????? ?? ???? (??? [ChatService.getOrCreateChat]) ???? ??????? ?? ??????.
     String? peerFirebaseUid,
     String? storeId,
@@ -183,13 +191,17 @@ class UnifiedChatRepository {
 
     final authUser = FirebaseAuth.instance.currentUser;
     if (authUser == null || authUser.uid.isEmpty) {
-      debugPrint('[UnifiedChatRepository] WARNING: auth user missing before ensureChat');
+      debugPrint(
+        '[UnifiedChatRepository] WARNING: auth user missing before ensureChat',
+      );
       throw StateError('?? ???? ???? Firebase ?????');
     }
     debugPrint('CHAT INIT');
     debugPrint('[UnifiedChatRepository] chat collection path: $_col');
 
-    final fbUser = await FirebaseChatAuth.ensureFirebaseUserForUnifiedChat(currentUserEmail);
+    final fbUser = await FirebaseChatAuth.ensureFirebaseUserForUnifiedChat(
+      currentUserEmail,
+    );
     if (fbUser == null) throw StateError('???? ????? ?????? ??? Firebase');
     if (fbUser.uid.isEmpty || fbUser.uid != authUser.uid) {
       throw StateError('????? ?? ???? ???????? ?????? ????????');
@@ -199,9 +211,12 @@ class UnifiedChatRepository {
     await _ensureUserExistsInFirestore(peerEmail);
 
     final buyerUid = fbUser.uid;
-    var sellerUid = (peerFirebaseUid ?? (throw StateError('unexpected_empty_response'))).trim();
+    var sellerUid =
+        (peerFirebaseUid ?? (throw StateError('unexpected_empty_response')))
+            .trim();
     if (sellerUid.isEmpty) {
-      sellerUid = await _lookupPeerFirebaseUid(peerEmail) ??
+      sellerUid =
+          await _lookupPeerFirebaseUid(peerEmail) ??
           (throw StateError('unexpected_empty_response'));
     }
     // ?? ???? ?? Firebase Auth ??? ?????? ??? UID ??????? ???? ?? ???? ??????? ?????? ????? (?? ????? Cloud Function).
@@ -210,16 +225,21 @@ class UnifiedChatRepository {
       throw StateError(
         '???? ??? ???? ????? ????? ?????? ????????. ??? ?? ????? ????? ????? ?? ??????? ???? '
         '?? ??? ?????? ?? firebase_uid_by_email ?? ???????. '
-        '(??? UID ??????? ??? ??? ???? ?? ?????? — ?? ????? Cloud Function.)',
+        '(??? UID ??????? ??? ??? ???? ?? ?????? - ?? ????? Cloud Function.)',
       );
     }
 
-    // ????? participants ???? ????? — ????? ?????? ?????? (?????/?????) ???? ??????? ??? ???? UID.
+    // ????? participants ???? ????? - ????? ?????? ?????? (?????/?????) ???? ??????? ??? ???? UID.
     final participantUidSet = <String>{buyerUid};
     if (sellerUid.isNotEmpty) participantUidSet.add(sellerUid);
     final participantUidsList = participantUidSet.toList();
 
-    final id = chatDocumentId(kind: kind, contextId: contextId, emailA: me, emailB: peer);
+    final id = chatDocumentId(
+      kind: kind,
+      contextId: contextId,
+      emailA: me,
+      emailB: peer,
+    );
     final ref = _db.collection(_col).doc(id);
     final existedBefore = await ref.get();
     final expires = DateTime.now().add(kind.ttl);
@@ -230,7 +250,8 @@ class UnifiedChatRepository {
     };
     final conversationType = _conversationType(kind);
     final requiresStoreId =
-        kind == UnifiedChatKind.storeCustomer || kind == UnifiedChatKind.homeStoreCustomer;
+        kind == UnifiedChatKind.storeCustomer ||
+        kind == UnifiedChatKind.homeStoreCustomer;
     final requiresTechnicianId = kind == UnifiedChatKind.technicianCustomer;
     final resolvedStoreId = (storeId ?? '').trim();
     final resolvedTechnicianId = (technicianId ?? '').trim();
@@ -240,7 +261,10 @@ class UnifiedChatRepository {
     if (requiresTechnicianId && resolvedTechnicianId.isEmpty) {
       throw StateError('INVALID_ID');
     }
-    final resolvedCustomerId = customerId != null && customerId.trim().isNotEmpty ? customerId : buyerUid;
+    final resolvedCustomerId =
+        customerId != null && customerId.trim().isNotEmpty
+        ? customerId
+        : buyerUid;
     if (resolvedCustomerId.trim().isEmpty) {
       throw StateError('INVALID_ID');
     }
@@ -256,7 +280,8 @@ class UnifiedChatRepository {
           'kind': kind.firestoreValue,
           'contextId': contextId,
           if (normalizedStoreId.isNotEmpty) 'storeId': normalizedStoreId,
-          if (normalizedTechnicianId.isNotEmpty) 'technicianId': normalizedTechnicianId,
+          if (normalizedTechnicianId.isNotEmpty)
+            'technicianId': normalizedTechnicianId,
           'customerId': normalizedCustomerId,
           'participantEmails': [me, peer],
           'participants': participantUidsList,
@@ -299,37 +324,54 @@ class UnifiedChatRepository {
       } else {
         final data = snap.data() ?? {};
         final upd = <String, dynamic>{};
-        if ((data['type'] as String? ?? (throw StateError('unexpected_empty_response'))).isEmpty) {
+        if ((data['type'] as String? ??
+                (throw StateError('unexpected_empty_response')))
+            .isEmpty) {
           upd['type'] = conversationType;
         }
-        if ((data['customerId'] as String? ?? (throw StateError('unexpected_empty_response'))).isEmpty &&
+        if ((data['customerId'] as String? ??
+                    (throw StateError('unexpected_empty_response')))
+                .isEmpty &&
             normalizedCustomerId.isNotEmpty) {
           upd['customerId'] = normalizedCustomerId;
         }
-        if ((data['storeId'] as String? ?? (throw StateError('unexpected_empty_response'))).isEmpty &&
+        if ((data['storeId'] as String? ??
+                    (throw StateError('unexpected_empty_response')))
+                .isEmpty &&
             normalizedStoreId.isNotEmpty) {
           upd['storeId'] = normalizedStoreId;
         }
-        if ((data['technicianId'] as String? ?? (throw StateError('unexpected_empty_response'))).isEmpty &&
+        if ((data['technicianId'] as String? ??
+                    (throw StateError('unexpected_empty_response')))
+                .isEmpty &&
             normalizedTechnicianId.isNotEmpty) {
           upd['technicianId'] = normalizedTechnicianId;
         }
         final newParticipantUids = <String>[];
-        if (sellerUid.isNotEmpty && (data['seller_id'] as String? ?? (throw StateError('unexpected_empty_response'))).isEmpty) {
+        if (sellerUid.isNotEmpty &&
+            (data['seller_id'] as String? ??
+                    (throw StateError('unexpected_empty_response')))
+                .isEmpty) {
           upd['seller_id'] = sellerUid;
           newParticipantUids.add(sellerUid);
         }
         if (sellerUid.isNotEmpty &&
-            ((data['otherPartyId'] as String?) ?? (throw StateError('unexpected_empty_response'))).isEmpty) {
+            ((data['otherPartyId'] as String?) ??
+                    (throw StateError('unexpected_empty_response')))
+                .isEmpty) {
           upd['otherPartyId'] = sellerUid;
         }
-        if (buyerUid.isNotEmpty && (data['buyer_id'] as String? ?? (throw StateError('unexpected_empty_response'))).isEmpty) {
+        if (buyerUid.isNotEmpty &&
+            (data['buyer_id'] as String? ??
+                    (throw StateError('unexpected_empty_response')))
+                .isEmpty) {
           upd['buyer_id'] = buyerUid;
           newParticipantUids.add(buyerUid);
         }
         upd['phonesByEmail'] = phonesByEmail;
         // ????? ?????? ????? ??? `participants`: ???? ?????? ?? buyer ?seller UID ?????????.
-        final ensureUids = <String>{buyerUid, sellerUid}..removeWhere((u) => u.isEmpty);
+        final ensureUids = <String>{buyerUid, sellerUid}
+          ..removeWhere((u) => u.isEmpty);
         if (ensureUids.isNotEmpty) {
           upd['participants'] = FieldValue.arrayUnion(ensureUids.toList());
         } else if (newParticipantUids.isNotEmpty) {
@@ -343,7 +385,8 @@ class UnifiedChatRepository {
       final su = await _lookupPeerFirebaseUid(peerEmail);
       if (su != null && su.isNotEmpty) {
         final u = FirebaseAuth.instance.currentUser;
-        final buyerName = (u?.displayName != null && u!.displayName!.trim().isNotEmpty)
+        final buyerName =
+            (u?.displayName != null && u!.displayName!.trim().isNotEmpty)
             ? u.displayName!.trim()
             : currentUserEmail.split('@').first;
         try {
@@ -375,10 +418,20 @@ class UnifiedChatRepository {
     final ref = _db.collection(_col).doc(chatId);
     final chatSnap = await ref.get();
     final cd = chatSnap.data() ?? {};
-    final buyerId = cd['buyer_id'] as String? ?? (throw StateError('unexpected_empty_response'));
-    final sellerId = cd['seller_id'] as String? ?? (throw StateError('unexpected_empty_response'));
-    final be = _normEmail(cd['buyer_email'] as String? ?? (throw StateError('unexpected_empty_response')));
-    final se = _normEmail(cd['seller_email'] as String? ?? (throw StateError('unexpected_empty_response')));
+    final buyerId =
+        cd['buyer_id'] as String? ??
+        (throw StateError('unexpected_empty_response'));
+    final sellerId =
+        cd['seller_id'] as String? ??
+        (throw StateError('unexpected_empty_response'));
+    final be = _normEmail(
+      cd['buyer_email'] as String? ??
+          (throw StateError('unexpected_empty_response')),
+    );
+    final se = _normEmail(
+      cd['seller_email'] as String? ??
+          (throw StateError('unexpected_empty_response')),
+    );
     final me = _normEmail(senderEmail);
     if (me != be && me != se) {
       throw StateError('?????? ?? ????? ??? ???? ????????');
@@ -409,20 +462,29 @@ class UnifiedChatRepository {
           targetUserId: receiverId,
           messageId: msgRef.id,
           messagePreview: t.length > 120 ? '${t.substring(0, 117)}...' : t,
-          type: (cd['kind']?.toString().trim().isNotEmpty ?? (throw StateError('unexpected_empty_response')))
+          type:
+              (cd['kind']?.toString().trim().isNotEmpty ??
+                  (throw StateError('unexpected_empty_response')))
               ? cd['kind'].toString()
               : 'general',
         ),
       );
     } on Object {
-      debugPrint('[CHAT-ERROR] UnifiedChatRepository.postChatMessageSent failed');
+      debugPrint(
+        '[CHAT-ERROR] UnifiedChatRepository.postChatMessageSent failed',
+      );
     }
   }
 
-  /// ???? `buyer_id` ?? `seller_id` ?? ???? ?????? ??? ????? Firebase — ????? ??? ????? ???? ????? ??? UID ???.
-  Future<void> ensureParticipantUidOnChat(String chatId, String currentUserEmail) async {
+  /// ???? `buyer_id` ?? `seller_id` ?? ???? ?????? ??? ????? Firebase - ????? ??? ????? ???? ????? ??? UID ???.
+  Future<void> ensureParticipantUidOnChat(
+    String chatId,
+    String currentUserEmail,
+  ) async {
     try {
-      final fbUser = await FirebaseChatAuth.ensureFirebaseUserForUnifiedChat(currentUserEmail);
+      final fbUser = await FirebaseChatAuth.ensureFirebaseUserForUnifiedChat(
+        currentUserEmail,
+      );
       if (fbUser == null || fbUser.uid.isEmpty) {
         debugPrint('ensureParticipantUidOnChat: ?? ?????? Firebase ????');
         return;
@@ -436,13 +498,21 @@ class UnifiedChatRepository {
       }
       final d = snap.data() ?? {};
       final me = _normEmail(currentUserEmail);
-      final be = _normEmail(d['buyer_email'] as String? ?? (throw StateError('unexpected_empty_response')));
-      final se = _normEmail(d['seller_email'] as String? ?? (throw StateError('unexpected_empty_response')));
-      final participantEmails = (d['participantEmails'] as List?)
+      final be = _normEmail(
+        d['buyer_email'] as String? ??
+            (throw StateError('unexpected_empty_response')),
+      );
+      final se = _normEmail(
+        d['seller_email'] as String? ??
+            (throw StateError('unexpected_empty_response')),
+      );
+      final participantEmails =
+          (d['participantEmails'] as List?)
               ?.map((e) => _normEmail(e.toString()))
               .toList() ??
           <String>[];
-      final isParticipant = me == be || me == se || participantEmails.contains(me);
+      final isParticipant =
+          me == be || me == se || participantEmails.contains(me);
       if (!isParticipant) {
         debugPrint(
           'ensureParticipantUidOnChat: ?????? ?????? ??? ????? ?? ???????? (chatId=$chatId)',
@@ -450,13 +520,19 @@ class UnifiedChatRepository {
         return;
       }
       final upd = <String, dynamic>{
-        // ????? ?????? ???????? ???????? ??? ??????? — ??? ?? ???? UID ?????? ?? ????????.
+        // ????? ?????? ???????? ???????? ??? ??????? - ??? ?? ???? UID ?????? ?? ????????.
         'participants': FieldValue.arrayUnion([fbUser.uid]),
       };
-      if (me == be && (d['buyer_id'] as String? ?? (throw StateError('unexpected_empty_response'))).isEmpty) {
+      if (me == be &&
+          (d['buyer_id'] as String? ??
+                  (throw StateError('unexpected_empty_response')))
+              .isEmpty) {
         upd['buyer_id'] = fbUser.uid;
       }
-      if (me == se && (d['seller_id'] as String? ?? (throw StateError('unexpected_empty_response'))).isEmpty) {
+      if (me == se &&
+          (d['seller_id'] as String? ??
+                  (throw StateError('unexpected_empty_response')))
+              .isEmpty) {
         upd['seller_id'] = fbUser.uid;
       }
       await ref.update(upd);
@@ -465,5 +541,3 @@ class UnifiedChatRepository {
     }
   }
 }
-
-
