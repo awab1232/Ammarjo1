@@ -320,6 +320,67 @@ class _AdminOrdersSectionState extends State<AdminOrdersSection> with SingleTick
     _refreshOrders();
   }
 
+  Future<void> _promptAdminCancelOrder(_OrderRow row) async {
+    final orderId = row.id.trim();
+    if (orderId.isEmpty) return;
+    final reasonCtrl = TextEditingController();
+    try {
+      final reason = await showDialog<String>(
+        context: context,
+        builder: (ctx) {
+          return AlertDialog(
+            title: Text('إلغاء الطلب', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+            content: TextField(
+              controller: reasonCtrl,
+              maxLines: 3,
+              textAlign: TextAlign.right,
+              decoration: const InputDecoration(
+                labelText: 'سبب الإلغاء',
+                hintText: 'اكتب سبب الإلغاء (10 أحرف على الأقل)',
+                border: OutlineInputBorder(),
+              ),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(ctx).pop(),
+                child: Text('إلغاء', style: GoogleFonts.tajawal()),
+              ),
+              FilledButton(
+                style: FilledButton.styleFrom(backgroundColor: AppColors.error),
+                onPressed: () {
+                  final value = reasonCtrl.text.trim();
+                  if (value.length < 10) {
+                    ScaffoldMessenger.of(ctx).showSnackBar(
+                      SnackBar(content: Text('سبب الإلغاء يجب أن يكون 10 أحرف على الأقل', style: GoogleFonts.tajawal())),
+                    );
+                    return;
+                  }
+                  Navigator.of(ctx).pop(value);
+                },
+                child: Text('تأكيد الإلغاء', style: GoogleFonts.tajawal(color: Colors.white)),
+              ),
+            ],
+          );
+        },
+      );
+      if (reason == null || reason.trim().length < 10 || !mounted) return;
+      final res = await BackendAdminClient.instance.patchAdminCancelOrder(orderId, reason: reason.trim());
+      if (!mounted) return;
+      if (res == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('تعذر إلغاء الطلب حالياً', style: GoogleFonts.tajawal())),
+        );
+        return;
+      }
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تم إلغاء الطلب بنجاح', style: GoogleFonts.tajawal()), backgroundColor: Colors.green),
+      );
+      await _refreshOrders();
+    } finally {
+      reasonCtrl.dispose();
+    }
+  }
+
   void _resetFirstPage() {
     setState(() {
       _extraOrderRows.clear();
@@ -527,6 +588,7 @@ class _AdminOrdersSectionState extends State<AdminOrdersSection> with SingleTick
                 statuses: _statuses,
                 onRetry: _retryOrdersStream,
                 emptyMessage: globalEmpty ? 'لا توجد طلبات بعد' : 'لا توجد طلبات مطابقة في هذا التبويب.',
+                onAdminCancel: UserSession.role == 'admin' ? _promptAdminCancelOrder : null,
               ),
               _OrdersListView(
                 rows: tab2raw,
@@ -535,6 +597,7 @@ class _AdminOrdersSectionState extends State<AdminOrdersSection> with SingleTick
                 statuses: _statuses,
                 onRetry: _retryOrdersStream,
                 emptyMessage: globalEmpty ? 'لا توجد طلبات بعد' : 'لا توجد طلبات مطابقة في هذا التبويب.',
+                onAdminCancel: UserSession.role == 'admin' ? _promptAdminCancelOrder : null,
               ),
             ],
           ),
@@ -721,6 +784,7 @@ class _OrdersListView extends StatelessWidget {
     required this.statuses,
     this.onRetry,
     this.emptyMessage = 'لا توجد طلبات مطابقة في هذا التبويب.',
+    this.onAdminCancel,
   });
 
   final List<_OrderRow> rows;
@@ -729,6 +793,7 @@ class _OrdersListView extends StatelessWidget {
   final List<String> statuses;
   final VoidCallback? onRetry;
   final String emptyMessage;
+  final Future<void> Function(_OrderRow row)? onAdminCancel;
 
   @override
   Widget build(BuildContext context) {
@@ -916,6 +981,21 @@ class _OrdersListView extends StatelessWidget {
                       }
                     },
                   ),
+                  if (onAdminCancel != null && norm != 'cancelled') ...[
+                    const SizedBox(height: 8),
+                    Align(
+                      alignment: Alignment.centerLeft,
+                      child: OutlinedButton.icon(
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.error,
+                          side: const BorderSide(color: AppColors.error),
+                        ),
+                        onPressed: () => onAdminCancel!(doc),
+                        icon: const Icon(Icons.cancel_outlined),
+                        label: Text('إلغاء الطلب', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                      ),
+                    ),
+                  ],
                 ],
               ),
             ),

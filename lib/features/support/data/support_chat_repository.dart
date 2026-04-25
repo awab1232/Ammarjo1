@@ -121,6 +121,53 @@ class SupportChatRepository {
     }
   }
 
+  Future<SupportChatOpenResult> createOrderIssueTicket({
+    required String uid,
+    required String userName,
+    required String orderId,
+  }) async {
+    const empty = SupportChatOpenResult(chatId: '', created: false);
+    final cur = FirebaseAuth.instance.currentUser;
+    if (cur == null || cur.uid != uid) {
+      debugPrint('[SupportChatRepository] createOrderIssueTicket: session mismatch');
+      return empty;
+    }
+    final oid = orderId.trim();
+    if (oid.isEmpty) return empty;
+    try {
+      final res = await http.post(
+        _uri('/support/tickets'),
+        headers: await _headers(),
+        body: jsonEncode(<String, dynamic>{
+          'userName': userName,
+          'subject': 'مشكلة في الطلب #$oid',
+          'message': 'العميل يحتاج مساعدة في الطلب رقم: $oid',
+          'orderId': oid,
+          'type': 'order_issue',
+          'forceNew': true,
+        }),
+      );
+      if (res.statusCode < 200 || res.statusCode >= 300) {
+        debugPrint('[SupportChatRepository] createOrderIssueTicket HTTP ${res.statusCode}');
+        return empty;
+      }
+      dynamic decoded;
+      try {
+        decoded = jsonDecode(res.body);
+      } on Object {
+        return empty;
+      }
+      if (decoded is! Map) return empty;
+      final m = Map<String, dynamic>.from(decoded);
+      final id = m['id']?.toString() ?? '';
+      if (id.isEmpty) return empty;
+      return SupportChatOpenResult(chatId: id, created: m['created'] == true);
+    } on Object catch (e) {
+      debugPrint('[SupportChatRepository] createOrderIssueTicket failed: $e');
+      return empty;
+    }
+  }
+
   Future<SupportTicket?> fetchTicket(String ticketId) async {
     try {
       final res = await http.get(_uri('/support/tickets', {'id': ticketId.trim()}), headers: await _headers());

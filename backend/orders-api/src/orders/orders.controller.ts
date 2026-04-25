@@ -19,6 +19,8 @@ import { RbacGuard } from '../identity/rbac.guard';
 import { RequirePermissions } from '../identity/require-permissions.decorator';
 import { TenantContextGuard } from '../identity/tenant-context.guard';
 import { FirebaseAuthGuard, type RequestWithFirebase } from '../auth/firebase-auth.guard';
+import { RoleGuard } from '../identity/role.guard';
+import { Roles } from '../identity/roles.decorator';
 import { CacheService } from '../infrastructure/cache/cache.service';
 import { responseCacheTtlSeconds } from '../infrastructure/cache/cache.config';
 import { logOrderError } from './order-logger';
@@ -199,6 +201,23 @@ export class OrdersController {
     @Body() body: PatchOrderStatusDto,
   ) {
     return this.orders.updateStatus(id, body.status, req.firebaseUid!);
+  }
+
+  @Patch('orders/:id/admin-cancel')
+  @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard, RoleGuard)
+  @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 60 } })
+  @Roles('admin', 'system_internal')
+  @RequirePermissions('orders.write')
+  async adminCancel(
+    @Req() req: RequestWithFirebase,
+    @Param('id') id: string,
+    @Body() body: { reason?: string },
+  ) {
+    const reason = String(body?.reason ?? '').trim();
+    if (reason.length < 10) {
+      throw new BadRequestException('reason must be at least 10 characters');
+    }
+    return this.orders.adminCancelOrder(id, reason, req.firebaseUid!);
   }
 
   @Get('users/:id/orders')

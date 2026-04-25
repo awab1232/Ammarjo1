@@ -2261,31 +2261,58 @@ export class AdminRestService {
   async findOrCreateOpenSupportTicket(
     firebaseUid: string,
     customerName: string,
+    options?: {
+      subject?: string;
+      message?: string;
+      orderId?: string;
+      type?: string;
+      forceNew?: boolean;
+    },
   ): Promise<{ id: string; created: boolean }> {
     const uid = firebaseUid.trim();
     const name = customerName.trim() || 'عميل';
+    const subject = String(options?.subject ?? '').trim();
+    const message = String(options?.message ?? '').trim();
+    const orderId = String(options?.orderId ?? '').trim();
+    const issueType = String(options?.type ?? '').trim();
+    const forceNew = options?.forceNew === true;
     return this.withClient(async (client) => {
-      const open = await client.query(
-        `SELECT id::text AS id FROM admin_support_tickets
-         WHERE status = 'open'
-           AND (payload->>'customerUid') = $1
-         ORDER BY updated_at DESC
-         LIMIT 1`,
-        [uid],
-      );
-      if (open.rows.length > 0) {
-        return { id: String(open.rows[0]['id']), created: false };
+      if (!forceNew) {
+        const open = await client.query(
+          `SELECT id::text AS id FROM admin_support_tickets
+           WHERE status = 'open'
+             AND (payload->>'customerUid') = $1
+           ORDER BY updated_at DESC
+           LIMIT 1`,
+          [uid],
+        );
+        if (open.rows.length > 0) {
+          return { id: String(open.rows[0]['id']), created: false };
+        }
       }
+      const createdAt = new Date().toISOString();
+      const seededMessages: unknown[] = message
+        ? [
+            {
+              senderId: uid,
+              senderName: name,
+              text: message,
+              createdAt,
+            },
+          ]
+        : [];
       const payload = {
         customerUid: uid,
         customerName: name,
-        messages: [] as unknown[],
+        orderId: orderId || null,
+        type: issueType || 'general',
+        messages: seededMessages,
       };
       const ins = await client.query(
         `INSERT INTO admin_support_tickets (subject, status, payload)
          VALUES ($1, 'open', $2::jsonb)
          RETURNING id::text AS id`,
-        [`دعم — ${name}`, JSON.stringify(payload)],
+        [subject || `دعم — ${name}`, JSON.stringify(payload)],
       );
       const id = String(ins.rows[0]?.['id'] ?? '');
       return { id, created: true };

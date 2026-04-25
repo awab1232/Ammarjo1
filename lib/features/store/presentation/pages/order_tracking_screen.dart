@@ -16,6 +16,8 @@ import '../../../reviews/data/reviews_repository.dart';
 import '../../../../core/contracts/feature_unit.dart';
 import 'advanced_order_tracking_screen.dart';
 import 'order_tracking_page.dart';
+import '../../../support/data/support_chat_repository.dart';
+import '../../../support/presentation/support_chat_page.dart';
 
 Future<void> _launchSafeTrackingUrl(String? raw) async {
   final u = SafeTrackingUrl.sanitize(raw);
@@ -64,6 +66,37 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
   bool _canCancel(String status) {
     final s = OrderStatus.toEnglish(status);
     return s == 'pending' || s == 'processing';
+  }
+
+  bool _canAskForHelp(String status) {
+    final s = OrderStatus.toEnglish(status);
+    return s != 'cancelled' && s != 'delivered' && s != 'completed';
+  }
+
+  Future<void> _openOrderHelp(BuildContext context, TrackOrderItem order) async {
+    final uid = UserSession.currentUid;
+    final orderId = (order.firebaseOrderId ?? order.id).trim();
+    if (uid.isEmpty || orderId.isEmpty) return;
+    final displayName = UserSession.currentDisplayName.trim().isNotEmpty
+        ? UserSession.currentDisplayName.trim()
+        : 'عميل';
+    final ticket = await SupportChatRepository.instance.createOrderIssueTicket(
+      uid: uid,
+      userName: displayName,
+      orderId: orderId,
+    );
+    if (!context.mounted) return;
+    if (ticket.chatId.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('تعذر فتح الدعم حالياً.', style: GoogleFonts.tajawal())),
+      );
+      return;
+    }
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => SupportChatPage(chatId: ticket.chatId, isAdmin: false),
+      ),
+    );
   }
 
   String _ordersLoadError(Object? error) {
@@ -475,6 +508,22 @@ class _OrderTrackingScreenState extends State<OrderTrackingScreen> {
                                 style: OutlinedButton.styleFrom(foregroundColor: AppColors.error),
                                 onPressed: () => _confirmCancel(context, o),
                                 child: Text('إلغاء الطلب', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                              ),
+                            ),
+                          ],
+                          if (_canAskForHelp(o.status)) ...[
+                            const SizedBox(height: 10),
+                            FilledButton.icon(
+                              style: FilledButton.styleFrom(
+                                backgroundColor: const Color(0xFFE8471A),
+                                foregroundColor: Colors.white,
+                                minimumSize: const Size.fromHeight(48),
+                              ),
+                              onPressed: () => _openOrderHelp(context, o),
+                              icon: const Icon(Icons.headset_mic_outlined),
+                              label: Text(
+                                'مشكلة في الطلب؟ تواصل مع الدعم',
+                                style: GoogleFonts.tajawal(fontWeight: FontWeight.w800),
                               ),
                             ),
                           ],

@@ -496,14 +496,7 @@ BEGIN
   END IF;
 END$$;
 
-ALTER TABLE IF EXISTS orders DROP COLUMN IF EXISTS store_id;
-ALTER TABLE IF EXISTS orders DROP COLUMN IF EXISTS store_id_legacy;
-ALTER TABLE IF EXISTS cart_items DROP COLUMN IF EXISTS store_id;
-ALTER TABLE IF EXISTS cart_items DROP COLUMN IF EXISTS store_id_legacy;
-ALTER TABLE IF EXISTS tenders DROP COLUMN IF EXISTS customer_uid;
-ALTER TABLE IF EXISTS tenders DROP COLUMN IF EXISTS category;
-ALTER TABLE IF EXISTS tender_offers DROP COLUMN IF EXISTS store_id;
-ALTER TABLE IF EXISTS tender_offers DROP COLUMN IF EXISTS store_id_legacy;
+-- NOTE: Legacy-column DROP operations intentionally omitted for idempotent/safe production runs.
 
 -- =========================================================
 -- 042_add_driver_earnings.sql

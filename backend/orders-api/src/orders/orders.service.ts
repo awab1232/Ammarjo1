@@ -633,6 +633,78 @@ export class OrdersService implements IOrderService {
     return { orderId: id, status: next };
   }
 
+  async adminCancelOrder(
+    orderId: string,
+    reason: string,
+    adminUid: string,
+  ): Promise<{ orderId: string; status: string }> {
+    const id = orderId.trim();
+    const why = reason.trim();
+    if (!id) throw new BadRequestException('orderId is required');
+    if (why.length < 10) throw new BadRequestException('reason must be at least 10 characters');
+    if (!this.pool) throw new ServiceUnavailableException('database unavailable');
+
+    const client = await this.pool.connect();
+    try {
+      const res = await client.query<{
+        customer_uid: string | null;
+        store_id_uuid: string | null;
+      }>(
+        `UPDATE orders
+         SET status = 'cancelled',
+             cancellation_reason = $2,
+             cancelled_by = 'admin',
+             cancelled_at = NOW(),
+             updated_at = NOW()
+         WHERE order_id = $1
+         RETURNING customer_uid, store_id_uuid::text`,
+        [id, why],
+      );
+      if (res.rowCount === 0) {
+        throw new NotFoundException('Order not found');
+      }
+
+      const customerUid = String(res.rows[0]?.customer_uid ?? '').trim();
+      const storeId = String(res.rows[0]?.store_id_uuid ?? '').trim();
+
+      if (customerUid) {
+        void this.notificationsService.sendPushToUser(customerUid, {
+          title: 'تم إلغاء الطلب',
+          body: `تم إلغاء طلبك من قبل الإدارة: ${why}`,
+          data: { orderId: id, type: 'order_cancelled_by_admin' },
+        });
+      }
+
+      if (storeId) {
+        void client
+          .query<{ owner_id: string }>(
+            `SELECT owner_id FROM stores WHERE id = $1::uuid LIMIT 1`,
+            [storeId],
+          )
+          .then((q) => {
+            const storeOwnerUid = String(q.rows[0]?.owner_id ?? '').trim();
+            if (!storeOwnerUid) return;
+            return this.notificationsService.sendPushToUser(storeOwnerUid, {
+              title: 'إلغاء طلب من الإدارة',
+              body: `تم إلغاء الطلب #${id} من قبل الإدارة`,
+              data: { orderId: id, type: 'order_cancelled_by_admin' },
+            });
+          })
+          .catch(() => undefined);
+      }
+
+      logOrderEvent({
+        kind: 'order_status_updated',
+        orderId: id,
+        firebaseUid: adminUid,
+        status: 'cancelled',
+      });
+      return { orderId: id, status: 'cancelled' };
+    } finally {
+      client.release();
+    }
+  }
+
   async pingOrderStorage(): Promise<{ ok: boolean; error?: string }> {
     if (!this.pg.isEnabled()) {
       return { ok: false, error: 'not_configured' };

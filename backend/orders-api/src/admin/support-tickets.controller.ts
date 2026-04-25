@@ -38,8 +38,29 @@ export class SupportTicketsController {
 
   @Post()
   @RequirePermissions('orders.write')
-  create(@Req() req: RequestWithFirebase, @Body() body: { userName?: string }) {
-    return this.admin.findOrCreateOpenSupportTicket(req.firebaseUid!, body?.userName ?? 'عميل');
+  create(
+    @Req() req: RequestWithFirebase,
+    @Body()
+    body: {
+      userName?: string;
+      subject?: string;
+      message?: string;
+      orderId?: string;
+      type?: string;
+      forceNew?: boolean;
+    },
+  ) {
+    return this.admin.findOrCreateOpenSupportTicket(
+      req.firebaseUid!,
+      body?.userName ?? 'عميل',
+      {
+        subject: body?.subject,
+        message: body?.message,
+        orderId: body?.orderId,
+        type: body?.type,
+        forceNew: body?.forceNew === true,
+      },
+    );
   }
 
   @Patch(':id')

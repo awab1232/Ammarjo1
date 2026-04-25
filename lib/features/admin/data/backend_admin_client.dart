@@ -384,6 +384,16 @@ final class BackendAdminClient {
     );
   }
 
+  Future<Map<String, dynamic>?> patchAdminCancelOrder(
+    String orderId, {
+    required String reason,
+  }) {
+    return _patch(
+      '/orders/${Uri.encodeComponent(orderId.trim())}/admin-cancel',
+      body: {'reason': reason.trim()},
+    );
+  }
+
   // ——— Migration hub status (JSON blob) ———
 
   Future<Map<String, dynamic>?> fetchMigrationStatus() => _get('/admin/rest/migration-status');
