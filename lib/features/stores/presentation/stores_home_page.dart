@@ -1,7 +1,7 @@
 import 'dart:async';
 
-import 'package:flutter/foundation.dart' show debugPrint, kIsWeb;
 import 'package:flutter/material.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -133,52 +133,10 @@ class _StoresHomePageState extends State<StoresHomePage> {
               height: 218,
               child: _StoresHomePageBannerCarousel(page: widget.homeBannersPageKey),
             ),
-            if (widget.storeCategoryFilter == null && kIsWeb) ...[
-              const StoresHomeMarketingSectionTitle(
-                title: 'أقسام المتاجر',
-                subtitle: 'تُدار من لوحة التحكم: المتاجر ← الأقسام الرئيسية',
-              ),
-              const StoresHomeSectionsCardsStrip(),
-              const SizedBox(height: 8),
-              const StoresHomeMarketingSectionTitle(
-                title: 'عروض اليوم',
-                subtitle: 'تُعدّل من لوحة التحكم: إدارة البنرات والصفحة الرئيسية',
-              ),
-              const StoresHomeOffersStrip(),
-              const StoresHomeMarketingSectionTitle(title: 'المتاجر الأكثر طلباً'),
-              StoresHomeMostRequestedStrip(futureStores: storeFut),
-              const StoresHomeMarketingSectionTitle(title: 'أعلى المتاجر تقييماً'),
-              const StoresHomeTopRatedStrip(),
-              const StoresHomeBottomMarketingBanner(),
-              const SizedBox(height: 12),
-            ],
             if (widget.storeCategoryFilter == null) ...[
-              SizedBox(
-                height: 54,
-                child: ListView(
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  children: [
-                    ChoiceChip(
-                      label: Text('كل الأنواع', style: GoogleFonts.tajawal()),
-                      selected: _selectedStoreTypeId == null,
-                      onSelected: (_) => setState(() => _selectedStoreTypeId = null),
-                    ),
-                    const SizedBox(width: 8),
-                    ..._storeTypes.map(
-                      (type) => Padding(
-                        padding: const EdgeInsets.only(left: 8),
-                        child: ChoiceChip(
-                          label: Text(type.name, style: GoogleFonts.tajawal()),
-                          selected: _selectedStoreTypeId == type.id,
-                          onSelected: (_) => setState(() => _selectedStoreTypeId = type.id),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 8),
+              _sectionHeader('أقسام المتاجر'),
+              _buildStoreTypeChips(),
+              _sectionHeader('التصنيفات'),
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: Column(
@@ -251,23 +209,14 @@ class _StoresHomePageState extends State<StoresHomePage> {
                 ),
               ),
               const SizedBox(height: 12),
+              _sectionHeader('عروض اليوم'),
+              const StoresHomeOffersStrip(),
+              _sectionHeader('أعلى المتاجر تقييماً'),
+              const StoresHomeTopRatedStrip(),
             ] else ...[
               const SizedBox(height: 8),
             ],
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  Container(
-                    width: 4,
-                    height: 22,
-                    decoration: BoxDecoration(color: AppColors.accent, borderRadius: BorderRadius.circular(2)),
-                  ),
-                  const SizedBox(width: 10),
-                  Text('كل المتاجر', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 18, color: AppColors.textPrimary)),
-                ],
-              ),
-            ),
+            _sectionHeader('جميع المتاجر'),
             const SizedBox(height: 8),
             ..._buildHomeStoreRowsFromState(context, storeController, st),
             const SizedBox(height: 16),
@@ -311,7 +260,6 @@ class _StoresHomePageState extends State<StoresHomePage> {
                 ),
               ),
             ),
-            if (kIsWeb) const _StoresWebInlineFooter(),
             SizedBox(height: MediaQuery.paddingOf(context).bottom + 60),
           ],
         );
@@ -480,15 +428,23 @@ class _StoresHomePageState extends State<StoresHomePage> {
           hintText: 'ابحث عن متجر أو منتج…',
           hintStyle: GoogleFonts.tajawal(color: AppColors.textSecondary, fontSize: 15),
           prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primaryOrange),
-          suffixIcon: _hasSearchQuery
-              ? IconButton(
+          suffixIcon: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_hasSearchQuery)
+                IconButton(
                   icon: const Icon(Icons.clear_rounded),
                   onPressed: () {
                     _searchController.clear();
                     setState(() {});
                   },
-                )
-              : null,
+                ),
+              IconButton(
+                icon: const Icon(Icons.mic_none_rounded, color: AppColors.primaryOrange),
+                onPressed: () {},
+              ),
+            ],
+          ),
           filled: true,
           fillColor: Colors.white,
           contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
@@ -496,6 +452,117 @@ class _StoresHomePageState extends State<StoresHomePage> {
           enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.6))),
           focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.primaryOrange, width: 1.5)),
         ),
+      ),
+    );
+  }
+
+  Widget _sectionHeader(String title, {VoidCallback? onSeeAll}) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 20, 16, 12),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 20,
+            decoration: BoxDecoration(
+              color: const Color(0xFFE8471A),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: GoogleFonts.tajawal(
+              fontSize: 18,
+              fontWeight: FontWeight.w800,
+              color: Colors.black87,
+            ),
+          ),
+          const Spacer(),
+          if (onSeeAll != null)
+            TextButton(
+              onPressed: onSeeAll,
+              child: Text(
+                'عرض الكل',
+                style: GoogleFonts.tajawal(
+                  color: const Color(0xFFE8471A),
+                  fontSize: 13,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStoreTypeChips() {
+    return SizedBox(
+      height: 90,
+      child: ListView.builder(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: _storeTypes.length + 1,
+        itemBuilder: (context, i) {
+          final isAll = i == 0;
+          final selected = isAll ? _selectedStoreTypeId == null : _selectedStoreTypeId == _storeTypes[i - 1].id;
+          final String name = isAll ? 'كل الأنواع' : _storeTypes[i - 1].name;
+          final String? imageUrl = isAll ? null : webSafeImageUrl(_storeTypes[i - 1].image?.trim() ?? '');
+          return GestureDetector(
+            onTap: () {
+              setState(() {
+                _selectedStoreTypeId = isAll ? null : _storeTypes[i - 1].id;
+              });
+            },
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 200),
+              margin: const EdgeInsets.only(left: 10),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+              decoration: BoxDecoration(
+                color: selected ? const Color(0xFFE8471A) : Colors.white,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: selected
+                        ? const Color(0xFFE8471A).withValues(alpha: 0.3)
+                        : Colors.black.withValues(alpha: 0.06),
+                    blurRadius: 8,
+                    offset: const Offset(0, 3),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (imageUrl != null && imageUrl.isNotEmpty)
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: CachedNetworkImage(
+                        imageUrl: imageUrl,
+                        width: 32,
+                        height: 32,
+                        fit: BoxFit.cover,
+                      ),
+                    )
+                  else
+                    Icon(
+                      Icons.storefront_rounded,
+                      color: selected ? Colors.white : const Color(0xFFE8471A),
+                      size: 28,
+                    ),
+                  const SizedBox(height: 4),
+                  Text(
+                    name,
+                    style: GoogleFonts.tajawal(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: selected ? Colors.white : Colors.black87,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -613,7 +680,6 @@ class _StoresHomePageState extends State<StoresHomePage> {
         children: [
           const SizedBox(height: 8),
           _buildSearchField(),
-          if (kIsWeb) const _WebAppDownloadBanner(),
           const SizedBox(height: 8),
           Expanded(
             child: _hasSearchQuery
@@ -625,136 +691,6 @@ class _StoresHomePageState extends State<StoresHomePage> {
       floatingActionButton: buildTenderFab(context),
       floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
     ));
-  }
-}
-
-class _WebAppDownloadBanner extends StatelessWidget {
-  const _WebAppDownloadBanner();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 8, 16, 4),
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(14),
-        gradient: const LinearGradient(colors: [Color(0xFF1F2937), Color(0xFF111827)]),
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.download_for_offline_rounded, color: Colors.white),
-          const SizedBox(width: 10),
-          Expanded(
-            child: Text(
-              'حمّل تطبيق AmmarJo لتجربة أسرع وتنبيهات مباشرة للعروض والطلبات',
-              style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.w700),
-            ),
-          ),
-          const SizedBox(width: 10),
-          FilledButton(
-            style: FilledButton.styleFrom(backgroundColor: AppColors.primaryOrange, foregroundColor: Colors.white),
-            onPressed: () => _open('https://play.google.com/store'),
-            child: Text('تحميل', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Future<void> _open(String url) async {
-    final uri = Uri.parse(url);
-    await launchUrl(uri, mode: LaunchMode.platformDefault);
-  }
-}
-
-class _StoresWebInlineFooter extends StatelessWidget {
-  const _StoresWebInlineFooter();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: double.infinity,
-      margin: const EdgeInsets.only(top: 14),
-      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 24),
-      color: Colors.grey.shade100,
-      child: Wrap(
-        alignment: WrapAlignment.spaceAround,
-        runSpacing: 18,
-        spacing: 18,
-        children: [
-          _footerColumn(
-            context,
-            'عن AmmarJo',
-            const [('من نحن', '/about'), ('مدونتنا', '/blog')],
-          ),
-          _footerColumn(
-            context,
-            'القوانين',
-            const [
-              ('سياسة الخصوصية', '/privacy'),
-              ('شروط الاستخدام', '/terms'),
-              ('سياسة الاسترجاع', '/return-policy'),
-            ],
-          ),
-          Container(
-            width: 320,
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(colors: [Color(0xFFFF8A3D), Color(0xFFFF6B00)]),
-              borderRadius: BorderRadius.circular(14),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('حمّل تطبيق AmmarJo', style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.w800, fontSize: 16)),
-                const SizedBox(height: 6),
-                Text('إشعارات أسرع + عروض حصرية + تجربة أفضل', style: GoogleFonts.tajawal(color: Colors.white.withValues(alpha: 0.95), fontSize: 12)),
-                const SizedBox(height: 10),
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    FilledButton.icon(
-                      style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: AppColors.primaryOrange),
-                      onPressed: () => _open('https://play.google.com/store'),
-                      icon: const Icon(Icons.android_rounded, size: 18),
-                      label: Text('Google Play', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
-                    ),
-                    FilledButton.icon(
-                      style: FilledButton.styleFrom(backgroundColor: Colors.white, foregroundColor: AppColors.primaryOrange),
-                      onPressed: () => _open('https://www.apple.com/app-store/'),
-                      icon: const Icon(Icons.phone_iphone_rounded, size: 18),
-                      label: Text('App Store', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _footerColumn(BuildContext context, String title, List<(String, String)> links) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
-        const SizedBox(height: 8),
-        ...links.map(
-          (l) => TextButton(
-            onPressed: () => Navigator.of(context).pushNamed(l.$2),
-            child: Text(l.$1, style: GoogleFonts.tajawal()),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Future<void> _open(String url) async {
-    final uri = Uri.parse(url);
-    await launchUrl(uri, mode: LaunchMode.platformDefault);
   }
 }
 
@@ -771,11 +707,6 @@ class _StoresHomePageBannerCarousel extends StatefulWidget {
 
 class _StoresHomePageBannerCarouselState extends State<_StoresHomePageBannerCarousel> {
   Future<FeatureState<List<WpHomeBannerSlide>>>? _future;
-  PageController? _pageController;
-  double? _viewportFraction;
-  Timer? _autoTimer;
-  int _bannerIndex = 0;
-  int _autoScheduledForCount = -1;
 
   Future<FeatureState<List<WpHomeBannerSlide>>> _safeFetchBanners({bool forceRefresh = false}) async {
     final state = await context.read<ProductRepository>().fetchHomeBanners(forceRefresh: forceRefresh);
@@ -794,69 +725,24 @@ class _StoresHomePageBannerCarouselState extends State<_StoresHomePageBannerCaro
   void didChangeDependencies() {
     super.didChangeDependencies();
     _future ??= _safeFetchBanners();
-    _ensurePageController();
   }
 
   @override
   void didUpdateWidget(covariant _StoresHomePageBannerCarousel oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.page != widget.page) {
-      _cancelAuto();
-      _autoScheduledForCount = -1;
-      _bannerIndex = 0;
       _future = _safeFetchBanners(forceRefresh: true);
     }
-  }
-
-  void _ensurePageController() {
-    final width = MediaQuery.sizeOf(context).width;
-    final vf = width >= 1200 ? 1.0 : 0.92;
-    if (_viewportFraction != vf) {
-      _viewportFraction = vf;
-      _pageController?.dispose();
-      _pageController = PageController(viewportFraction: vf);
-      _bannerIndex = 0;
-      _autoScheduledForCount = -1;
-      _cancelAuto();
-    }
-  }
-
-  void _cancelAuto() {
-    _autoTimer?.cancel();
-    _autoTimer = null;
-  }
-
-  void _scheduleAutoAdvance(int count) {
-    _cancelAuto();
-    if (count <= 1) return;
-    _autoTimer = Timer.periodic(const Duration(seconds: 6), (_) {
-      final pc = _pageController;
-      if (!mounted || pc == null || !pc.hasClients) return;
-      final cur = pc.page?.round() ?? _bannerIndex;
-      final next = (cur + 1) % count;
-      pc.animateToPage(
-        next,
-        duration: const Duration(milliseconds: 480),
-        curve: Curves.easeOutCubic,
-      );
-    });
   }
 
   void _reloadBanners() {
     setState(() {
       _future = _safeFetchBanners(forceRefresh: true);
-      _bannerIndex = 0;
-      _autoScheduledForCount = -1;
-      _cancelAuto();
     });
   }
 
   @override
-  void dispose() {
-    _cancelAuto();
-    _pageController?.dispose();
-    super.dispose();
-  }
+  void dispose() => super.dispose();
 
   Future<void> _openSlideLink(String? raw) async {
     final u = raw?.trim() ?? '';
@@ -866,81 +752,13 @@ class _StoresHomePageBannerCarouselState extends State<_StoresHomePageBannerCaro
     await launchUrl(uri, mode: LaunchMode.externalApplication);
   }
 
-  Widget safeBanner(List<WpHomeBannerSlide> banners, PageController pc) {
+  Widget safeBanner(List<WpHomeBannerSlide> banners) {
     try {
       debugPrint('BANNERS COUNT: ${banners.length}');
       if (banners.isEmpty) return const SizedBox.shrink();
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox(
-            height: 196,
-            child: PageView.builder(
-              controller: pc,
-              itemCount: banners.length,
-              physics: const BouncingScrollPhysics(),
-              onPageChanged: (i) => setState(() => _bannerIndex = i),
-              itemBuilder: (context, i) {
-                final slide = banners[i];
-                final url = webSafeImageUrl(slide.imageUrl);
-                if (url.isEmpty) return const SizedBox.shrink();
-                final link = slide.linkUrl?.trim();
-                final hasLink = link != null && link.isNotEmpty;
-                final image = Image.network(
-                  url,
-                  fit: BoxFit.cover,
-                  errorBuilder: (_, _, _) {
-                    return Container(
-                      color: Colors.grey.shade200,
-                      height: 180,
-                    );
-                  },
-                  loadingBuilder: (context, child, progress) {
-                    if (progress == null) return child;
-                    return Container(
-                      color: Colors.grey.shade100,
-                      height: 180,
-                    );
-                  },
-                );
-                return Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-                  child: ClipRRect(
-                    borderRadius: BorderRadius.circular(16),
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: hasLink ? () => _openSlideLink(link) : null,
-                        child: image,
-                      ),
-                    ),
-                  ),
-                );
-              },
-            ),
-          ),
-          if (banners.length > 1)
-            Padding(
-              padding: const EdgeInsets.only(bottom: 4),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: List<Widget>.generate(banners.length, (i) {
-                  final active = i == _bannerIndex;
-                  return AnimatedContainer(
-                    duration: const Duration(milliseconds: 220),
-                    curve: Curves.easeOutCubic,
-                    margin: const EdgeInsets.symmetric(horizontal: 3),
-                    width: active ? 20 : 7,
-                    height: 6,
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(999),
-                      color: active ? AppColors.primaryOrange : AppColors.border.withValues(alpha: 0.85),
-                    ),
-                  );
-                }),
-              ),
-            ),
-        ],
+      return _PremiumBannerCarousel(
+        banners: banners,
+        onOpenLink: _openSlideLink,
       );
     } on Object catch (e) {
       debugPrint('BANNER ERROR: $e');
@@ -950,8 +768,6 @@ class _StoresHomePageBannerCarouselState extends State<_StoresHomePageBannerCaro
 
   @override
   Widget build(BuildContext context) {
-    _ensurePageController();
-    final pc = _pageController;
     return SizedBox(
       height: 218,
       child: FutureBuilder<FeatureState<List<WpHomeBannerSlide>>>(
@@ -977,20 +793,166 @@ class _StoresHomePageBannerCarouselState extends State<_StoresHomePageBannerCaro
               if (slides.isEmpty) {
                 return _StoresHomeBannerUnavailable(onRetry: _reloadBanners);
               }
-              if (slides.length != _autoScheduledForCount) {
-                _autoScheduledForCount = slides.length;
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (mounted) _scheduleAutoAdvance(slides.length);
-                });
-              }
-              if (pc == null) {
-                return const HomeBannerSkeleton();
-              }
-              return safeBanner(slides, pc);
+              return safeBanner(slides);
             },
           );
         },
       ),
+    );
+  }
+}
+
+class _PremiumBannerCarousel extends StatefulWidget {
+  const _PremiumBannerCarousel({
+    required this.banners,
+    required this.onOpenLink,
+  });
+
+  final List<WpHomeBannerSlide> banners;
+  final Future<void> Function(String? url) onOpenLink;
+
+  @override
+  State<_PremiumBannerCarousel> createState() => _PremiumBannerCarouselState();
+}
+
+class _PremiumBannerCarouselState extends State<_PremiumBannerCarousel> {
+  late final PageController _pc;
+  int _current = 0;
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _pc = PageController(viewportFraction: 0.92);
+    if (widget.banners.length > 1) {
+      _timer = Timer.periodic(const Duration(seconds: 4), (_) {
+        if (!_pc.hasClients) return;
+        final next = (_current + 1) % widget.banners.length;
+        _pc.animateToPage(
+          next,
+          duration: const Duration(milliseconds: 600),
+          curve: Curves.easeInOutCubic,
+        );
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _pc.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        SizedBox(
+          height: 220,
+          child: PageView.builder(
+            controller: _pc,
+            itemCount: widget.banners.length,
+            onPageChanged: (i) => setState(() => _current = i),
+            itemBuilder: (context, i) {
+              final slide = widget.banners[i];
+              final imageUrl = webSafeImageUrl(slide.imageUrl);
+              final selected = i == _current;
+              return AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOutCubic,
+                margin: EdgeInsets.symmetric(horizontal: 6, vertical: selected ? 0 : 8),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.14),
+                      blurRadius: 14,
+                      offset: const Offset(0, 8),
+                    ),
+                  ],
+                ),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      TweenAnimationBuilder<double>(
+                        tween: Tween<double>(begin: 0, end: selected ? 1 : 0),
+                        duration: const Duration(milliseconds: 350),
+                        builder: (context, t, child) {
+                          final dx = (1 - t) * 10;
+                          return Transform.translate(offset: Offset(dx, 0), child: child);
+                        },
+                        child: CachedNetworkImage(
+                          imageUrl: imageUrl,
+                          fit: BoxFit.cover,
+                          errorWidget: (context, error, stackTrace) => Container(
+                            color: const Color(0xFFF5F5F5),
+                            child: const Icon(Icons.image_not_supported_outlined, color: Color(0xFFE8471A), size: 42),
+                          ),
+                        ),
+                      ),
+                      Container(
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topCenter,
+                            end: Alignment.bottomCenter,
+                            colors: [
+                              Colors.transparent,
+                              Colors.black.withValues(alpha: 0.62),
+                            ],
+                          ),
+                        ),
+                      ),
+                      if ((slide.title ?? '').trim().isNotEmpty)
+                        Positioned(
+                          bottom: 16,
+                          left: 16,
+                          right: 16,
+                          child: Text(
+                            slide.title!,
+                            textAlign: TextAlign.right,
+                            style: GoogleFonts.tajawal(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ),
+                      Positioned.fill(
+                        child: Material(
+                          color: Colors.transparent,
+                          child: InkWell(
+                            onTap: () => widget.onOpenLink(slide.linkUrl),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        const SizedBox(height: 10),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: List.generate(widget.banners.length, (i) {
+            final active = i == _current;
+            return AnimatedContainer(
+              duration: const Duration(milliseconds: 300),
+              margin: const EdgeInsets.symmetric(horizontal: 3),
+              width: active ? 20 : 6,
+              height: 6,
+              decoration: BoxDecoration(
+                color: active ? const Color(0xFFE8471A) : Colors.grey.shade300,
+                borderRadius: BorderRadius.circular(3),
+              ),
+            );
+          }),
+        ),
+      ],
     );
   }
 }

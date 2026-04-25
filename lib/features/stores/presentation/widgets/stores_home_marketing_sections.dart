@@ -389,7 +389,7 @@ class StoresHomeTopRatedStrip extends StatelessWidget {
         final rows = snap.data ?? const <Map<String, dynamic>>[];
         if (rows.isEmpty) return const SizedBox.shrink();
         return SizedBox(
-          height: 160,
+          height: 178,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
             physics: const BouncingScrollPhysics(),
@@ -398,49 +398,77 @@ class StoresHomeTopRatedStrip extends StatelessWidget {
             separatorBuilder: (context, index) => const SizedBox(width: 10),
             itemBuilder: (context, i) {
               final row = rows[i];
-              final logo = webSafeImageUrl((row['logoUrl'] ?? '').toString());
+              final logo = webSafeImageUrl((row['logo_url'] ?? row['logoUrl'] ?? '').toString());
               final name = (row['name'] ?? '').toString();
               final rating = (row['rating'] as num?)?.toDouble() ?? 0;
-              final reviewCount = (row['reviewCount'] as num?)?.toInt() ?? 0;
               return Container(
-                width: 148,
-                padding: const EdgeInsets.all(10),
+                width: 150,
+                margin: const EdgeInsets.only(left: 12),
                 decoration: BoxDecoration(
                   color: Colors.white,
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: AppColors.border),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: 0.06),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
                 ),
                 child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    ClipOval(
+                    ClipRRect(
+                      borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
                       child: logo.isEmpty
-                          ? CircleAvatar(radius: 24, backgroundColor: AppColors.lightOrange, child: Icon(Icons.store, color: AppColors.primaryOrange))
-                          : AmmarCachedImage(imageUrl: logo, width: 48, height: 48, fit: BoxFit.cover),
+                          ? Container(
+                              height: 100,
+                              width: double.infinity,
+                              color: const Color(0xFFF5F5F5),
+                              child: const Icon(Icons.store, color: Color(0xFFE8471A)),
+                            )
+                          : AmmarCachedImage(
+                              imageUrl: logo,
+                              width: double.infinity,
+                              height: 100,
+                              fit: BoxFit.cover,
+                            ),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      name.isEmpty ? 'متجر' : name,
-                      textAlign: TextAlign.center,
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
-                      style: GoogleFonts.tajawal(fontWeight: FontWeight.w700, fontSize: 12),
-                    ),
-                    const SizedBox(height: 8),
-                    Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: List<Widget>.generate(
-                        5,
-                        (idx) => Icon(
-                          idx < rating.round().clamp(0, 5) ? Icons.star_rounded : Icons.star_border_rounded,
-                          size: 14,
-                          color: AppColors.primaryOrange,
-                        ),
+                    Padding(
+                      padding: const EdgeInsets.all(10),
+                      child: Column(
+                        children: [
+                          Text(
+                            name.isEmpty ? 'متجر' : name,
+                            textAlign: TextAlign.center,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.tajawal(
+                              fontWeight: FontWeight.w800,
+                              fontSize: 13,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              const Icon(
+                                Icons.star_rounded,
+                                size: 14,
+                                color: Color(0xFFFFB800),
+                              ),
+                              const SizedBox(width: 2),
+                              Text(
+                                rating.toStringAsFixed(1),
+                                style: GoogleFonts.tajawal(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '($reviewCount)',
-                      style: GoogleFonts.tajawal(fontSize: 11, color: AppColors.textSecondary),
                     ),
                   ],
                 ),

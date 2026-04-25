@@ -12,8 +12,8 @@ class PremiumCategoriesStrip extends StatelessWidget {
     required this.selectedName,
     this.selectedId,
     required this.onSelect,
-    this.height = 110,
-    this.itemWidth = 85,
+    this.height = 100,
+    this.itemWidth = 70,
   });
 
   final List<Map<String, dynamic>> categories;
@@ -30,7 +30,7 @@ class PremiumCategoriesStrip extends StatelessWidget {
       height: height,
       child: ListView.builder(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 16),
         itemCount: categories.length,
         itemBuilder: (ctx, i) {
           final cat = categories[i];
@@ -51,89 +51,58 @@ class PremiumCategoriesStrip extends StatelessWidget {
               HapticFeedback.selectionClick();
               onSelect(name, id);
             },
-            child: AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
+            child: Container(
               width: itemWidth,
-              margin: const EdgeInsets.only(left: 10),
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color: isSelected ? const Color(0xFFFF6B00) : Colors.transparent,
-                  width: 2.5,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: isSelected ? const Color(0xFFFF6B00).withValues(alpha: 0.3) : Colors.black.withValues(alpha: 0.08),
-                    blurRadius: isSelected ? 12 : 6,
-                    offset: const Offset(0, 3),
+              margin: const EdgeInsets.only(left: 12),
+              child: Column(
+                children: [
+                  AnimatedContainer(
+                    duration: const Duration(milliseconds: 250),
+                    curve: Curves.easeOutCubic,
+                    width: 60,
+                    height: 60,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(
+                        color: isSelected ? const Color(0xFFE8471A) : Colors.transparent,
+                        width: 2.5,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: isSelected
+                              ? const Color(0xFFE8471A).withValues(alpha: 0.3)
+                              : Colors.black.withValues(alpha: 0.08),
+                          blurRadius: 10,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
+                    ),
+                    child: ClipOval(
+                      child: imageUrl != null && imageUrl.isNotEmpty
+                          ? AmmarCachedImage(imageUrl: imageUrl, fit: BoxFit.cover)
+                          : Container(
+                              color: const Color(0xFFF5F5F5),
+                              child: const Icon(
+                                Icons.category_rounded,
+                                color: Color(0xFFE8471A),
+                                size: 28,
+                              ),
+                            ),
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    name,
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.tajawal(
+                      fontSize: 11,
+                      fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                      color: isSelected ? const Color(0xFFE8471A) : Colors.black87,
+                    ),
                   ),
                 ],
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(14),
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    if (imageUrl != null && imageUrl.isNotEmpty)
-                      AmmarCachedImage(imageUrl: imageUrl, fit: BoxFit.cover)
-                    else
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: isSelected
-                                ? const [Color(0xFFFF6B00), Color(0xFFE65100)]
-                                : const [Color(0xFF2C2C54), Color(0xFF1A1A2E)],
-                          ),
-                        ),
-                      ),
-                    Container(
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Colors.transparent, Colors.black.withValues(alpha: 0.7)],
-                        ),
-                      ),
-                    ),
-                    if (isSelected)
-                      const Positioned(
-                        top: 6,
-                        right: 6,
-                        child: DecoratedBox(
-                          decoration: BoxDecoration(
-                            color: Color(0xFFFF6B00),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Padding(
-                            padding: EdgeInsets.all(3),
-                            child: Icon(Icons.check, color: Colors.white, size: 12),
-                          ),
-                        ),
-                      ),
-                    Positioned(
-                      bottom: 0,
-                      left: 0,
-                      right: 0,
-                      child: Padding(
-                        padding: const EdgeInsets.all(6),
-                        child: Text(
-                          name,
-                          textAlign: TextAlign.center,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.tajawal(
-                            color: Colors.white,
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            height: 1.1,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
               ),
             ),
           );
