@@ -2,10 +2,9 @@ import 'dart:developer' as developer;
 
 import 'package:firebase_core/firebase_core.dart';
 
-import '../../store/data/woo_api_service.dart';
 import 'backend_admin_client.dart';
 
-/// فحص Woo عبر API وتسجيل ملخص الحالة في PostgreSQL (`admin_migration_status`) — بدون Firestore.
+/// إدارة حالة الهجرة في PostgreSQL. فحص WooCommerce أزيل — الكتالوج عبر NestJS فقط.
 class MigrationHubService {
   MigrationHubService._();
   static final MigrationHubService instance = MigrationHubService._();
@@ -24,9 +23,9 @@ class MigrationHubService {
     }
   }
 
-  /// يجلب أعداد الأقسام والمنتجات من Woo ويسجّلها في الخادم (لا يكتب كتالوجاً في Firestore).
+  // REMOVED: legacy WooCommerce — use BackendOrdersClient instead
+  /// يسجّل على الخادم أن فحص Woo أزيل؛ الكتالوج يُدار عبر API فقط.
   Future<MigrationHubResult> run({
-    required WooApiService api,
     void Function(String message)? onProgress,
   }) async {
     if (!Firebase.apps.isNotEmpty) {
@@ -34,80 +33,17 @@ class MigrationHubService {
       return MigrationHubResult(categoriesCount: 0, productsCount: 0);
     }
 
+    onProgress?.call('تعطيل فحص WooCommerce: الاعتماد على الخادم (NestJS) فقط.');
+
     await _patchStatus({
-      'phase': 'starting',
+      'phase': 'disabled',
       'migrationCompleted': false,
       'lastError': null,
-      'wooProbeAt': DateTime.now().toUtc().toIso8601String(),
+      'note': 'WooCommerce client removed; catalog is server-side only.',
+      'disabledAt': DateTime.now().toUtc().toIso8601String(),
     });
 
-    try {
-      onProgress?.call('جاري جلب الأقسام من WooCommerce…');
-
-      late final List<Map<String, dynamic>> rawCategories;
-      try {
-        rawCategories = await api.fetchAllProductCategoriesRawForMigration();
-      } on Object {
-        developer.log(
-          'MigrationHub: fetch categories failed',
-          name: 'MigrationHub',
-        );
-        await _patchStatus({
-          'phase': 'failed',
-          'migrationCompleted': false,
-          'lastError': 'fetch categories failed',
-        });
-        return MigrationHubResult(categoriesCount: 0, productsCount: 0);
-      }
-      rawCategories.sort((a, b) {
-        final pa = (a['parent'] as num?)?.toInt() ?? 0;
-        final pb = (b['parent'] as num?)?.toInt() ?? 0;
-        if (pa != pb) return pa.compareTo(pb);
-        final ida = (a['id'] as num?)?.toInt() ?? 0;
-        final idb = (b['id'] as num?)?.toInt() ?? 0;
-        return ida.compareTo(idb);
-      });
-
-      onProgress?.call('جاري جلب المنتجات من WooCommerce…');
-      late final List<Map<String, dynamic>> rawProducts;
-      try {
-        rawProducts = await api.fetchAllProductsRawForMigration();
-      } on Object {
-        developer.log(
-          'MigrationHub: fetch products failed',
-          name: 'MigrationHub',
-        );
-        await _patchStatus({
-          'phase': 'failed',
-          'migrationCompleted': false,
-          'lastError': 'fetch products failed',
-        });
-        return MigrationHubResult(categoriesCount: 0, productsCount: 0);
-      }
-
-      await _patchStatus({
-        'phase': 'success',
-        'migrationCompleted': true,
-        'categoriesCount': rawCategories.length,
-        'productsCount': rawProducts.length,
-        'lastError': null,
-        'note':
-            'Woo تمت قراءته فقط؛ الكتالوج الفعلي يُدار على الخادم (PostgreSQL). لا يُكتب إلى Firestore من لوحة الإدارة.',
-        'completedAt': DateTime.now().toUtc().toIso8601String(),
-      });
-
-      return MigrationHubResult(
-        categoriesCount: rawCategories.length,
-        productsCount: rawProducts.length,
-      );
-    } on Object {
-      await _patchStatus({
-        'phase': 'failed',
-        'migrationCompleted': false,
-        'lastError': 'Unexpected migration error',
-      });
-      return MigrationHubResult(categoriesCount: 0, productsCount: 0);
-    }
+    return MigrationHubResult(categoriesCount: 0, productsCount: 0);
   }
 
   static String pickPrice(Map<String, dynamic> m) {

@@ -22,13 +22,12 @@ import '../../../core/config/shipping_policy.dart';
 import '../../../core/contracts/feature_state.dart';
 import '../domain/catalog_active_filters.dart';
 import '../data/local_storage_service.dart';
-// import '../data/woo_api_service.dart'; // LEGACY - WooCommerce REST
 import '../domain/favorite_product.dart';
 import '../domain/models.dart';
 import '../domain/product_derived_categories.dart';
 import '../domain/saved_checkout_info.dart';
 import '../domain/store_currency.dart';
-import '../domain/wp_home_banner.dart';
+import '../domain/home_banner_slide.dart';
 import '../../coupons/domain/coupon_model.dart';
 import '../../promotions/domain/promotion_model.dart';
 import '../../stores/domain/shipping_policy.dart' as store_shipping;
@@ -42,8 +41,6 @@ import 'controllers/user_controller.dart';
 /// يُفضّل استخدام [CatalogController] و [SearchController] وغيرها مباشرة من [Provider].
 @Deprecated('يُفضّل استخدام CatalogController / SearchController / FilterController / CartController / UserController من السياق')
 class StoreController extends ChangeNotifier {
-  // LEGACY - WooCommerce REST (Migration Hub uses WooApiService directly.)
-  // final WooApiService _api = WooApiService();
   final LocalStorageService _local = LocalStorageService();
 
   StreamSubscription<FeatureState<List<FavoriteProduct>>>? _favoritesSub;

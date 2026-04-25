@@ -16,7 +16,7 @@ import '../../../core/utils/web_image_url.dart';
 import '../../../core/widgets/empty_state_widget.dart';
 import '../../../core/widgets/home_page_shimmers.dart';
 import '../../../core/widgets/premium_categories_strip.dart';
-import '../../store/domain/wp_home_banner.dart';
+import '../../store/domain/home_banner_slide.dart';
 import '../../store/presentation/pages/customer_delivery_settings_page.dart';
 import '../../store/presentation/store_controller.dart';
 import '../data/store_categories_repository.dart';

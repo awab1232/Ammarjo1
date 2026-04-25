@@ -1,5 +1,5 @@
 import '../../../features/store/domain/models.dart';
-import '../../../features/store/domain/wp_home_banner.dart';
+import '../../../features/store/domain/home_banner_slide.dart';
 import 'package:flutter/foundation.dart' show debugPrint;
 import '../../contracts/feature_contract_registry.dart';
 import '../../contracts/feature_state.dart';

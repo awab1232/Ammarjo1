@@ -8,13 +8,12 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/dev/demo_data_seeder.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../store/data/woo_api_service.dart';
 import '../../../store/presentation/store_controller.dart';
 import '../../data/admin_repository.dart';
 import '../../data/csv_product_importer.dart';
 import '../../data/migration_hub_service.dart';
 
-/// فحص Woo وتسجيل الحالة على الخادم (PostgreSQL) — بدون Firestore للكتالوج.
+/// يسجّل حالة الهجرة على الخادم (PostgreSQL) — سابقاً كان فحص Woo.
 class AdminMigrationHubSection extends StatefulWidget {
   const AdminMigrationHubSection({super.key});
 
@@ -67,7 +66,6 @@ class _AdminMigrationHubSectionState extends State<AdminMigrationHubSection> {
     try {
       final store = context.read<StoreController>();
       final result = await MigrationHubService.instance.run(
-        api: WooApiService(),
         onProgress: (m) {
           if (mounted) setState(() => _log = m);
         },
@@ -77,7 +75,7 @@ class _AdminMigrationHubSectionState extends State<AdminMigrationHubSection> {
       setState(() {
         _lastResult = result;
         _showSuccessBanner = true;
-        _log = 'اكتملت الهجرة بنجاح.';
+        _log = 'تم تسجيل حالة الخادم (Migration Hub).';
       });
       _refreshMigrationPayload();
       await showDialog<void>(
@@ -95,7 +93,7 @@ class _AdminMigrationHubSectionState extends State<AdminMigrationHubSection> {
           ),
           content: SingleChildScrollView(
             child: Text(
-              'تم جلب أعداد الأقسام والمنتجات من WooCommerce وتسجيلها على الخادم.\n\n'
+              'تُسجّل حالة Migration Hub على الخادم (لا يوجد اتصال بـ Woo/WordPress بعد الآن).\n\n'
               '• الأقسام: ${result.categoriesCount}\n'
               '• المنتجات: ${result.productsCount}\n\n'
               'الكتالوج الفعلي يُدار في PostgreSQL؛ لا يُكتب إلى Firestore من لوحة الإدارة.',

@@ -10,7 +10,7 @@ import '../../../../core/network/network_errors.dart';
 import '../../data/backend_catalog_client.dart';
 import '../../../../core/data/repositories/store_settings_repository.dart';
 import '../../domain/models.dart';
-import '../../domain/wp_home_banner.dart';
+import '../../domain/home_banner_slide.dart';
 import 'store_pagination.dart';
 
 /// كتالوج المنتجات، الأقسام، البانر، وترقيم الصفحات.

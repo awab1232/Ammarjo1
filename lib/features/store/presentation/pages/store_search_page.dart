@@ -6,7 +6,6 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shimmer/shimmer.dart';
 
-import '../../../../core/config/wp_pages_config.dart';
 import '../../../../core/constants/jordan_regions.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_bar_back_button.dart';
@@ -18,7 +17,6 @@ import '../../domain/store_search_matcher.dart';
 import '../store_controller.dart';
 import 'product_details_page.dart';
 import 'products_horizontal_section_page.dart';
-import 'wp_page_screen.dart';
 
 /// بحث المتجر — فوري، عربي، مع فلاتر وعيّنات بحث وتأثير تحميل.
 class StoreSearchPage extends StatefulWidget {
@@ -366,11 +364,14 @@ class _StoreSearchPageState extends State<StoreSearchPage> {
                             : showEmpty
                                 ? _NoResultsPanel(
                                     onContact: () {
+                                      // REMOVED: legacy WordPress WpPageScreen — use in-app support / BackendOrdersClient
                                       Navigator.of(context).push<void>(
                                         MaterialPageRoute<void>(
-                                          builder: (_) => const WpPageScreen(
-                                            slug: WpPagesConfig.contactSlug,
-                                            fallbackTitle: 'تواصل معنا',
+                                          builder: (_) => Scaffold(
+                                            appBar: AppBar(title: const Text('تواصل معنا')),
+                                            body: const Center(
+                                              child: Text('للتواصل يرجى استخدام الدعم داخل التطبيق.'),
+                                            ),
                                           ),
                                         ),
                                       );

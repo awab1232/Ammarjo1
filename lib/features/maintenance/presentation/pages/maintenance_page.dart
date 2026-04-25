@@ -11,7 +11,7 @@ import 'package:ammar_store/core/session/user_session.dart';
 import '../../../../core/contracts/feature_state.dart';
 import '../../../../core/data/repositories/product_repository.dart';
 import '../../../../core/widgets/feature_state_builder.dart';
-import '../../../store/domain/wp_home_banner.dart';
+import '../../../store/domain/home_banner_slide.dart';
 import '../../../../core/firebase/user_notifications_repository.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/utils/web_image_url.dart';

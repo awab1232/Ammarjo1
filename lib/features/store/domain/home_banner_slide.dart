@@ -1,4 +1,4 @@
-/// شريحة بانر من ووردبريس (صورة بارزة + رابط المقال اختياري).
+/// Home promo slide (e.g. from [BackendOrdersClient] /banners).
 class WpHomeBannerSlide {
   const WpHomeBannerSlide({
     required this.imageUrl,

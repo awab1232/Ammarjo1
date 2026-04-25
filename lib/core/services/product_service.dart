@@ -1,5 +1,5 @@
 import '../../features/store/domain/models.dart';
-import '../../features/store/domain/wp_home_banner.dart';
+import '../../features/store/domain/home_banner_slide.dart';
 
 /// Portable catalog rules: product/category/banner mapping and admin payloads.
 /// No Firebase — callers pass raw `Map` data (and optional [DateTime] from Timestamp conversion).
