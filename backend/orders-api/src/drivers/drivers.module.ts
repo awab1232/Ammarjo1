@@ -8,7 +8,7 @@ import { DriverAssignmentTimeoutScheduler } from './driver-assignment-timeout.sc
 import { NoDriverAutoRetryScheduler } from './no-driver-auto-retry.scheduler';
 
 @Module({
-  imports: [forwardRef(() => OrdersModule), NotificationsModule],
+  imports: [forwardRef(() => OrdersModule), forwardRef(() => NotificationsModule)],
   controllers: [DriversController],
   providers: [DriversService, DriverAssignmentTimeoutScheduler, NoDriverAutoRetryScheduler, FirebaseAuthGuard],
   exports: [DriversService],

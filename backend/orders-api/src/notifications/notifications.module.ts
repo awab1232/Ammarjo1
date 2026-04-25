@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { NotificationsService } from './notifications.service';
 import { FcmClientService } from './fcm-client.service';
 import { NotificationInboxService } from './notification-inbox.service';
@@ -10,7 +10,7 @@ import { NotificationQueueWorker } from './notification-queue.worker';
 import { OrdersModule } from '../orders/orders.module';
 
 @Module({
-  imports: [OrdersModule],
+  imports: [forwardRef(() => OrdersModule)],
   controllers: [NotificationsController, NotificationsInternalController],
   providers: [
     NotificationsService,
