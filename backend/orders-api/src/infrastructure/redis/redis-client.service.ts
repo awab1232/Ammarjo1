@@ -1,4 +1,4 @@
-import { Injectable, Logger, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
 import Redis from 'ioredis';
 import { InfraTelemetryService } from '../infra-telemetry.service';
 import { getRedisUrl, isRedisInfrastructureEnabled } from './redis.config';
@@ -8,11 +8,17 @@ import { getRedisUrl, isRedisInfrastructureEnabled } from './redis.config';
  * (reads return null, writes resolve without throwing) so requests never fail on Redis.
  */
 @Injectable()
-export class RedisClientService implements OnModuleDestroy {
+export class RedisClientService implements OnModuleDestroy, OnModuleInit {
   private readonly logger = new Logger(RedisClientService.name);
   private client: Redis | null = null;
 
   constructor(private readonly telemetry: InfraTelemetryService) {}
+
+  onModuleInit(): void {
+    console.log('[Redis] REDIS_URL value present:', !!process.env.REDIS_URL);
+    console.log('[Redis] Attempting connection...');
+    this.ensureClient();
+  }
 
   /** True when REDIS_ENABLED=1, URL set, and connection attempted successfully. */
   isReady(): boolean {
@@ -48,11 +54,13 @@ export class RedisClientService implements OnModuleDestroy {
       });
       void c.connect().catch((err) => {
         this.logger.warn(`[Redis] connect failed: ${err instanceof Error ? err.message : String(err)}`);
+        console.error('[Redis] Full error:', JSON.stringify(err));
       });
       this.client = c;
       return c;
     } catch (e) {
       this.logger.warn(`[Redis] init failed: ${e instanceof Error ? e.message : String(e)}`);
+      console.error('[Redis] Full error:', JSON.stringify(e));
       return null;
     }
   }
