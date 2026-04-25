@@ -60,6 +60,10 @@ class DriverWorkbenchOrder {
     required this.orderId,
     required this.customerName,
     required this.address,
+    required this.storeName,
+    required this.storeAddress,
+    this.storePhone,
+    this.customerPhone,
     this.etaMinutes,
     required this.deliveryStatus,
     this.distanceKm,
@@ -68,6 +72,10 @@ class DriverWorkbenchOrder {
   final String orderId;
   final String customerName;
   final String address;
+  final String storeName;
+  final String storeAddress;
+  final String? storePhone;
+  final String? customerPhone;
   final int? etaMinutes;
   final String deliveryStatus;
   final double? distanceKm;
@@ -98,7 +106,17 @@ class DriverWorkbenchOrder {
       customerName: m['customerName']?.toString().trim().isNotEmpty == true
           ? m['customerName'].toString()
           : '—',
-      address: m['address']?.toString().trim().isNotEmpty == true ? m['address'].toString() : '—',
+      address: m['address']?.toString().trim().isNotEmpty == true
+          ? m['address'].toString()
+          : '—',
+      storeName: m['storeName']?.toString().trim().isNotEmpty == true
+          ? m['storeName'].toString()
+          : '—',
+      storeAddress: m['storeAddress']?.toString().trim().isNotEmpty == true
+          ? m['storeAddress'].toString()
+          : '—',
+      storePhone: m['storePhone']?.toString(),
+      customerPhone: m['customerPhone']?.toString(),
       etaMinutes: etaMinutes,
       deliveryStatus: (m['deliveryStatus'] ?? '').toString(),
       distanceKm: distanceKm,

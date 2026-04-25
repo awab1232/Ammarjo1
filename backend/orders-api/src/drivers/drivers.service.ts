@@ -1177,13 +1177,34 @@ export class DriversService {
           eta_minutes: string | number | null;
           delivery_lat: string | null;
           delivery_lng: string | null;
+          store_name: string | null;
+          store_address: string | null;
+          store_phone: string | null;
+          customer_name: string | null;
+          customer_address: string | null;
+          customer_phone: string | null;
           updated_at: Date;
         }>(
-          `SELECT order_id, payload, delivery_status, eta_minutes, delivery_lat, delivery_lng, updated_at
-           FROM orders
-           WHERE driver_id = $1::uuid
+          `SELECT
+             o.order_id,
+             o.payload,
+             o.delivery_status,
+             o.eta_minutes,
+             o.delivery_lat,
+             o.delivery_lng,
+             o.updated_at,
+             s.name AS store_name,
+             COALESCE(NULLIF(s.address, ''), NULLIF(s.city, '')) AS store_address,
+             s.phone AS store_phone,
+             COALESCE(NULLIF(u.profile_json->>'name', ''), NULLIF(u.phone, ''), NULLIF(o.payload->>'email', '')) AS customer_name,
+             COALESCE(NULLIF(o.delivery_address, ''), NULLIF(u.saved_address::text, '')) AS customer_address,
+             u.phone AS customer_phone
+           FROM orders o
+           LEFT JOIN stores s ON s.id = o.store_id_uuid
+           LEFT JOIN users u ON u.firebase_uid = o.user_id
+           WHERE o.driver_id = $1::uuid
              AND delivery_status IS NOT NULL
-           ORDER BY updated_at DESC
+           ORDER BY o.updated_at DESC
            LIMIT 100`,
           [driver.id],
         );
@@ -1200,6 +1221,12 @@ export class DriversService {
         eta_minutes: string | number | null;
         delivery_lat: string | null;
         delivery_lng: string | null;
+        store_name: string | null;
+        store_address: string | null;
+        store_phone: string | null;
+        customer_name: string | null;
+        customer_address: string | null;
+        customer_phone: string | null;
         updated_at: Date;
       };
       card: Record<string, unknown>;
@@ -1323,6 +1350,12 @@ export class DriversService {
       eta_minutes: string | number | null;
       delivery_lat: string | null;
       delivery_lng: string | null;
+      store_name: string | null;
+      store_address: string | null;
+      store_phone: string | null;
+      customer_name: string | null;
+      customer_address: string | null;
+      customer_phone: string | null;
       updated_at: Date;
     },
   ): Record<string, unknown> {
@@ -1332,10 +1365,14 @@ export class DriversService {
         : {};
     const fn = String(payload['firstName'] ?? '').trim();
     const ln = String(payload['lastName'] ?? '').trim();
-    const customerName = `${fn} ${ln}`.trim() || String(payload['email'] ?? '—');
+    const customerName =
+      String(row.customer_name ?? '').trim() ||
+      `${fn} ${ln}`.trim() ||
+      String(payload['email'] ?? '—');
     const a1 = String(payload['address1'] ?? payload['address'] ?? '').trim();
     const city = String(payload['city'] ?? '').trim();
-    const address = [a1, city].filter(Boolean).join('، ') || '—';
+    const address =
+      String(row.customer_address ?? '').trim() || [a1, city].filter(Boolean).join('، ') || '—';
     const olat = num(row.delivery_lat);
     const olng = num(row.delivery_lng);
     const dlat = num(driver.current_lat);
@@ -1349,6 +1386,10 @@ export class DriversService {
       orderId: row.order_id,
       customerName,
       address,
+      customerPhone: String(row.customer_phone ?? '').trim(),
+      storeName: String(row.store_name ?? '').trim(),
+      storeAddress: String(row.store_address ?? '').trim(),
+      storePhone: String(row.store_phone ?? '').trim(),
       etaMinutes: eta,
       deliveryStatus: row.delivery_status ?? '',
       distanceKm,
