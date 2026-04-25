@@ -1,7 +1,8 @@
-import { Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
 import type { DecodedIdToken } from 'firebase-admin/auth';
 import { Pool, type PoolClient } from 'pg';
 import { buildPgPoolConfig } from '../infrastructure/database/pg-ssl';
+import { getFirebaseAuth } from '../auth/firebase-admin';
 import { normalizeDbRoleToAppRole } from '../identity/db-user-role.util';
 import { permissionsForRole, type AppRole } from '../identity/rbac-roles.config';
 import type { TenantContextSnapshot } from '../identity/tenant-context.types';
@@ -313,6 +314,7 @@ export class UsersService {
     row: AppUserRow;
     phone: string | null;
     profile: Record<string, unknown>;
+    savedAddress: Record<string, unknown> | null;
     banned: boolean;
   } | null> {
     const uid = firebaseUid.trim();
@@ -323,7 +325,7 @@ export class UsersService {
     return this.withClient(async (client) => {
       const r = await client.query(
         `SELECT id, firebase_uid, email, role, tenant_id, store_id, wholesaler_id, store_type, is_active,
-                phone, profile_json, CASE WHEN banned IS NOT NULL THEN banned ELSE false END AS banned
+                phone, profile_json, saved_address, CASE WHEN banned IS NOT NULL THEN banned ELSE false END AS banned
          FROM users
          WHERE firebase_uid = $1
          LIMIT 1`,
@@ -334,10 +336,14 @@ export class UsersService {
       const pj = raw['profile_json'];
       const profile =
         pj != null && typeof pj === 'object' && !Array.isArray(pj) ? (pj as Record<string, unknown>) : {};
+      const sa = raw['saved_address'];
+      const savedAddress =
+        sa != null && typeof sa === 'object' && !Array.isArray(sa) ? (sa as Record<string, unknown>) : null;
       return {
         row: this.mapRow(raw),
         phone: raw['phone'] != null ? String(raw['phone']) : null,
         profile,
+        savedAddress,
         banned: raw['banned'] === true,
       };
     });
@@ -354,6 +360,7 @@ export class UsersService {
     row: AppUserRow;
     phone: string | null;
     profile: Record<string, unknown>;
+    savedAddress: Record<string, unknown> | null;
     banned: boolean;
   } | null> {
     const iid = internalId.trim();
@@ -362,7 +369,7 @@ export class UsersService {
     return this.withClient(async (client) => {
       const r = await client.query(
         `SELECT id, firebase_uid, email, role, tenant_id, store_id, wholesaler_id, store_type, is_active,
-                phone, profile_json, CASE WHEN banned IS NOT NULL THEN banned ELSE false END AS banned
+                phone, profile_json, saved_address, CASE WHEN banned IS NOT NULL THEN banned ELSE false END AS banned
          FROM users
          WHERE id = $1::uuid AND firebase_uid = $2
          LIMIT 1`,
@@ -373,10 +380,14 @@ export class UsersService {
       const pj = raw['profile_json'];
       const profile =
         pj != null && typeof pj === 'object' && !Array.isArray(pj) ? (pj as Record<string, unknown>) : {};
+      const sa = raw['saved_address'];
+      const savedAddress =
+        sa != null && typeof sa === 'object' && !Array.isArray(sa) ? (sa as Record<string, unknown>) : null;
       return {
         row: this.mapRow(raw),
         phone: raw['phone'] != null ? String(raw['phone']) : null,
         profile,
+        savedAddress,
         banned: raw['banned'] === true,
       };
     });
@@ -465,6 +476,89 @@ export class UsersService {
       return null;
     } finally {
       client.release();
+    }
+  }
+
+  private static readonly DELETED_PLACEHOLDER_UID = '_account_deleted_placeholder_';
+
+  /**
+   * Persists [saved_address] on the `users` row (JSONB).
+   */
+  async patchSavedAddress(
+    firebaseUid: string,
+    body: { address1?: string; address2?: string; city?: string; notes?: string; lat?: number; lng?: number },
+  ): Promise<void> {
+    const uid = firebaseUid.trim();
+    if (!uid) {
+      throw new NotFoundException('user not found');
+    }
+    return this.withClient(async (client) => {
+      const j = {
+        address1: body.address1 != null ? String(body.address1) : '',
+        address2: body.address2 != null ? String(body.address2) : '',
+        city: body.city != null ? String(body.city) : '',
+        notes: body.notes != null ? String(body.notes) : '',
+        lat: typeof body.lat === 'number' && Number.isFinite(body.lat) ? body.lat : null,
+        lng: typeof body.lng === 'number' && Number.isFinite(body.lng) ? body.lng : null,
+      };
+      const up = await client.query(
+        `UPDATE users SET saved_address = $2::jsonb WHERE firebase_uid = $1`,
+        [uid, JSON.stringify(j)],
+      );
+      if ((up.rowCount ?? 0) < 1) {
+        throw new NotFoundException('user not found');
+      }
+    });
+  }
+
+  /**
+   * Customer self-delete: no active (non-terminal) orders; reassigns completed orders to placeholder, then DB + Firebase.
+   */
+  async deleteSelf(firebaseUid: string): Promise<void> {
+    const uid = firebaseUid.trim();
+    if (!uid) {
+      throw new BadRequestException({ error: 'invalid_uid' });
+    }
+    await this.withClient(async (client) => {
+      const storeR = await client.query(`SELECT 1 FROM stores WHERE owner_id = $1 LIMIT 1`, [uid]);
+      if (storeR.rows.length > 0) {
+        throw new BadRequestException({ error: 'store_owner_cannot_self_delete' });
+      }
+
+      const activeR = await client.query(
+        `SELECT COUNT(*)::int AS c FROM orders
+         WHERE user_id = $1
+           AND (
+              status IS NULL
+              OR lower(trim(status)) NOT IN ('delivered', 'completed', 'cancelled')
+            )`,
+        [uid],
+      );
+      const n = Number(activeR.rows[0]?.['c'] ?? 0);
+      if (n > 0) {
+        throw new BadRequestException({ error: 'active_orders_exist' });
+      }
+
+      const ph = UsersService.DELETED_PLACEHOLDER_UID;
+      await client.query(
+        `INSERT INTO users (firebase_uid, email, role, is_active)
+         VALUES ($1, NULL, 'customer', false)
+         ON CONFLICT (firebase_uid) DO NOTHING`,
+        [ph],
+      );
+
+      await client.query(`UPDATE orders SET user_id = $2 WHERE user_id = $1`, [uid, ph]);
+
+      const delR = await client.query(`DELETE FROM users WHERE firebase_uid = $1 RETURNING firebase_uid`, [uid]);
+      if (delR.rowCount == null || delR.rowCount < 1) {
+        throw new NotFoundException('user not found');
+      }
+    });
+    try {
+      await getFirebaseAuth().deleteUser(uid);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      this.logger.error(`[UsersService] Firebase deleteUser failed after PG delete uid=${uid}: ${msg}`);
     }
   }
 }

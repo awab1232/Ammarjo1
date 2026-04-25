@@ -23,7 +23,7 @@ class TechnicianDashboardPage extends StatefulWidget {
 }
 
 class _TechnicianDashboardPageState extends State<TechnicianDashboardPage> {
-  static const bool _earningsNotFromBackend = true;
+  static const bool _earningsNotFromBackend = false;
 
   List<ServiceRequest> _requests = const <ServiceRequest>[];
   double _earnings = 0;
@@ -149,10 +149,14 @@ class _TechnicianDashboardPageState extends State<TechnicianDashboardPage> {
             Stack(
               alignment: Alignment.center,
               children: [
-                const IconButton(
-                  tooltip: 'الرسائل الواردة',
-                  onPressed: null,
-                  icon: Icon(Icons.notifications_active_rounded),
+                IconButton(
+                  tooltip: 'الإشعارات',
+                  onPressed: () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('الإشعارات قريباً', style: GoogleFonts.tajawal())),
+                    );
+                  },
+                  icon: const Icon(Icons.notifications_active_rounded),
                 ),
                 if (incoming.isNotEmpty)
                   Positioned(

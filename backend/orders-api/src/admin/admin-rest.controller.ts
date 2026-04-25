@@ -150,7 +150,7 @@ class PatchSubCategoryBody {
 
 @Controller('admin/rest')
 @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard, RoleGuard, AdminOnlyGuard)
-@Roles('admin')
+@Roles('admin', 'system_internal')
 @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 60 } })
 export class AdminRestController {
   constructor(

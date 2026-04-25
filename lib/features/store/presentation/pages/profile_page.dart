@@ -1,9 +1,11 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import '../../../../core/contracts/feature_state.dart';
 import '../../../../core/data/repositories/user_repository.dart';
+import '../../../../core/services/backend_orders_client.dart';
 import '../../../../core/constants/jordan_cities.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_bar_back_button.dart';
@@ -20,6 +22,49 @@ import 'change_password_page.dart';
 import 'customer_delivery_settings_page.dart';
 import 'login_page.dart';
 import 'register_page.dart';
+
+Future<void> _deleteAccountFromProfile(BuildContext context, StoreController store) async {
+  final go = await showDialog<bool>(
+    context: context,
+    builder: (ctx) => AlertDialog(
+      title: Text('تأكيد', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+      content: Text(
+        'هل أنت متأكد؟ سيتم حذف حسابك نهائياً ولا يمكن التراجع',
+        textAlign: TextAlign.right,
+        style: GoogleFonts.tajawal(height: 1.5),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.of(ctx).pop(false), child: Text('إلغاء', style: GoogleFonts.tajawal())),
+        FilledButton(
+          style: FilledButton.styleFrom(backgroundColor: Colors.red, foregroundColor: Colors.white),
+          onPressed: () => Navigator.of(ctx).pop(true),
+          child: Text('حذف نهائياً', style: GoogleFonts.tajawal()),
+        ),
+      ],
+    ),
+  );
+  if (go != true) return;
+  final r = await BackendOrdersClient.instance.deleteMyUserAccount();
+  if (!context.mounted) return;
+  if (r.ok) {
+    await FirebaseAuth.instance.signOut();
+    await store.logout();
+    if (!context.mounted) return;
+    await Navigator.pushAndRemoveUntil<void>(
+      context,
+      MaterialPageRoute<void>(builder: (_) => const LoginPage()),
+      (_) => false,
+    );
+  } else if (r.errorCode == 'active_orders_exist') {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('لديك طلبات نشطة، أكمل طلباتك أولاً', style: GoogleFonts.tajawal())),
+    );
+  } else {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('تعذر حذف الحساب. حاول لاحقاً.', style: GoogleFonts.tajawal())),
+    );
+  }
+}
 
 String _profileContactLine(StoreController store) {
   final profile = store.profile;
@@ -180,6 +225,31 @@ class ProfilePage extends StatelessWidget {
                           );
                         },
                       ),
+                      if (loggedIn) ...[
+                        const SizedBox(height: 12),
+                        Builder(
+                          builder: (ctx) {
+                            final role = PermissionService.normalizeRole(BackendIdentityController.instance.me?.role ?? '');
+                            if (role != PermissionService.roleCustomer) {
+                              return const SizedBox.shrink();
+                            }
+                            return ListTile(
+                              contentPadding: EdgeInsets.zero,
+                              leading: const Icon(Icons.delete_forever, color: Colors.red, size: 28),
+                              title: Text('حذف حسابي', style: GoogleFonts.tajawal(color: Colors.red, fontWeight: FontWeight.w700)),
+                              subtitle: Text(
+                                'حذف نهائي من الخادم',
+                                style: GoogleFonts.tajawal(fontSize: 12, color: AppColors.textSecondary),
+                              ),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
+                                side: const BorderSide(color: AppColors.border),
+                              ),
+                              onTap: () => _deleteAccountFromProfile(ctx, store),
+                            );
+                          },
+                        ),
+                      ],
                       const SizedBox(height: 20),
                       Text(
                         'نقاط الولاء',

@@ -29,6 +29,8 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
   Timer? _poll;
   Timer? _loc;
   StreamSubscription<User?>? _authSub;
+  /// From GET /drivers/my-earnings.
+  Map<String, dynamic>? _earnings;
 
   @override
   void initState() {
@@ -106,10 +108,20 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
     }
     try {
       final raw = await BackendOrdersClient.instance.fetchDriverWorkbench();
+      Map<String, dynamic>? earn;
+      try {
+        final e = await BackendOrdersClient.instance.fetchDriverMyEarnings();
+        if (e != null) {
+          earn = Map<String, dynamic>.from(e);
+        }
+      } on Object {
+        earn = null;
+      }
       if (!mounted) return;
       final map = Map<String, dynamic>.from(raw ?? const <String, dynamic>{});
       setState(() {
         _data = DriverWorkbenchData.fromJson(map);
+        _earnings = earn;
         _loading = false;
         _error = null;
       });
@@ -386,11 +398,16 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
     }
 
     final snap = d!;
+    final e = _earnings;
     return RefreshIndicator(
       onRefresh: () => _load(silent: false),
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
         children: [
+          if (e != null) ...[
+            _DriverEarningsCard(earnings: e),
+            const SizedBox(height: 16),
+          ],
           Text('الحالة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 16)),
           const SizedBox(height: 8),
           Text(
@@ -541,6 +558,52 @@ class _DriverDashboardPageState extends State<DriverDashboardPage> {
       onSelected: (_) => _setStatus(value),
       selectedColor: AppColors.lightOrange,
       labelStyle: GoogleFonts.tajawal(color: selected ? AppColors.orange : AppColors.textPrimary),
+    );
+  }
+}
+
+class _DriverEarningsCard extends StatelessWidget {
+  const _DriverEarningsCard({required this.earnings});
+
+  final Map<String, dynamic> earnings;
+
+  @override
+  Widget build(BuildContext context) {
+    final total = (earnings['total'] as num?)?.toDouble() ?? 0;
+    final paid = (earnings['paid'] as num?)?.toDouble() ?? 0;
+    final pending = (earnings['pending'] as num?)?.toDouble() ?? 0;
+    final deliveries = (earnings['deliveries'] as num?)?.toInt() ?? 0;
+    return Card(
+      elevation: 0,
+      color: AppColors.navy.withValues(alpha: 0.06),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('أرباح التوصيل', textAlign: TextAlign.right, style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 16)),
+            const SizedBox(height: 12),
+            _row('إجمالي الأرباح', '${total.toStringAsFixed(2)} د.أ'),
+            _row('مدفوع', '${paid.toStringAsFixed(2)} د.أ'),
+            _row('قيد الانتظار', '${pending.toStringAsFixed(2)} د.أ'),
+            _row('عدد التوصيلات', '$deliveries'),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _row(String k, String v) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 6),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(v, style: GoogleFonts.tajawal(fontWeight: FontWeight.w600)),
+          Text(k, style: GoogleFonts.tajawal(color: AppColors.textSecondary, fontSize: 13)),
+        ],
+      ),
     );
   }
 }

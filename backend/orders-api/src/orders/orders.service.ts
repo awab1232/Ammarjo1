@@ -604,6 +604,12 @@ export class OrdersService implements IOrderService {
       const t = num(order.totalNumeric) ?? 0;
       await this.storeCommissions?.recordCommissionOnDelivery(storeIdOrder, id, t);
     }
+    if (!wasDelivered && nowDelivered && this.driversService) {
+      const dRaw = (patched as unknown as Record<string, unknown>)['driverId'] ?? (order as unknown as Record<string, unknown>)['driverId'];
+      const driverId = dRaw != null ? String(dRaw).trim() : '';
+      const ship = num((patched as unknown as Record<string, unknown>)['shippingNumeric']) ?? num((order as unknown as Record<string, unknown>)['shippingNumeric']);
+      void this.driversService.recordPendingEarningOnDeliveredOrder(id, driverId || null, ship);
+    }
 
     return { orderId: id, status: next };
   }

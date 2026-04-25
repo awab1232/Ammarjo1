@@ -939,6 +939,11 @@ export class DriversService {
       }),
     );
     this.notifications.notifyCustomerOrderDelivered(order.user_id, order.order_id);
+    const fullOrder = await this.pg.findPayloadById(order.order_id);
+    const ship = num(
+      (fullOrder as unknown as { shippingNumeric?: unknown } | null)?.shippingNumeric,
+    );
+    void this.recordPendingEarningOnDeliveredOrder(order.order_id, order.driver_id, ship);
     return { ok: true };
   }
 
@@ -1206,6 +1211,83 @@ export class DriversService {
       assignedOrders,
       activeOrder: bestActive?.card ?? null,
       history: history.slice(0, 50),
+    };
+  }
+
+  /**
+   * When an order is marked [delivered], credit 80% of [shippingNumeric] to the assigned driver.
+   * Uses [driver_earnings_ledger] (idempotent on [order_id]).
+   */
+  async recordPendingEarningOnDeliveredOrder(
+    orderId: string,
+    driverIdUuid: string | null | undefined,
+    shippingNumeric: number | null | undefined,
+  ): Promise<void> {
+    const oid = orderId.trim();
+    const did = driverIdUuid != null ? String(driverIdUuid).trim() : '';
+    if (!oid || !did) {
+      return;
+    }
+    const ship = num(shippingNumeric) ?? 0;
+    const amount = Math.round(ship * 0.8 * 100) / 100;
+    if (amount <= 0) {
+      return;
+    }
+    try {
+      await this.pg.withWriteClient(async (c) => {
+        await c.query(
+          `INSERT INTO driver_earnings_ledger (driver_id, order_id, amount, status)
+           VALUES ($1::uuid, $2, $3, 'pending')
+           ON CONFLICT (order_id) DO NOTHING`,
+          [did, oid, amount],
+        );
+        await c.query(`UPDATE orders SET driver_earnings_amount = $2 WHERE order_id = $1`, [oid, amount]);
+      });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      this.logger.warn(
+        JSON.stringify({ kind: 'driver_earnings_ledger_insert_failed', orderId: oid, error: msg }),
+      );
+    }
+  }
+
+  async getDriverEarningsSummary(firebaseUid: string): Promise<{
+    total: number;
+    paid: number;
+    pending: number;
+    deliveries: number;
+  }> {
+    const uid = firebaseUid.trim();
+    if (!uid) {
+      throw new BadRequestException('missing_uid');
+    }
+    const row = await this.pg.withWriteClient(async (c) => {
+      const r = await c.query<{
+        total: string | null;
+        paid: string | null;
+        pending: string | null;
+        deliveries: string | null;
+      }>(
+        `SELECT
+            COALESCE(SUM(del.amount), 0)::text AS total,
+            COALESCE(SUM(CASE WHEN del.status = 'paid' THEN del.amount ELSE 0 END), 0)::text AS paid,
+            COALESCE(SUM(CASE WHEN del.status = 'pending' THEN del.amount ELSE 0 END), 0)::text AS pending,
+            COUNT(*)::text AS deliveries
+         FROM driver_earnings_ledger del
+         INNER JOIN drivers d ON d.id = del.driver_id
+         WHERE d.auth_uid = $1`,
+        [uid],
+      );
+      return r.rows[0] ?? null;
+    });
+    if (!row) {
+      return { total: 0, paid: 0, pending: 0, deliveries: 0 };
+    }
+    return {
+      total: Number(row.total ?? 0) || 0,
+      paid: Number(row.paid ?? 0) || 0,
+      pending: Number(row.pending ?? 0) || 0,
+      deliveries: Number(row.deliveries ?? 0) || 0,
     };
   }
 

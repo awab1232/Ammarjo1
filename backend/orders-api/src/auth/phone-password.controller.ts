@@ -48,12 +48,17 @@ export class PhonePasswordController {
     return this.svc.registerWithFirebaseToken(firebaseToken, phone, password);
   }
 
-  /** Disabled in strict mode: only Firebase ID token auth is allowed. */
+  /**
+   * Phone + password for returning users. Verifies bcrypt against `users.password_hash`,
+   * then returns a Firebase custom token (same family as [register] — persisted via [setPassword]).
+   */
   @Post('login')
   @UseGuards(TenantContextGuard, ApiPolicyGuard)
   @ApiPolicy({ auth: false, tenant: 'optional', rateLimit: { rpm: 30 } })
-  async login(@Body() _body: LoginBody) {
-    throw new BadRequestException('PHONE_PASSWORD_DISABLED_USE_FIREBASE');
+  async login(@Body() body: LoginBody) {
+    const phone = String(body?.phone ?? '').trim();
+    const password = String(body?.password ?? '');
+    return this.svc.loginWithPhonePassword(phone, password);
   }
 
   /**

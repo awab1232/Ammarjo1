@@ -56,6 +56,16 @@ export class DriversController {
     return this.drivers.getWorkbench(req.firebaseUid!);
   }
 
+  @Get('drivers/my-earnings')
+  @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
+  @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 60 } })
+  @RequirePermissions('orders.write')
+  @UseGuards(RoleGuard)
+  @Roles('driver', 'admin', 'system_internal')
+  async myEarnings(@Req() req: RequestWithFirebase) {
+    return this.drivers.getDriverEarningsSummary(req.firebaseUid!);
+  }
+
   @Post('upload')
   @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
   @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 30 } })

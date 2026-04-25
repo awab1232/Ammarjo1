@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   ForbiddenException,
   Get,
   Logger,
@@ -37,6 +38,7 @@ export class UsersController {
     row: { id: string; firebase_uid: string; email: string | null; role: string };
     phone: string | null;
     profile: Record<string, unknown>;
+    savedAddress?: Record<string, unknown> | null;
     banned: boolean;
   }) {
     const snap = getTenantContext();
@@ -67,6 +69,7 @@ export class UsersController {
       country: (profile['country'] != null ? String(profile['country']) : 'JO') || 'JO',
       contactEmail: profile['contactEmail'] != null ? String(profile['contactEmail']) : null,
       loyaltyPoints: loyalty,
+      savedAddress: found.savedAddress != null && Object.keys(found.savedAddress).length > 0 ? found.savedAddress : null,
       banned,
       tenantId: snap.tenantId,
       wholesalerId: snap.wholesalerId,
@@ -156,6 +159,38 @@ export class UsersController {
   /**
    * Persists last known map position for delivery coordinate fallback (migration 032+).
    */
+  @Delete('users/me')
+  @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
+  @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 10 } })
+  @RequirePermissions('orders.write')
+  async deleteUserMe(@Req() req: RequestWithFirebase) {
+    const uid = req.firebaseUid;
+    if (!uid) {
+      throw new UnauthorizedException();
+    }
+    const r = getTenantContext()?.activeRole;
+    if (r === 'admin' || r === 'system_internal') {
+      throw new ForbiddenException('admin_self_delete_forbidden');
+    }
+    await this.users.deleteSelf(uid);
+    return { deleted: true as const };
+  }
+
+  @Patch('users/me/address')
+  @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
+  @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 30 } })
+  @RequirePermissions('orders.write')
+  async patchUserMeAddress(
+    @Req() req: RequestWithFirebase,
+    @Body() body: { address1?: string; address2?: string; city?: string; notes?: string; lat?: number; lng?: number },
+  ) {
+    if (!req.firebaseUid) {
+      throw new UnauthorizedException();
+    }
+    await this.users.patchSavedAddress(req.firebaseUid, body ?? {});
+    return { ok: true as const };
+  }
+
   @Post('users/location')
   @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
   @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 120 } })

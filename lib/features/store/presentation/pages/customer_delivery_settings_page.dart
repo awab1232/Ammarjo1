@@ -6,12 +6,13 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/constants/jordan_regions.dart';
 import '../../../../core/data/repositories/user_repository.dart';
+import '../../../../core/services/backend_orders_client.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/widgets/app_bar_back_button.dart';
 import '../../domain/saved_checkout_info.dart';
 import '../store_controller.dart';
 
-/// تعديل بيانات التوصيل المحفوظة محلياً (هاتف، عنوان، مدينة).
+/// بيانات التوصيل — تُحفظ في الخادم (`PATCH /users/me/address`) وفي التخزين المحلي كنسخة احتياطية.
 class CustomerDeliverySettingsPage extends StatefulWidget {
   const CustomerDeliverySettingsPage({super.key});
 
@@ -44,17 +45,45 @@ class _CustomerDeliverySettingsPageState extends State<CustomerDeliverySettingsP
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       try {
         final store = context.read<StoreController>();
+        var filledFromServer = false;
+        final me = await BackendOrdersClient.instance
+            .fetchUserMe()
+            .timeout(const Duration(seconds: 12), onTimeout: () => null);
+        if (me != null) {
+          final sa = me['savedAddress'];
+          if (sa is Map) {
+            final m = Map<String, dynamic>.from(sa);
+            if (m.isNotEmpty) {
+              filledFromServer = true;
+              _address.text = m['address1']?.toString() ?? m['address2']?.toString() ?? '';
+              _phone.text = me['phone']?.toString() ?? _phone.text;
+              final city = m['city']?.toString() ?? '';
+              if (city.isNotEmpty) {
+                _selectedCity = matchJordanRegion(city);
+              }
+            }
+          }
+        }
         final saved = await store
             .getSavedCheckoutInfo()
             .timeout(const Duration(seconds: 8), onTimeout: () => null);
         final p = store.profile;
-        if (saved != null) {
+        if (!filledFromServer && saved != null) {
           _firstName.text = saved.firstName;
           _lastName.text = saved.lastName;
           _email.text = saved.email;
           _phone.text = saved.phone;
           _address.text = saved.address1;
           _selectedCity = matchJordanRegion(saved.city);
+          _country.text = saved.country.isNotEmpty ? saved.country : 'JO';
+        } else if (saved != null && _firstName.text.trim().isEmpty) {
+          _firstName.text = saved.firstName;
+          _lastName.text = saved.lastName;
+          _email.text = saved.email;
+          if (_phone.text.trim().isEmpty) {
+            _phone.text = saved.phone;
+          }
+          _selectedCity ??= matchJordanRegion(saved.city);
           _country.text = saved.country.isNotEmpty ? saved.country : 'JO';
         }
         if (p != null) {
@@ -66,6 +95,14 @@ class _CustomerDeliverySettingsPageState extends State<CustomerDeliverySettingsP
           }
           if (_selectedCity == null && p.city != null && p.city!.trim().isNotEmpty) {
             _selectedCity = matchJordanRegion(p.city);
+          }
+        }
+        if (me != null) {
+          if (_firstName.text.trim().isEmpty) {
+            _firstName.text = (me['firstName'] as String?)?.trim() ?? '';
+          }
+          if (_lastName.text.trim().isEmpty) {
+            _lastName.text = (me['lastName'] as String?)?.trim() ?? '';
           }
         }
       } on Object {
@@ -83,6 +120,17 @@ class _CustomerDeliverySettingsPageState extends State<CustomerDeliverySettingsP
       }
     });
     _loadSavedGeo();
+  }
+
+  (double, double)? _parseLatLngFromLocationText() {
+    final t = _locationText?.trim();
+    if (t == null || t.isEmpty) return null;
+    final parts = t.split(',');
+    if (parts.length < 2) return null;
+    final a = double.tryParse(parts[0].trim());
+    final b = double.tryParse(parts[1].trim());
+    if (a == null || b == null) return null;
+    return (a, b);
   }
 
   Future<void> _loadSavedGeo() async {
@@ -225,7 +273,7 @@ class _CustomerDeliverySettingsPageState extends State<CustomerDeliverySettingsP
                     padding: const EdgeInsets.all(16),
                     children: [
                       Text(
-                        'تُستخدم هذه البيانات تلقائياً عند إتمام الطلب. لا تُرسل إلى الخادم إلا عند تأكيد الطلب.',
+                        'تُستخدم عند إتمام الطلب. يتم مزامنة العنوان مع الحساب على الخادم عند الضغط على حفظ (مع بقاء نسخة محلية).',
                         style: GoogleFonts.tajawal(color: AppColors.textSecondary, height: 1.4),
                       ),
                       const SizedBox(height: 16),
@@ -271,14 +319,30 @@ class _CustomerDeliverySettingsPageState extends State<CustomerDeliverySettingsP
                         onPressed: () async {
                           if (!(_formKey.currentState?.validate() ?? false)) return;
                           final store = context.read<StoreController>();
+                          final city = (_selectedCity ?? '').trim();
+                          final addressLine = _address.text.trim();
+                          final latLng = _parseLatLngFromLocationText();
+                          final remote = await BackendOrdersClient.instance.patchUserMeAddress(<String, dynamic>{
+                            'address1': addressLine,
+                            'address2': '',
+                            'city': city,
+                            'notes': '',
+                            if (latLng != null) 'lat': latLng.$1,
+                            if (latLng != null) 'lng': latLng.$2,
+                          });
+                          if (remote == null && context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(content: Text('تعذر حفظ العنوان على الخادم. حُفظت نسخة محلية فقط.', style: GoogleFonts.tajawal())),
+                            );
+                          }
                           await store.saveDeliveryInfo(
                             SavedCheckoutInfo(
                               firstName: _firstName.text.trim(),
                               lastName: _lastName.text.trim(),
                               email: _email.text.trim(),
                               phone: _phone.text.trim(),
-                              address1: _address.text.trim(),
-                              city: (_selectedCity ?? '').trim(),
+                              address1: addressLine,
+                              city: city,
                               country: _country.text.trim().isNotEmpty ? _country.text.trim() : 'JO',
                             ),
                           );

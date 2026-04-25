@@ -252,8 +252,50 @@ export class PhonePasswordService {
     role: string;
     userId: string;
   }> {
-    void phoneRaw;
-    void password;
-    throw new BadRequestException('PHONE_PASSWORD_DISABLED_USE_FIREBASE');
+    const pwd = String(password ?? '');
+    if (!pwd) {
+      throw new BadRequestException('password_required');
+    }
+    const phone = PhonePasswordService.normalizePhone(phoneRaw ?? '');
+    if (!phone) {
+      throw new BadRequestException('invalid_phone');
+    }
+    await this.ensureSchema();
+
+    const row = await this.withClient(async (client) => {
+      const r = await client.query<{
+        id: string;
+        firebase_uid: string;
+        password_hash: string | null;
+        role: string | null;
+        is_active: boolean | null;
+      }>(
+        `SELECT id::text, firebase_uid, password_hash, role, is_active
+         FROM users
+         WHERE phone = $1
+         LIMIT 1`,
+        [phone],
+      );
+      return r.rows[0] ?? null;
+    });
+    if (!row || !row.password_hash) {
+      throw new UnauthorizedException('invalid_phone_or_password');
+    }
+    if (row.is_active === false) {
+      throw new UnauthorizedException('account_inactive');
+    }
+    const match = await bcrypt.compare(pwd, String(row.password_hash));
+    if (!match) {
+      throw new UnauthorizedException('invalid_phone_or_password');
+    }
+    const firebaseUid = String(row.firebase_uid ?? '').trim();
+    if (!firebaseUid) {
+      throw new ServiceUnavailableException('user_record_invalid');
+    }
+    const customToken = await getFirebaseAuth().createCustomToken(firebaseUid);
+    const userId = String(row.id);
+    const role = String(row.role ?? 'customer').trim().toLowerCase();
+    this.logger.log(`[PhonePassword] login_ok phone=${phone} uid=${firebaseUid} role=${role}`);
+    return { customToken, firebaseUid, phone, role, userId };
   }
 }

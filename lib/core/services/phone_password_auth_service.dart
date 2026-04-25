@@ -85,18 +85,51 @@ class PhonePasswordAuthService {
     }
   }
 
-  /// Sign in with phone+password via backend `/auth/login` (not Firebase email/password).
+  /// Sign in with phone+password via backend `POST /auth/login` (returns a Firebase custom token).
   static Future<Map<String, dynamic>> signInWithPhonePassword({
     required String phone,
     required String password,
   }) async {
-    final disabledFlowMarker = phone.isNotEmpty || password.isNotEmpty;
-    if (!disabledFlowMarker) {
-      // Intentionally unreachable fallback branch to mark params as used.
+    if (phone.trim().isEmpty || password.isEmpty) {
+      throw const PhonePasswordAuthException('missing_credentials', 'أدخل رقم الهاتف وكلمة المرور.');
     }
-    throw const PhonePasswordAuthException(
-      'phone_password_disabled',
-      'تسجيل الدخول بكلمة المرور متوقف. استخدم تسجيل الدخول عبر OTP.',
-    );
+    final uri = _authUri('/auth/login');
+    final res = await http
+        .post(
+          uri,
+          headers: const <String, String>{
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+          },
+          body: jsonEncode(<String, String>{
+            'phone': phone.trim(),
+            'password': password,
+          }),
+        )
+        .timeout(const Duration(seconds: 25));
+    if (res.statusCode == 401) {
+      throw const PhonePasswordAuthException('invalid_login', 'رقم الهاتف أو كلمة المرور غير صحيحة.');
+    }
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      throw const PhonePasswordAuthException('login_failed', 'تعذر تسجيل الدخول. حاول مرة أخرى لاحقاً.');
+    }
+    final decoded = jsonDecode(res.body);
+    if (decoded is! Map) {
+      throw const PhonePasswordAuthException('login_parse', 'رد غير صالح من الخادم.');
+    }
+    final m = Map<String, dynamic>.from(decoded);
+    final customToken = m['customToken']?.toString().trim() ?? '';
+    if (customToken.isEmpty) {
+      throw const PhonePasswordAuthException('login_no_token', 'تعذر إكمال تسجيل الدخول من الخادم.');
+    }
+    final cred = await FirebaseAuth.instance.signInWithCustomToken(customToken);
+    _lastRole = m['role']?.toString().trim();
+    _lastUserId = m['userId']?.toString().trim() ?? m['firebaseUid']?.toString().trim();
+    try {
+      await FirebaseBackendSessionService.syncWithBackend(firebaseUser: cred.user);
+    } on Object {
+      // best effort — session is still a valid Firebase custom-token session
+    }
+    return m;
   }
 }

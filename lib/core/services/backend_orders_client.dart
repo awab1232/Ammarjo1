@@ -1954,8 +1954,73 @@ final class BackendOrdersClient {
 
   // ——— Driver panel (Firebase + [BackendOrdersConfig] base URL) ———
 
+  /// GET `/users/me` — includes [savedAddress] when configured on the server.
+  Future<Map<String, dynamic>?> fetchUserMe() => _authedGetJson('/users/me', flow: 'user_me');
+
+  /// PATCH `/users/me/address` — persists delivery address JSON to PostgreSQL.
+  Future<Map<String, dynamic>?> patchUserMeAddress(Map<String, dynamic> body) => _authedPatchJson(
+        '/users/me/address',
+        body: body,
+        flow: 'user_me_address',
+      );
+
+  /// DELETE `/users/me` — returns [errorCode] from JSON body on 400.
+  Future<({bool ok, String? errorCode})> deleteMyUserAccount() async {
+    if (!await _allowPath('/users/me')) {
+      return (ok: false, errorCode: 'forbidden');
+    }
+    final base = BackendOrdersConfig.baseUrl.trim();
+    if (base.isEmpty) {
+      BackendOrdersConfig.warnIfBackendBaseUrlMissing('user_delete');
+      return (ok: false, errorCode: 'config');
+    }
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null) {
+      return (ok: false, errorCode: 'unauthenticated');
+    }
+    final token = await _idToken(user);
+    if (token.isEmpty) {
+      return (ok: false, errorCode: 'unauthenticated');
+    }
+    final uri = Uri.parse('${base.replaceAll(RegExp(r'/$'), '')}/users/me');
+    try {
+      final headers = <String, String>{'Authorization': 'Bearer $token'};
+      FirebaseAuthHeaderProvider.logRequestHeaders(method: 'DELETE', uri: uri, headers: headers);
+      final res = await http.delete(uri, headers: headers).timeout(const Duration(seconds: 25));
+      FirebaseAuthHeaderProvider.logDebugResponse('DELETE /users/me', res.statusCode, res.body);
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        return (ok: true, errorCode: null);
+      }
+      if (res.statusCode == 400) {
+        if (res.body.contains('active_orders_exist')) {
+          return (ok: false, errorCode: 'active_orders_exist');
+        }
+        String? err;
+        try {
+          final m = jsonDecode(res.body);
+          if (m is Map) {
+            final message = m['message'];
+            if (message is Map) {
+              err = message['error']?.toString();
+            }
+            err ??= m['error']?.toString();
+          }
+        } on Object {
+          // ignore
+        }
+        return (ok: false, errorCode: err ?? 'bad_request');
+      }
+      return (ok: false, errorCode: 'http_${res.statusCode}');
+    } on Object {
+      return (ok: false, errorCode: 'exception');
+    }
+  }
+
   Future<Map<String, dynamic>?> fetchDriverWorkbench() =>
       _authedGetJson('/drivers/workbench', flow: 'driver_workbench');
+
+  Future<Map<String, dynamic>?> fetchDriverMyEarnings() =>
+      _authedGetJson('/drivers/my-earnings', flow: 'driver_my_earnings');
 
   Future<Map<String, dynamic>?> postDriverRegister({String? name, String? phone}) => _authedPostJson(
         '/drivers/register',
