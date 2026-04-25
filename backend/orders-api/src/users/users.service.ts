@@ -448,4 +448,23 @@ export class UsersService {
       );
     });
   }
+
+  /** For push routing to store owners. */
+  async getStoreOwnerUidByStoreId(storeId: string): Promise<string | null> {
+    const sid = storeId?.trim();
+    if (!sid || !this.pool) return null;
+    const client = await this.pool.connect();
+    try {
+      const r = await client.query<{ o: string | null }>(
+        `SELECT owner_id::text AS o FROM stores WHERE id = $1::uuid LIMIT 1`,
+        [sid],
+      );
+      const o = r.rows[0]?.o;
+      return o != null && String(o).trim() !== '' ? String(o).trim() : null;
+    } catch {
+      return null;
+    } finally {
+      client.release();
+    }
+  }
 }

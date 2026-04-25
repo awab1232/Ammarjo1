@@ -16,7 +16,9 @@ class OrderService {
     final ids = cart.map((e) => e.storeId.trim()).where((s) => s.isNotEmpty).toList();
     if (ids.isEmpty) return 'ammarjo';
     final distinct = ids.toSet();
-    if (distinct.length == 1) return ids.first;
+    if (distinct.length > 1) {
+      throw Exception('multi_store_order_not_allowed');
+    }
     return ids.first;
   }
 

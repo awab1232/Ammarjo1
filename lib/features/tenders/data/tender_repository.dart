@@ -1,20 +1,15 @@
-﻿import 'dart:async' show unawaited;
-import 'dart:typed_data';
+﻿import 'dart:typed_data';
 
 import '../../../core/contracts/feature_state.dart';
-import '../../../core/firebase/user_notifications_repository.dart';
 import '../../../core/services/backend_tender_client.dart';
 import '../../store/domain/models.dart';
-import '../../stores/data/stores_repository.dart';
-import '../../stores/domain/store_model.dart';
 import '../domain/tender_model.dart';
 
 class TenderRepository {
   TenderRepository._();
   static final TenderRepository instance = TenderRepository._();
 
-  /// إنشاء مناقصة جديدة مع ربطها بنوع المتجر (storeTypeId/Key) ليتم توجيه الإشعارات
-  /// إلى المتاجر المطابقة فقط (بدلاً من بث موحد لكل المتاجر).
+  /// إنشاء مناقصة عبر الـ API؛ إشعارات أصحاب المتاجر تُنفّذ من الخادم.
   Future<FeatureState<String>> createTender({
     required List<Uint8List> imageBytesList,
     required String categoryId,
@@ -38,17 +33,6 @@ class TenderRepository {
     );
     final id = row?['id']?.toString().trim() ?? '';
     if (id.isEmpty) return FeatureState.failure('تعذر إنشاء المناقصة');
-    unawaited(
-      _notifyTargetedStores(
-        tenderId: id,
-        category: categoryLabel,
-        city: city,
-        userName: userName,
-        storeTypeId: storeTypeId,
-        storeTypeKey: storeTypeKey,
-        storeTypeName: storeTypeName,
-      ),
-    );
     return FeatureState.success(id);
   }
 
@@ -197,63 +181,6 @@ class TenderRepository {
 
   Future<void> deleteTender(String tenderId) async {
     await BackendTenderClient.instance.deleteTender(tenderId);
-  }
-
-  /// يُرسل إشعار المناقصة الجديدة إلى أصحاب المتاجر التي تطابق [storeTypeId] أو [storeTypeKey]،
-  /// إضافةً إلى بث عام للإداريين. إذا تعذّر جلب المتاجر المطابقة لأي سبب، يسقط المسار على إشعار الإداريين.
-  Future<void> _notifyTargetedStores({
-    required String tenderId,
-    required String category,
-    required String city,
-    required String userName,
-    String? storeTypeId,
-    String? storeTypeKey,
-    String? storeTypeName,
-  }) async {
-    final typeLabel = (storeTypeName ?? category).trim();
-    final title = 'مناقصة جديدة';
-    final body = '$userName يطلب عرض سعر — القسم: $typeLabel — المدينة: $city';
-
-    // 1) إشعار الإداريين دائماً (للمراقبة والمتابعة).
-    unawaited(
-      UserNotificationsRepository.sendNotificationToAdmin(
-        title: title,
-        body: body,
-        type: 'new_tender',
-        referenceId: tenderId,
-      ),
-    );
-
-    // 2) جلب المتاجر المطابقة لنوع المتجر فقط ثم إشعار أصحابها.
-    try {
-      final state = await StoresRepository.instance
-          .fetchApprovedStores(storeTypeId: storeTypeId?.trim().isNotEmpty == true ? storeTypeId : null);
-      if (state is! FeatureSuccess<List<StoreModel>>) return;
-      final sid = (storeTypeId ?? '').trim();
-      final skey = (storeTypeKey ?? '').trim().toLowerCase();
-      final targets = state.data.where((s) {
-        if (sid.isNotEmpty) return (s.storeTypeId ?? '').trim() == sid;
-        if (skey.isNotEmpty) return (s.storeTypeKey ?? '').trim().toLowerCase() == skey;
-        return false;
-      }).toList();
-      final seen = <String>{};
-      for (final s in targets) {
-        final uid = s.ownerId.trim();
-        if (uid.isEmpty || seen.contains(uid)) continue;
-        seen.add(uid);
-        unawaited(
-          UserNotificationsRepository.sendNotificationToUser(
-            userId: uid,
-            title: title,
-            body: body,
-            type: 'new_tender',
-            referenceId: tenderId,
-          ),
-        );
-      }
-    } on Object {
-      // نبتلع الخطأ لعدم منع نجاح إنشاء المناقصة إذا فشل جلب المتاجر.
-    }
   }
 
   Future<({List<Map<String, dynamic>> items, Object? lastDocument, bool hasMore})> getStoreTenderCommissions({

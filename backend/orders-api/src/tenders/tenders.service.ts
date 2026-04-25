@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
+  Logger,
   NotFoundException,
   ServiceUnavailableException,
 } from '@nestjs/common';
@@ -9,6 +10,7 @@ import { Pool, type PoolClient } from 'pg';
 import { buildPgPoolConfig } from '../infrastructure/database/pg-ssl';
 
 import { logAuditJson } from '../common/audit-log';
+import { NotificationsService } from '../notifications/notifications.service';
 
 export interface CreateTenderInput {
   userId: string;
@@ -44,9 +46,10 @@ export interface SubmitOfferInput {
 @Injectable()
 export class TendersService {
   private readonly pool: Pool | null;
+  private readonly logger = new Logger(TendersService.name);
   private tablesReady = false;
 
-  constructor() {
+  constructor(private readonly notifications: NotificationsService) {
     const url = process.env.DATABASE_URL?.trim();
     this.pool = url
       ? new Pool(
@@ -223,8 +226,48 @@ export class TendersService {
         tenderId: q.rows[0]?.['id'],
         customerUid: input.userId.trim(),
       });
-      return this.rowToTender(q.rows[0] as Record<string, unknown>);
+      const tender = this.rowToTender(q.rows[0] as Record<string, unknown>);
+      this.fireTenderStorePushNotifications(
+        input.categoryId.trim(),
+        String(tender['id'] ?? q.rows[0]?.['id'] ?? '').trim(),
+        (input.userName || input.description || '').trim(),
+      );
+      return tender;
     });
+  }
+
+  /** Fire-and-forget: notify store owners with products in this category. */
+  private fireTenderStorePushNotifications(categoryId: string, tenderId: string, body: string): void {
+    const cat = categoryId.trim();
+    const tid = tenderId.trim();
+    if (!cat || !tid) return;
+    const title = 'مناقصة جديدة';
+    const b = (body || 'مناقصة').trim().slice(0, 400);
+    void (async () => {
+      if (!this.pool) return;
+      const client = await this.pool.connect();
+      try {
+        const r = await client.query<{ store_id: string }>(
+          `SELECT DISTINCT store_id::text AS store_id
+           FROM store_products
+           WHERE category_id = $1::uuid`,
+          [cat],
+        );
+        for (const row of r.rows) {
+          this.notifications.sendPushToStore(row.store_id, {
+            title,
+            body: b,
+            data: { tenderId: tid, type: 'new_tender' },
+          });
+        }
+      } catch (e) {
+        this.logger.warn(
+          `tender_store_push_failed: ${e instanceof Error ? e.message : String(e)}`,
+        );
+      } finally {
+        client.release();
+      }
+    })();
   }
 
   async listMine(userId: string, limit = 50): Promise<{ items: Record<string, unknown>[] }> {

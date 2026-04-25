@@ -1,11 +1,14 @@
 import {
   BadRequestException,
+  forwardRef,
+  Inject,
   Injectable,
   Logger,
   NotFoundException,
   Optional,
   ServiceUnavailableException,
 } from '@nestjs/common';
+import { DriversService } from '../drivers/drivers.service';
 import { ConsistencyPolicyService } from '../architecture/consistency/consistency-policy.service';
 import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
@@ -80,6 +83,7 @@ export class OrdersService implements IOrderService {
     private readonly users: UsersService,
     @Optional() private readonly consistencyPolicy?: ConsistencyPolicyService,
     @Optional() private readonly storeCommissions?: StoreCommissionsService,
+    @Optional() @Inject(forwardRef(() => DriversService)) private readonly driversService?: DriversService,
   ) {
     const url = process.env.DATABASE_URL?.trim();
     this.pool = url
@@ -302,6 +306,12 @@ export class OrdersService implements IOrderService {
 
     const pgWriteOccurred = pgOp === 'insert' || pgOp === 'update';
     this.consistencyPolicy?.validateOrdersWriteTargetsPostgres(pgWriteOccurred, 'OrdersService.create');
+
+    if (pgOp === 'insert' && this.driversService) {
+      void this.driversService.autoAssignDriver(orderId).catch((err: unknown) =>
+        console.error('[OrdersService] autoAssign failed:', err),
+      );
+    }
 
     return { order, validation, storageCheck };
   }

@@ -170,7 +170,14 @@ class ProductDetailsPage extends StatelessWidget {
                           ),
                           action: SnackBarAction(
                             label: 'اقتراحات',
-                            onPressed: () {},
+                            onPressed: () {
+                              if (!context.mounted) return;
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('قريباً - اقتراحات', style: GoogleFonts.tajawal()),
+                                ),
+                              );
+                            },
                           ),
                         ),
                       );

@@ -187,6 +187,29 @@ export class NotificationsService {
     void this.dispatchToUser(targetUserId, payload, 'notification_rating_received');
   }
 
+  /**
+   * Resolves store owner Firebase UID and enqueues push + inbox. Fire-and-forget.
+   */
+  sendPushToStore(
+    storeId: string,
+    p: { title: string; body: string; data: Record<string, string> },
+  ): void {
+    const sid = storeId?.trim();
+    if (!sid) return;
+    void this.users
+      .getStoreOwnerUidByStoreId(sid)
+      .then((uid) => {
+        if (!uid) return;
+        const payload: NotificationPayload = {
+          title: p.title,
+          body: p.body,
+          data: p.data,
+        };
+        return this.dispatchToUser(uid, payload, 'tender_push_to_store');
+      })
+      .catch((e) => this.logger.error(`sendPushToStore: ${e instanceof Error ? e.message : String(e)}`));
+  }
+
   private async dispatchToUser(userId: string, payload: NotificationPayload, kind: string): Promise<void> {
     const eventId = this.buildEventId(kind, userId, payload);
     const inbox = await this.inbox.insertRecord({

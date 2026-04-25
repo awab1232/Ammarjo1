@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, forwardRef } from '@nestjs/common';
 import { OrdersModule } from '../orders/orders.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
@@ -8,7 +8,7 @@ import { DriverAssignmentTimeoutScheduler } from './driver-assignment-timeout.sc
 import { NoDriverAutoRetryScheduler } from './no-driver-auto-retry.scheduler';
 
 @Module({
-  imports: [OrdersModule, NotificationsModule],
+  imports: [forwardRef(() => OrdersModule), NotificationsModule],
   controllers: [DriversController],
   providers: [DriversService, DriverAssignmentTimeoutScheduler, NoDriverAutoRetryScheduler, FirebaseAuthGuard],
   exports: [DriversService],
