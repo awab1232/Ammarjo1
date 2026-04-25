@@ -15,6 +15,18 @@ class AdminProductsSection extends StatefulWidget {
 }
 
 class _AdminProductsSectionState extends State<AdminProductsSection> {
+  final TextEditingController _searchCtrl = TextEditingController();
+  final TextEditingController _storeCtrl = TextEditingController();
+  final TextEditingController _categoryCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _searchCtrl.dispose();
+    _storeCtrl.dispose();
+    _categoryCtrl.dispose();
+    super.dispose();
+  }
+
   Future<void> _openBulkStockDialog() async {
     final ctrl = TextEditingController();
     final ok = await showDialog<bool>(
@@ -93,6 +105,48 @@ class _AdminProductsSectionState extends State<AdminProductsSection> {
             ],
           ),
         ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(20, 10, 20, 10),
+          child: Column(
+            children: [
+              TextField(
+                controller: _searchCtrl,
+                textAlign: TextAlign.right,
+                decoration: const InputDecoration(
+                  hintText: 'بحث باسم المنتج',
+                  prefixIcon: Icon(Icons.search),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Expanded(
+                    child: TextField(
+                      controller: _storeCtrl,
+                      textAlign: TextAlign.right,
+                      decoration: const InputDecoration(
+                        hintText: 'فلترة حسب المتجر (Store ID)',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: TextField(
+                      controller: _categoryCtrl,
+                      textAlign: TextAlign.right,
+                      decoration: const InputDecoration(
+                        hintText: 'فلترة حسب التصنيف (Sub Category ID)',
+                        border: OutlineInputBorder(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
         const Divider(height: 1),
         Expanded(
           child: AdminCrudSection(
@@ -107,7 +161,11 @@ class _AdminProductsSectionState extends State<AdminProductsSection> {
               CrudFieldDef(key: 'image', label: 'الصورة', readItemKey: 'image'),
               CrudFieldDef(key: 'description', label: 'الوصف'),
             ],
-            loadItems: () => AdminRepository.instance.fetchMarketplaceProducts(),
+            loadItems: () => AdminRepository.instance.fetchMarketplaceProducts(
+              search: _searchCtrl.text.trim().isEmpty ? null : _searchCtrl.text.trim(),
+              storeId: _storeCtrl.text.trim().isEmpty ? null : _storeCtrl.text.trim(),
+              subCategoryId: _categoryCtrl.text.trim().isEmpty ? null : _categoryCtrl.text.trim(),
+            ),
             onCreate: (v) => AdminRepository.instance.createMarketplaceProduct(
               storeId: v['storeId'] ?? '',
               subCategoryId: (v['subCategoryId'] ?? '').trim().isEmpty ? null : v['subCategoryId'],

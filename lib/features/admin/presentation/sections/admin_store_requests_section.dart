@@ -141,11 +141,12 @@ class _PendingTabState extends State<_PendingTab> {
             padding: const EdgeInsets.all(16),
             itemCount: list.length,
             itemBuilder: (context, i) {
-              final m = list[i];
-              final id = m['id']?.toString() ?? '';
-              final name = m['name']?.toString() ?? '—';
-              final owner = m['owner_id']?.toString() ?? '';
-              final cat = m['category']?.toString() ?? '—';
+              try {
+                final m = list[i];
+                final id = m['id']?.toString() ?? '';
+                final name = m['name']?.toString() ?? '—';
+                final owner = m['owner_id']?.toString() ?? '';
+                final cat = m['category']?.toString() ?? '—';
               return Card(
                 margin: const EdgeInsets.only(bottom: 12),
                 child: Padding(
@@ -228,6 +229,16 @@ class _PendingTabState extends State<_PendingTab> {
                   ),
                 ),
               );
+              } on Object catch (e) {
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 12),
+                  child: ListTile(
+                    leading: const Icon(Icons.error_outline, color: AppColors.error),
+                    title: Text('خطأ في قراءة الطلب', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                    subtitle: Text('$e', style: GoogleFonts.tajawal(fontSize: 12)),
+                  ),
+                );
+              }
             },
           ),
         );
@@ -285,9 +296,10 @@ class _ApprovedTabState extends State<_ApprovedTab> {
             padding: const EdgeInsets.all(16),
             itemCount: list.length,
             itemBuilder: (context, i) {
-              final m = list[i];
-              final name = m['name']?.toString() ?? '—';
-              final owner = m['owner_id']?.toString() ?? '';
+              try {
+                final m = list[i];
+                final name = m['name']?.toString() ?? '—';
+                final owner = m['owner_id']?.toString() ?? '';
                 return Card(
                 margin: const EdgeInsets.only(bottom: 10),
                 child: ListTile(
@@ -306,6 +318,16 @@ class _ApprovedTabState extends State<_ApprovedTab> {
                   ),
                 ),
               );
+              } on Object catch (e) {
+                return Card(
+                  margin: const EdgeInsets.only(bottom: 10),
+                  child: ListTile(
+                    leading: const Icon(Icons.error_outline, color: AppColors.error),
+                    title: Text('خطأ في قراءة المتجر', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                    subtitle: Text('$e', style: GoogleFonts.tajawal(fontSize: 12)),
+                  ),
+                );
+              }
             },
           ),
         );

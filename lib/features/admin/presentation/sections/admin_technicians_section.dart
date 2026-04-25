@@ -239,8 +239,11 @@ class _AdminTechniciansSectionState extends State<AdminTechniciansSection> with 
                                               try {
                                                 await AdminRepository.instance.setTechnicianStatus(id, 'approved');
                                                 setState(() => _profilesTick++);
-                                              } on Object {
-                                                debugPrint('[AdminTechniciansSection] approve failed');
+                                              } on Object catch (e) {
+                                                if (!context.mounted) return;
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(content: Text('فشل القبول: $e', style: GoogleFonts.tajawal())),
+                                                );
                                               }
                                             },
                                             style: FilledButton.styleFrom(backgroundColor: Colors.green),
@@ -251,8 +254,11 @@ class _AdminTechniciansSectionState extends State<AdminTechniciansSection> with 
                                               try {
                                                 await AdminRepository.instance.setTechnicianStatus(id, 'rejected');
                                                 setState(() => _profilesTick++);
-                                              } on Object {
-                                                debugPrint('[AdminTechniciansSection] reject failed');
+                                              } on Object catch (e) {
+                                                if (!context.mounted) return;
+                                                ScaffoldMessenger.of(context).showSnackBar(
+                                                  SnackBar(content: Text('فشل الرفض: $e', style: GoogleFonts.tajawal())),
+                                                );
                                               }
                                             },
                                             style: FilledButton.styleFrom(backgroundColor: Colors.red),
@@ -371,15 +377,24 @@ class _JoinTabState extends State<_JoinTab> {
                                         r,
                                         reviewedBy: UserSession.currentUid.isNotEmpty ? UserSession.currentUid : null,
                                       );
-                                      if (result is FeatureFailure<void>) return;
+                                      if (result case FeatureFailure(:final message)) {
+                                        if (!context.mounted) return;
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text(message, style: GoogleFonts.tajawal())),
+                                        );
+                                        return;
+                                      }
                                       if (context.mounted) {
                                         ScaffoldMessenger.of(context).showSnackBar(
                                           SnackBar(content: Text('تمت الموافقة', style: GoogleFonts.tajawal()), backgroundColor: Colors.green),
                                         );
                                         _reload();
                                       }
-                                    } on Object {
-                                      debugPrint('[JoinTab] approve failed');
+                                    } on Object catch (e) {
+                                      if (!context.mounted) return;
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('فشل الموافقة: $e', style: GoogleFonts.tajawal())),
+                                      );
                                     }
                                   },
                                   style: FilledButton.styleFrom(backgroundColor: Colors.green),
@@ -398,13 +413,22 @@ class _JoinTabState extends State<_JoinTab> {
                                         reviewedBy: UserSession.currentUid.isNotEmpty ? UserSession.currentUid : '',
                                         rejectionReason: reason,
                                       );
-                                      if (result is FeatureFailure<void>) return;
+                                      if (result case FeatureFailure(:final message)) {
+                                        if (!context.mounted) return;
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(content: Text(message, style: GoogleFonts.tajawal())),
+                                        );
+                                        return;
+                                      }
                                       if (context.mounted) {
                                         ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('تم الرفض', style: GoogleFonts.tajawal())));
                                         _reload();
                                       }
-                                    } on Object {
-                                      debugPrint('[JoinTab] reject failed');
+                                    } on Object catch (e) {
+                                      if (!context.mounted) return;
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(content: Text('فشل الرفض: $e', style: GoogleFonts.tajawal())),
+                                      );
                                     }
                                   },
                                   style: FilledButton.styleFrom(backgroundColor: Colors.orange),

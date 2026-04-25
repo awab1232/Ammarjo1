@@ -73,19 +73,36 @@ class CouponRepository {
     }
     final c = couponState.data;
     final orderAmount = cart.fold<double>(0, (s, e) => s + e.totalPrice);
-    final productIds = cart.map((e) => e.product.id).toList();
     final storeIds = cart.map((e) => e.storeId).toSet().toList();
-    final valid = c.isValid(
-      userId: userId,
-      orderAmount: orderAmount,
-      productIds: productIds,
-      storeIds: storeIds,
-      userUsedCount: 0,
-    );
-    if (!valid) {
-      return FeatureState.failure('الكود لا ينطبق على السلة الحالية');
+    final base = BackendOrdersConfig.baseUrl.trim().replaceAll(RegExp(r'/$'), '');
+    if (base.isEmpty) return FeatureState.failure('Backend URL missing for coupons.');
+    final uri = Uri.parse('$base/coupons/validate');
+    http.Response res;
+    try {
+      res = await http
+          .post(
+            uri,
+            headers: await _headers(),
+            body: jsonEncode(<String, dynamic>{
+              'code': code.trim(),
+              'storeId': storeIds.isNotEmpty ? storeIds.first : '',
+              'orderTotal': orderAmount,
+            }),
+          )
+          .timeout(const Duration(seconds: 12));
+    } on TimeoutException {
+      return FeatureState.failure('TIMEOUT');
+    } on Object {
+      return FeatureState.failure('UNEXPECTED_ERROR');
     }
-    final discount = c.calculateDiscount(orderAmount: orderAmount);
+    if (res.statusCode < 200 || res.statusCode >= 300) {
+      return FeatureState.failure('تعذر التحقق من الكوبون (${res.statusCode})');
+    }
+    final decoded = jsonDecode(res.body);
+    if (decoded is! Map) return FeatureState.failure('INVALID_JSON');
+    final valid = decoded['valid'] == true;
+    if (!valid) return FeatureState.failure('الكود لا ينطبق على السلة الحالية');
+    final discount = (decoded['discountAmount'] as num?)?.toDouble() ?? 0;
     if (discount <= 0) return FeatureState.failure('لا يوجد خصم قابل للتطبيق');
     return FeatureState.success(
       CouponValidationResult(isValid: true, message: 'تم تطبيق الكوبون', coupon: c, discountAmount: discount),

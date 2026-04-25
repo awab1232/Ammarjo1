@@ -612,8 +612,32 @@ final class BackendAdminClient {
     });
   }
 
+  Future<Map<String, dynamic>?> patchCategoryCommission(
+    String id, {
+    required double commissionPercent,
+  }) {
+    return _patch(
+      '/admin/rest/categories/${Uri.encodeComponent(id.trim())}/commission',
+      body: {'commissionPercent': commissionPercent},
+    );
+  }
+
   Future<Map<String, dynamic>?> deleteCategory(String id) {
     return _delete('/admin/rest/categories/${Uri.encodeComponent(id.trim())}');
+  }
+
+  Future<Map<String, dynamic>?> broadcastNotification({
+    required String title,
+    required String body,
+    String? targetRole,
+    Map<String, dynamic>? data,
+  }) {
+    return _post('/admin/rest/notifications/broadcast', body: {
+      'title': title,
+      'body': body,
+      if (targetRole != null && targetRole.trim().isNotEmpty) 'targetRole': targetRole.trim(),
+      if (data != null) 'data': data,
+    });
   }
 
   // ——— Settings ———

@@ -28,6 +28,8 @@ import '../sections/admin_analytics_section.dart';
 import '../sections/admin_tenders_section.dart';
 import '../sections/admin_tender_commissions_section.dart';
 import '../sections/admin_blog_banners_section.dart';
+import '../sections/admin_notifications_section.dart';
+import '../sections/admin_unified_categories_section.dart';
 import '../../data/admin_notification_repository.dart';
 import '../sections/admin_sessions_section.dart';
 import '../../../store/presentation/pages/main_navigation_page.dart';
@@ -121,17 +123,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   }
 
   List<_AdminNavGroup> _filteredNavGroups(String role) {
-    return _navGroups
-        .map((g) {
-          final items = g.items
-              .where(
-                (e) => PermissionService.canAccessAdminNavIndex(e.index, role),
-              )
-              .toList();
-          return _AdminNavGroup(titleAr: g.titleAr, items: items);
-        })
-        .where((g) => g.items.isNotEmpty)
-        .toList();
+    return _navGroups;
   }
 
   void _syncNavIndexIfNeeded(String role) {
@@ -163,7 +155,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   /// مجموعات التنقل (مثل Vercel): تقليل الازدحام في الشريط الجانبي.
   static const _navGroups = <_AdminNavGroup>[
     _AdminNavGroup(
-      titleAr: 'نظرة عامة',
+      titleAr: 'الرئيسية',
       items: <_AdminNavItem>[
         _AdminNavItem(
           index: 0,
@@ -173,204 +165,69 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       ],
     ),
     _AdminNavGroup(
-      titleAr: 'النظام والبيانات',
+      titleAr: 'المتاجر والمنتجات',
       items: <_AdminNavItem>[
-        _AdminNavItem(
-          index: 1,
-          icon: Icons.hub_outlined,
-          labelAr: 'Migration Hub',
-        ),
-        _AdminNavItem(
-          index: 17,
-          icon: Icons.fact_check_outlined,
-          labelAr: 'سجل التدقيق',
-        ),
-        _AdminNavItem(
-          index: 13,
-          icon: Icons.account_balance_wallet_outlined,
-          labelAr: 'المحفظة',
-        ),
-        _AdminNavItem(
-          index: 14,
-          icon: Icons.local_shipping_outlined,
-          labelAr: 'الشحن',
-        ),
-      ],
-    ),
-    _AdminNavGroup(
-      titleAr: 'التجارة والمبيعات',
-      items: <_AdminNavItem>[
-        _AdminNavItem(
-          index: 7,
-          icon: Icons.receipt_long_outlined,
-          labelAr: 'الطلبات',
-        ),
-        _AdminNavItem(
-          index: 36,
-          icon: Icons.delivery_dining_outlined,
-          labelAr: 'إدارة التوصيل',
-        ),
-        _AdminNavItem(
-          index: 37,
-          icon: Icons.how_to_reg_outlined,
-          labelAr: 'طلبات السائقين',
-        ),
+        _AdminNavItem(index: 9, icon: Icons.store_outlined, labelAr: 'المتاجر'),
+        _AdminNavItem(index: 9, icon: Icons.how_to_reg_outlined, labelAr: 'طلبات التسجيل'),
         _AdminNavItem(
           index: 6,
           icon: Icons.inventory_2_outlined,
           labelAr: 'المنتجات',
         ),
-        _AdminNavItem(
-          index: 3,
-          icon: Icons.category_outlined,
-          labelAr: 'الأقسام',
-        ),
-        _AdminNavItem(
-          index: 9,
-          icon: Icons.store_mall_directory_outlined,
-          labelAr: 'طلبات المتاجر',
-        ),
-        _AdminNavItem(
-          index: 10,
-          icon: Icons.home_repair_service_outlined,
-          labelAr: 'متاجر الأدوات المنزلية',
-        ),
-        _AdminNavItem(
-          index: 12,
-          icon: Icons.percent_outlined,
-          labelAr: 'العمولات',
-        ),
-        _AdminNavItem(
-          index: 19,
-          icon: Icons.discount_outlined,
-          labelAr: 'أكواد الخصم',
-        ),
-        _AdminNavItem(
-          index: 20,
-          icon: Icons.approval_outlined,
-          labelAr: 'طلبات تسجيل جملة',
-        ),
-        _AdminNavItem(
-          index: 21,
-          icon: Icons.warehouse_outlined,
-          labelAr: 'تجار الجملة',
-        ),
-        _AdminNavItem(
-          index: 15,
-          icon: Icons.grid_view_rounded,
-          labelAr: 'تصنيفات المتاجر',
-        ),
-        _AdminNavItem(
-          index: 29,
-          icon: Icons.account_tree_outlined,
-          labelAr: 'الأقسام الفرعية',
-        ),
-        _AdminNavItem(
-          index: 30,
-          icon: Icons.dashboard_customize_outlined,
-          labelAr: 'الأقسام الرئيسية',
-        ),
-        _AdminNavItem(
-          index: 31,
-          icon: Icons.star_outline_rounded,
-          labelAr: 'المتاجر المميزة',
-        ),
-        _AdminNavItem(
-          index: 32,
-          icon: Icons.trending_up_rounded,
-          labelAr: 'Boost المنتجات',
-        ),
-        _AdminNavItem(
-          index: 33,
-          icon: Icons.tune_rounded,
-          labelAr: 'إعدادات العمولة العامة',
-        ),
-        _AdminNavItem(
-          index: 34,
-          icon: Icons.storefront_outlined,
-          labelAr: 'أنواع المتاجر',
-        ),
-        _AdminNavItem(
-          index: 22,
-          icon: Icons.reviews_outlined,
-          labelAr: 'المراجعات',
-        ),
-        _AdminNavItem(
-          index: 26,
-          icon: Icons.gavel_outlined,
-          labelAr: 'المناقصات',
-        ),
-        _AdminNavItem(
-          index: 27,
-          icon: Icons.request_quote_outlined,
-          labelAr: 'عمولات المناقصات',
-        ),
+        _AdminNavItem(index: 31, icon: Icons.star_outline_rounded, labelAr: 'المتاجر المميزة'),
+        _AdminNavItem(index: 38, icon: Icons.account_tree_outlined, labelAr: 'الأقسام والتصنيفات'),
       ],
     ),
     _AdminNavGroup(
-      titleAr: 'المحتوى والعرض',
+      titleAr: 'الطلبات والتوصيل',
+      items: <_AdminNavItem>[
+        _AdminNavItem(index: 7, icon: Icons.receipt_long_outlined, labelAr: 'الطلبات'),
+        _AdminNavItem(index: 36, icon: Icons.delivery_dining_outlined, labelAr: 'إدارة التوصيل'),
+        _AdminNavItem(index: 37, icon: Icons.local_shipping_outlined, labelAr: 'السائقون'),
+      ],
+    ),
+    _AdminNavGroup(
+      titleAr: 'الفنيون',
+      items: <_AdminNavItem>[
+        _AdminNavItem(index: 8, icon: Icons.person_add_alt_1_rounded, labelAr: 'طلبات الانضمام'),
+        _AdminNavItem(index: 8, icon: Icons.engineering_outlined, labelAr: 'الفنيون النشطون'),
+        _AdminNavItem(index: 18, icon: Icons.build, labelAr: 'طلبات الخدمة'),
+        _AdminNavItem(index: 4, icon: Icons.home_repair_service_outlined, labelAr: 'تخصصات الفنيين'),
+      ],
+    ),
+    _AdminNavGroup(
+      titleAr: 'المالية',
+      items: <_AdminNavItem>[
+        _AdminNavItem(index: 12, icon: Icons.percent_outlined, labelAr: 'العمولات'),
+        _AdminNavItem(index: 19, icon: Icons.discount_outlined, labelAr: 'أكواد الخصم'),
+        _AdminNavItem(index: 25, icon: Icons.local_offer_outlined, labelAr: 'العروض والترويج'),
+        _AdminNavItem(index: 21, icon: Icons.warehouse_outlined, labelAr: 'تجار الجملة'),
+      ],
+    ),
+    _AdminNavGroup(
+      titleAr: 'المحتوى',
       items: <_AdminNavItem>[
         _AdminNavItem(
           index: 5,
           icon: Icons.view_carousel_outlined,
-          labelAr: 'البانرات',
+          labelAr: 'البنرات الرئيسية',
         ),
-        _AdminNavItem(
-          index: 28,
-          icon: Icons.web_asset_outlined,
-          labelAr: 'بنرات المدونة',
-        ),
+        _AdminNavItem(index: 30, icon: Icons.dashboard_customize_outlined, labelAr: 'الأقسام الرئيسية'),
+        _AdminNavItem(index: 26, icon: Icons.gavel_outlined, labelAr: 'المناقصات'),
+        _AdminNavItem(index: 28, icon: Icons.web_asset_outlined, labelAr: 'المدونة'),
       ],
     ),
     _AdminNavGroup(
-      titleAr: 'العملاء والفنيون',
+      titleAr: 'الدعم والإدارة',
       items: <_AdminNavItem>[
-        _AdminNavItem(
-          index: 2,
-          icon: Icons.people_outline,
-          labelAr: 'المستخدمون',
-        ),
-        _AdminNavItem(
-          index: 8,
-          icon: Icons.engineering_outlined,
-          labelAr: 'الفنيون',
-        ),
-        _AdminNavItem(index: 18, icon: Icons.build, labelAr: 'طلبات الخدمة'),
-        _AdminNavItem(
-          index: 4,
-          icon: Icons.home_repair_service_outlined,
-          labelAr: 'تخصصات الفنيين',
-        ),
-      ],
-    ),
-    _AdminNavGroup(
-      titleAr: 'الدعم والسلامة',
-      items: <_AdminNavItem>[
-        _AdminNavItem(
-          index: 11,
-          icon: Icons.flag_outlined,
-          labelAr: 'البلاغات',
-        ),
-        _AdminNavItem(
-          index: 16,
-          icon: Icons.support_agent_rounded,
-          labelAr: 'دعم العملاء',
-        ),
-        _AdminNavItem(
-          index: 35,
-          icon: Icons.devices_rounded,
-          labelAr: 'الأجهزة والجلسات',
-        ),
-      ],
-    ),
-    _AdminNavGroup(
-      titleAr: 'التقارير',
-      items: <_AdminNavItem>[
-        _AdminNavItem(
-          index: 23,
-          icon: Icons.analytics_outlined,
-          labelAr: 'التقارير والتحليلات',
-        ),
+        _AdminNavItem(index: 16, icon: Icons.support_agent_rounded, labelAr: 'دعم العملاء'),
+        _AdminNavItem(index: 2, icon: Icons.people_outline, labelAr: 'المستخدمون'),
+        _AdminNavItem(index: 22, icon: Icons.reviews_outlined, labelAr: 'المراجعات'),
+        _AdminNavItem(index: 23, icon: Icons.analytics_outlined, labelAr: 'التحليلات'),
+        _AdminNavItem(index: 17, icon: Icons.fact_check_outlined, labelAr: 'سجل التدقيق'),
+        _AdminNavItem(index: 39, icon: Icons.notifications_active_outlined, labelAr: 'الإشعارات'),
+        _AdminNavItem(index: 35, icon: Icons.devices_rounded, labelAr: 'الجلسات'),
+        _AdminNavItem(index: 14, icon: Icons.settings_outlined, labelAr: 'الإعدادات'),
       ],
     ),
   ];
@@ -414,6 +271,8 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     'الأجهزة والجلسات',
     'إدارة التوصيل',
     'طلبات السائقين',
+    'الأقسام والتصنيفات',
+    'الإشعارات',
   ];
 
   Widget _body() {
@@ -492,6 +351,10 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         return const AdminStoresScreen(initialTab: AdminStoresTabIndex.storeTypes);
       case 35:
         return const AdminSessionsSection();
+      case 38:
+        return const AdminUnifiedCategoriesSection();
+      case 39:
+        return const AdminNotificationsSection();
       default:
         return const SizedBox.shrink();
     }

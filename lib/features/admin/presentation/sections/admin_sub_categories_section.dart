@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import '../../../../core/contracts/feature_state.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/admin_repository.dart';
 import 'admin_rest_widgets.dart';
@@ -13,13 +14,35 @@ class AdminSubCategoriesSection extends StatefulWidget {
 }
 
 class _AdminSubCategoriesSectionState extends State<AdminSubCategoriesSection> {
-  final TextEditingController _sectionIdCtrl = TextEditingController();
   String _activeSectionId = '';
+  List<Map<String, dynamic>> _homeSections = List<Map<String, dynamic>>.empty(growable: false);
+  bool _loadingSections = true;
 
   @override
-  void dispose() {
-    _sectionIdCtrl.dispose();
-    super.dispose();
+  void initState() {
+    super.initState();
+    _loadSections();
+  }
+
+  Future<void> _loadSections() async {
+    setState(() => _loadingSections = true);
+    final state = await AdminRepository.instance.fetchHomeSections();
+    if (!mounted) return;
+    switch (state) {
+      case FeatureSuccess(:final data):
+        setState(() {
+          _homeSections = data;
+          _loadingSections = false;
+          if (_activeSectionId.isEmpty && data.isNotEmpty) {
+            _activeSectionId = data.first['id']?.toString() ?? '';
+          }
+        });
+      default:
+        setState(() {
+          _homeSections = List<Map<String, dynamic>>.empty(growable: false);
+          _loadingSections = false;
+        });
+    }
   }
 
   @override
@@ -31,29 +54,37 @@ class _AdminSubCategoriesSectionState extends State<AdminSubCategoriesSection> {
           child: Row(
             children: [
               Expanded(
-                child: TextField(
-                  controller: _sectionIdCtrl,
+                child: DropdownButtonFormField<String>(
+                  value: _activeSectionId.isEmpty ? null : _activeSectionId,
+                  items: _homeSections
+                      .map(
+                        (e) => DropdownMenuItem<String>(
+                          value: e['id']?.toString() ?? '',
+                          child: Text(e['name']?.toString() ?? '—'),
+                        ),
+                      )
+                      .toList(),
+                  onChanged: _loadingSections
+                      ? null
+                      : (v) {
+                          setState(() => _activeSectionId = (v ?? '').trim());
+                        },
                   decoration: const InputDecoration(
-                    labelText: 'Home Section ID',
+                    labelText: 'القسم الرئيسي (مطلوب)',
                     border: OutlineInputBorder(),
                   ),
                 ),
-              ),
-              const SizedBox(width: 10),
-              ElevatedButton(
-                onPressed: () {
-                  setState(() => _activeSectionId = _sectionIdCtrl.text.trim());
-                },
-                child: const Text('تحميل'),
               ),
             ],
           ),
         ),
         Expanded(
-          child: _activeSectionId.isEmpty
+          child: _loadingSections
+              ? const Center(child: CircularProgressIndicator(color: AppColors.orange))
+              : _activeSectionId.isEmpty
               ? Center(
                   child: Text(
-                    'أدخل Home Section ID أولاً',
+                    'يجب اختيار قسم رئيسي أولاً',
                     style: GoogleFonts.tajawal(color: AppColors.textSecondary),
                   ),
                 )

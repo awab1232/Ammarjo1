@@ -11,6 +11,7 @@ import { logAuditJson } from '../common/audit-log';
 import { DriversService } from '../drivers/drivers.service';
 import { HomeService } from '../home/home.service';
 import { isValidPersistedRole, normalizeDbRoleToAppRole } from '../identity/db-user-role.util';
+import { NotificationsService } from '../notifications/notifications.service';
 
 function logAdminAction(input: {
   adminUid: string;
@@ -33,7 +34,10 @@ export class AdminRestService {
   private readonly pool: Pool | null;
   private auxTablesReady = false;
 
-  constructor(private readonly drivers: DriversService) {
+  constructor(
+    private readonly drivers: DriversService,
+    private readonly notifications: NotificationsService,
+  ) {
     const url = process.env.DATABASE_URL?.trim();
     this.pool = url
       ? new Pool({
@@ -1282,6 +1286,67 @@ export class AdminRestService {
     });
   }
 
+  async validateCouponForCheckout(input: {
+    code: string;
+    storeId?: string;
+    orderTotal?: number;
+  }): Promise<{ valid: boolean; discountAmount: number; discountType: string }> {
+    const code = input.code.trim().toUpperCase();
+    if (!code) {
+      return { valid: false, discountAmount: 0, discountType: 'none' };
+    }
+    const orderTotal = Number(input.orderTotal ?? 0);
+    const storeId = String(input.storeId ?? '').trim();
+    return this.withClient(async (client) => {
+      const q = await client.query(
+        `SELECT id::text, payload
+         FROM admin_coupons
+         WHERE upper(trim(code)) = $1
+           AND lower(trim(status)) = 'active'
+         LIMIT 1`,
+        [code],
+      );
+      if (q.rows.length === 0) {
+        return { valid: false, discountAmount: 0, discountType: 'none' };
+      }
+      const payloadRaw = q.rows[0]?.['payload'];
+      const payload =
+        payloadRaw != null && typeof payloadRaw === 'object' && !Array.isArray(payloadRaw)
+          ? (payloadRaw as Record<string, unknown>)
+          : {};
+      const minOrder = Number(payload['minOrder'] ?? payload['min_order'] ?? 0);
+      if (orderTotal > 0 && Number.isFinite(minOrder) && minOrder > 0 && orderTotal < minOrder) {
+        return { valid: false, discountAmount: 0, discountType: 'none' };
+      }
+      const allowedStoreId = String(payload['storeId'] ?? payload['store_id'] ?? '').trim();
+      if (allowedStoreId && storeId && allowedStoreId !== storeId) {
+        return { valid: false, discountAmount: 0, discountType: 'none' };
+      }
+      const discountType = String(payload['discountType'] ?? payload['discount_type'] ?? 'fixed')
+        .trim()
+        .toLowerCase();
+      const rawValue = Number(payload['discountValue'] ?? payload['discount_value'] ?? payload['amount'] ?? 0);
+      let discountAmount = 0;
+      if (discountType == 'percent' || discountType == 'percentage') {
+        const pct = Number.isFinite(rawValue) ? rawValue : 0;
+        discountAmount = (orderTotal * pct) / 100;
+      } else {
+        discountAmount = Number.isFinite(rawValue) ? rawValue : 0;
+      }
+      if (discountAmount <= 0) {
+        return { valid: false, discountAmount: 0, discountType: 'none' };
+      }
+      if (orderTotal > 0 && discountAmount > orderTotal) {
+        discountAmount = orderTotal;
+      }
+      return {
+        valid: true,
+        discountAmount,
+        discountType: discountType == 'percent' || discountType == 'percentage' ? 'percent' : 'fixed',
+      };
+    });
+  }
+
   async createCoupon(
     adminUid: string,
     body: { code: string; name?: string; status?: string; payload?: Record<string, unknown> },
@@ -1464,6 +1529,46 @@ export class AdminRestService {
       await this.logAudit(client, adminUid, 'delete_promotion', 'promotion', id, {});
       logAdminAction({ adminUid, action: 'delete_promotion', targetId: id, targetType: 'promotion' });
       return { ok: true as const };
+    });
+  }
+
+  async broadcastNotification(
+    adminUid: string,
+    body: { title: string; body: string; targetRole?: string | null; data?: Record<string, unknown> },
+  ): Promise<{ ok: true; sent: number }> {
+    const title = body.title.trim();
+    const msg = body.body.trim();
+    if (!title || !msg) throw new BadRequestException('title/body required');
+    const targetRole = (body.targetRole ?? '').trim().toLowerCase() || null;
+    return this.withClient(async (client) => {
+      const q = await client.query<{ firebase_uid: string }>(
+        `SELECT firebase_uid
+         FROM users
+         WHERE ($1::text IS NULL OR lower(trim(role)) = $1)
+           AND is_active = true
+           AND firebase_uid IS NOT NULL
+           AND trim(firebase_uid) <> ''`,
+        [targetRole],
+      );
+      let sent = 0;
+      for (const row of q.rows) {
+        const uid = String(row.firebase_uid ?? '').trim();
+        if (!uid) continue;
+        void this.notifications.sendPushToUser(uid, {
+          title,
+          body: msg,
+          data: {
+            ...(body.data ?? {}),
+            source: 'admin_broadcast',
+          } as Record<string, string>,
+        });
+        sent += 1;
+      }
+      await this.logAudit(client, adminUid, 'admin_broadcast_notification', 'notification', null, {
+        targetRole,
+        sent,
+      });
+      return { ok: true as const, sent };
     });
   }
 
@@ -2081,6 +2186,45 @@ export class AdminRestService {
       if (r.rowCount === 0) throw new NotFoundException();
       await this.logAudit(client, adminUid, 'delete_category', 'category', id, {});
       logAdminAction({ adminUid, action: 'delete_category', targetId: id, targetType: 'category' });
+      return { ok: true as const };
+    });
+  }
+
+  async patchCategoryCommissionPercent(
+    adminUid: string,
+    categoryId: string,
+    commissionPercent: number,
+  ): Promise<{ ok: true }> {
+    const pct = Number(commissionPercent);
+    if (!Number.isFinite(pct) || pct < 0 || pct > 100) {
+      throw new BadRequestException('commissionPercent must be between 0 and 100');
+    }
+    return this.withClient(async (client) => {
+      await client.query(
+        `ALTER TABLE stores ADD COLUMN IF NOT EXISTS commission_percent numeric(12,4) NOT NULL DEFAULT 0`,
+      );
+      const cat = await client.query(
+        `SELECT id::text, name FROM admin_categories WHERE id = $1::uuid LIMIT 1`,
+        [categoryId.trim()],
+      );
+      if (cat.rows.length === 0) throw new NotFoundException('category_not_found');
+      await client.query(
+        `UPDATE admin_categories
+         SET payload = COALESCE(payload, '{}'::jsonb) || jsonb_build_object('commissionPercent', $2::numeric),
+             updated_at = NOW()
+         WHERE id = $1::uuid`,
+        [categoryId.trim(), pct],
+      );
+      await client.query(
+        `UPDATE stores
+         SET commission_percent = $2,
+             updated_at = NOW()
+         WHERE category = $1`,
+        [String(cat.rows[0]?.name ?? ''), pct],
+      );
+      await this.logAudit(client, adminUid, 'patch_category_commission', 'category', categoryId, {
+        commissionPercent: pct,
+      });
       return { ok: true as const };
     });
   }

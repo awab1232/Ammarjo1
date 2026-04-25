@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../../core/constants/admin_list_constants.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../data/backend_admin_client.dart';
+import 'admin_commission_per_category_section.dart';
 import '../widgets/admin_list_widgets.dart';
 
 /// عمولات المتاجر — لقطة من `/stores/:storeId/commissions` + تسجيل دفعة عبر REST.
@@ -14,17 +15,28 @@ class AdminCommissionsSection extends StatefulWidget {
   State<AdminCommissionsSection> createState() => _AdminCommissionsSectionState();
 }
 
-class _AdminCommissionsSectionState extends State<AdminCommissionsSection> {
+class _AdminCommissionsSectionState extends State<AdminCommissionsSection> with SingleTickerProviderStateMixin {
   final List<Map<String, dynamic>> _stores = List<Map<String, dynamic>>.empty(growable: true);
+  final TextEditingController _searchCtrl = TextEditingController();
   int? _nextOffset;
   bool _loading = true;
   bool _loadingMore = false;
   Object? _error;
+  late final TabController _tabs;
+  String _query = '';
 
   @override
   void initState() {
     super.initState();
+    _tabs = TabController(length: 3, vsync: this);
     _refresh();
+  }
+
+  @override
+  void dispose() {
+    _tabs.dispose();
+    _searchCtrl.dispose();
+    super.dispose();
   }
 
   Future<void> _refresh() async {
@@ -70,65 +82,121 @@ class _AdminCommissionsSectionState extends State<AdminCommissionsSection> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading) return const AdminListShimmer();
-    if (_error != null) {
-      return AdminErrorRetryBody(onRetry: _refresh);
-    }
-    if (_stores.isEmpty) {
-      return Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text('لا متاجر.', textAlign: TextAlign.center, style: GoogleFonts.tajawal(color: AppColors.textSecondary)),
-              const SizedBox(height: 16),
-              FilledButton.icon(
-                onPressed: _refresh,
-                icon: const Icon(Icons.refresh_rounded),
-                label: Text('تحديث', style: GoogleFonts.tajawal()),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
+        Material(
+          color: Colors.white,
+          child: TabBar(
+            controller: _tabs,
+            labelColor: AppColors.orange,
+            tabs: [
+              Tab(child: Text('نظرة عامة', style: GoogleFonts.tajawal())),
+              Tab(child: Text('العمولات بالتفصيل', style: GoogleFonts.tajawal())),
+              Tab(child: Text('نسب العمولة بالتصنيف', style: GoogleFonts.tajawal())),
+            ],
+          ),
+        ),
         Expanded(
-          child: RefreshIndicator(
-            onRefresh: _refresh,
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _stores.length + (_nextOffset != null ? 1 : 0),
-              itemBuilder: (ctx, i) {
-                if (i >= _stores.length) {
-                  return Padding(
-                    padding: const EdgeInsets.all(12),
-                    child: Center(
-                      child: _loadingMore
-                          ? const CircularProgressIndicator(color: AppColors.orange)
-                          : TextButton.icon(
-                              onPressed: _loadMore,
-                              icon: const Icon(Icons.expand_more_rounded),
-                              label: Text('تحميل المزيد', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
-                            ),
-                    ),
-                  );
-                }
-                final row = _stores[i];
-                final storeId = row['id']?.toString() ?? '';
-                final name = row['name']?.toString().trim();
-                return _StoreCommissionTile(
-                  storeId: storeId,
-                  title: (name != null && name.isNotEmpty) ? name : storeId,
-                );
-              },
-            ),
+          child: TabBarView(
+            controller: _tabs,
+            children: [
+              _buildOverviewTab(),
+              _buildDetailsTab(),
+              const AdminCommissionPerCategorySection(),
+            ],
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildOverviewTab() {
+    if (_loading) return const AdminListShimmer();
+    if (_error != null) return AdminErrorRetryBody(onRetry: _refresh);
+    double total = 0;
+    for (final s in _stores) {
+      total += (s['commissionPercent'] as num?)?.toDouble() ?? 0;
+    }
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          _statCard('إجمالي العمولات المستحقة', '${total.toStringAsFixed(2)} %'),
+          _statCard('إجمالي المدفوع', '—'),
+          _statCard('إجمالي المتبقي', '—'),
+          _statCard('عدد المتاجر المتأخرة', '${_stores.length}'),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailsTab() {
+    if (_loading) return const AdminListShimmer();
+    if (_error != null) return AdminErrorRetryBody(onRetry: _refresh);
+    final filtered = _stores.where((e) {
+      final q = _query.trim().toLowerCase();
+      if (q.isEmpty) return true;
+      return (e['name']?.toString().toLowerCase() ?? '').contains(q);
+    }).toList();
+    if (filtered.isEmpty) {
+      return Center(child: Text('لا متاجر.', style: GoogleFonts.tajawal(color: AppColors.textSecondary)));
+    }
+    return RefreshIndicator(
+      onRefresh: _refresh,
+      child: ListView.builder(
+        padding: const EdgeInsets.all(16),
+        itemCount: filtered.length + 1 + (_nextOffset != null ? 1 : 0),
+        itemBuilder: (ctx, i) {
+          if (i == 0) {
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 10),
+              child: TextField(
+                controller: _searchCtrl,
+                onChanged: (v) => setState(() => _query = v),
+                textAlign: TextAlign.right,
+                decoration: const InputDecoration(
+                  hintText: 'بحث باسم المتجر',
+                  prefixIcon: Icon(Icons.search),
+                  border: OutlineInputBorder(),
+                ),
+              ),
+            );
+          }
+          final idx = i - 1;
+          if (idx >= filtered.length) {
+            return Padding(
+              padding: const EdgeInsets.all(12),
+              child: Center(
+                child: _loadingMore
+                    ? const CircularProgressIndicator(color: AppColors.orange)
+                    : TextButton.icon(
+                        onPressed: _loadMore,
+                        icon: const Icon(Icons.expand_more_rounded),
+                        label: Text('تحميل المزيد', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                      ),
+              ),
+            );
+          }
+          final row = filtered[idx];
+          final storeId = row['id']?.toString() ?? '';
+          final name = row['name']?.toString().trim();
+          return _StoreCommissionTile(
+            storeId: storeId,
+            title: (name != null && name.isNotEmpty) ? name : storeId,
+          );
+        },
+      ),
+    );
+  }
+
+  Widget _statCard(String title, String value) {
+    return Card(
+      child: ListTile(
+        title: Text(title, style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+        trailing: Text(value, style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, color: AppColors.orange)),
+      ),
     );
   }
 }

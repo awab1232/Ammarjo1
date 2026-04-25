@@ -7,13 +7,16 @@ import { AdminRestService } from './admin-rest.service';
 import { SupportTicketsController } from './support-tickets.controller';
 import { AuthModule } from '../auth/auth.module';
 import { DriversModule } from '../drivers/drivers.module';
+import { NotificationsModule } from '../notifications/notifications.module';
+import { CouponsController } from './coupons.controller';
 
 @Module({
-  imports: [AuthModule, DriversModule],
+  imports: [AuthModule, DriversModule, NotificationsModule],
   controllers: [
     AdminController,
     AdminRestController,
     SupportTicketsController,
+    CouponsController,
   ],
   providers: [AdminAnalyticsService, AdminRestService, AdminOnlyGuard],
 })

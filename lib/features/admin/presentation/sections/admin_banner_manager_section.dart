@@ -52,21 +52,14 @@ class _AdminBannerManagerSectionState extends State<AdminBannerManagerSection> {
     }
   }
 
-  Future<String?> _pickAndUploadImage(String bannerId) async {
-    final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85, maxWidth: 1280);
-    if (picked == null) return null;
-    final bytes = await picked.readAsBytes();
-    final ref = FirebaseStorage.instance.ref().child('banners/$bannerId.jpg');
-    await ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
-    return ref.getDownloadURL();
-  }
-
   Future<void> _openEditor({Map<String, dynamic>? item}) async {
     final titleCtrl = TextEditingController(text: item?['title']?.toString() ?? '');
     final linkCtrl = TextEditingController(text: item?['link']?.toString() ?? '');
     final imageCtrl = TextEditingController(text: item?['imageUrl']?.toString() ?? '');
     final orderCtrl = TextEditingController(text: '${(item?['order'] as num?)?.toInt() ?? _items.length}');
     var saving = false;
+    var uploadProgress = 0.0;
+    String? uploadError;
     final ok = await showDialog<bool>(
       context: context,
       builder: (ctx) {
@@ -89,14 +82,62 @@ class _AdminBannerManagerSectionState extends State<AdminBannerManagerSection> {
                     decoration: InputDecoration(labelText: 'الترتيب', labelStyle: GoogleFonts.tajawal()),
                   ),
                   const SizedBox(height: 8),
+                  if (imageCtrl.text.trim().isNotEmpty)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          imageCtrl.text.trim(),
+                          height: 120,
+                          width: double.infinity,
+                          fit: BoxFit.cover,
+                          errorBuilder: (context, error, stackTrace) => Container(
+                            height: 120,
+                            color: Colors.grey.shade100,
+                            alignment: Alignment.center,
+                            child: Text('تعذر معاينة الصورة', style: GoogleFonts.tajawal(color: AppColors.textSecondary)),
+                          ),
+                        ),
+                      ),
+                    ),
+                  if (uploadError != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: Text(uploadError!, style: GoogleFonts.tajawal(color: AppColors.error)),
+                    ),
+                  if (saving && uploadProgress > 0 && uploadProgress < 1)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: LinearProgressIndicator(value: uploadProgress),
+                    ),
                   OutlinedButton.icon(
                     onPressed: saving
                         ? null
                         : () async {
                             setModal(() => saving = true);
                             final id = item?['id']?.toString() ?? DateTime.now().millisecondsSinceEpoch.toString();
-                            final url = await _pickAndUploadImage(id);
-                            if (url != null) imageCtrl.text = url;
+                            try {
+                              final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85, maxWidth: 1280);
+                              if (picked != null) {
+                                final bytes = await picked.readAsBytes();
+                                final ref = FirebaseStorage.instance.ref().child('banners/$id.jpg');
+                                final task = ref.putData(bytes, SettableMetadata(contentType: 'image/jpeg'));
+                                task.snapshotEvents.listen((e) {
+                                  if (!ctx.mounted) return;
+                                  final total = e.totalBytes;
+                                  final transferred = e.bytesTransferred;
+                                  final p = total <= 0 ? 0.0 : transferred / total;
+                                  setModal(() => uploadProgress = p.clamp(0, 1));
+                                });
+                                await task;
+                                final url = await ref.getDownloadURL();
+                                imageCtrl.text = url;
+                                uploadError = null;
+                              }
+                            } on Object catch (e) {
+                              uploadError = 'فشل رفع الصورة: $e';
+                            }
                             setModal(() => saving = false);
                           },
                     icon: const Icon(Icons.upload_file_rounded),
@@ -143,6 +184,10 @@ class _AdminBannerManagerSectionState extends State<AdminBannerManagerSection> {
       }
     }
     await _load();
+    final verify = await AdminRepository.instance.fetchBanners();
+    if (verify is FeatureFailure<List<Map<String, dynamic>>>) {
+      _toast('تم الحفظ لكن فشل التحقق: ${verify.message}');
+    }
   }
 
   Future<void> _deleteItem(Map<String, dynamic> item) async {

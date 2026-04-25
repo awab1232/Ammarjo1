@@ -641,6 +641,34 @@ class AdminRepository {
     return FeatureState.success(FeatureUnit.value);
   }
 
+  Future<FeatureState<FeatureUnit>> patchCategoryCommission(
+    String id, {
+    required double commissionPercent,
+  }) async {
+    final res = await BackendAdminClient.instance.patchCategoryCommission(
+      id,
+      commissionPercent: commissionPercent,
+    );
+    if (res == null) return FeatureState.failure('تعذر تحديث عمولة التصنيف');
+    return FeatureState.success(FeatureUnit.value);
+  }
+
+  Future<FeatureState<FeatureUnit>> broadcastNotification({
+    required String title,
+    required String body,
+    String? targetRole,
+    Map<String, dynamic>? data,
+  }) async {
+    final res = await BackendAdminClient.instance.broadcastNotification(
+      title: title,
+      body: body,
+      targetRole: targetRole,
+      data: data,
+    );
+    if (res == null) return FeatureState.failure('تعذر إرسال الإشعار');
+    return FeatureState.success(FeatureUnit.value);
+  }
+
   Future<FeatureState<Map<String, dynamic>>> fetchSettings() async {
     final raw = await BackendAdminClient.instance.fetchSettings();
     final payload = raw?['payload'];
@@ -669,7 +697,9 @@ class AdminRepository {
       limit: 200,
       offset: 0,
     );
-    final items = raw?['items'];
+    final dynamic items = raw is Map<String, dynamic>
+        ? (raw['items'] ?? raw['data'] ?? raw)
+        : raw;
     if (items is! List) return FeatureState.failure('تعذر جلب المنتجات');
     return FeatureState.success(items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList());
   }

@@ -132,6 +132,13 @@ class PatchHomeCmsBody {
   bottomBanner?: unknown;
 }
 
+class BroadcastNotificationBody {
+  title?: string;
+  body?: string;
+  targetRole?: string;
+  data?: Record<string, unknown>;
+}
+
 class CreateSubCategoryBody {
   homeSectionId?: string;
   name?: string;
@@ -688,10 +695,35 @@ export class AdminRestController {
     return this.admin.patchCategory(req.firebaseUid!, id, body);
   }
 
+  @Patch('categories/:id/commission')
+  @RequirePermissions('stores.manage')
+  patchCategoryCommission(
+    @Req() req: RequestWithFirebase,
+    @Param('id') id: string,
+    @Body() body: { commissionPercent?: number },
+  ) {
+    const raw = body.commissionPercent;
+    if (raw === undefined || raw === null) {
+      throw new BadRequestException('commissionPercent is required');
+    }
+    return this.admin.patchCategoryCommissionPercent(req.firebaseUid!, id, Number(raw));
+  }
+
   @Delete('categories/:id')
   @RequirePermissions('stores.manage')
   deleteCategory(@Req() req: RequestWithFirebase, @Param('id') id: string) {
     return this.admin.deleteCategory(req.firebaseUid!, id);
+  }
+
+  @Post('notifications/broadcast')
+  @RequirePermissions('stores.manage')
+  broadcastNotifications(@Req() req: RequestWithFirebase, @Body() body: BroadcastNotificationBody) {
+    return this.admin.broadcastNotification(req.firebaseUid!, {
+      title: body.title ?? '',
+      body: body.body ?? '',
+      targetRole: body.targetRole ?? null,
+      data: body.data,
+    });
   }
 
   @Get('settings')
@@ -770,4 +802,5 @@ export class AdminRestController {
   deleteAllUserSessions(@Param('uid') uid: string) {
     return this.sessions.deleteAllForUser(uid);
   }
+
 }

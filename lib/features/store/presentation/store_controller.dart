@@ -1057,7 +1057,9 @@ class StoreController extends ChangeNotifier {
           return false;
         }
         final ship = shipping.totalShipping;
-        final grandTotal = subtotal + ship;
+        final discounts = await cartState.checkoutDiscountBreakdownForLines(storeLines, uid);
+        final totalDiscount = discounts.couponDiscount + discounts.promotionsDiscount;
+        final grandTotal = (subtotal + ship - totalDiscount) < 0 ? 0.0 : (subtotal + ship - totalDiscount);
         final orderState = await BackendOrderRepository.instance.createOrderFromCart(
           cart: storeLines,
           cartSubtotal: subtotal,
@@ -1066,9 +1068,9 @@ class StoreController extends ChangeNotifier {
             for (final s in shipping.lines) s.storeId: s.shippingCost,
           },
           orderTotal: grandTotal,
-          couponCode: null,
-          discountAmount: 0.0,
-          promotionIds: const <String>[],
+          couponCode: cartState.appliedCoupon?.code,
+          discountAmount: totalDiscount,
+          promotionIds: discounts.promotionIds,
           customerUid: uid,
           customerEmail: orderEmail,
           firstName: firstName,
