@@ -174,14 +174,17 @@ class _RegisterPageState extends State<RegisterPage> {
   // ─── Save profile to backend ───────────────────────────────────────────────
 
   Future<void> _saveProfileAndNavigate() async {
-    final uid = UserSession.currentUid;
-    if (uid.isEmpty) {
+    // Source of truth for newly verified users is FirebaseAuth (UserSession may lag briefly).
+    final firebaseUser = FirebaseAuth.instance.currentUser;
+    if (firebaseUser == null) {
       setState(() {
-        _error = 'تعذر الحصول على معلومات المستخدم.';
+        _error = 'حدث خطأ في التحقق، يرجى المحاولة مجدداً';
         _submitting = false;
       });
       return;
     }
+    final uid = firebaseUser.uid;
+    UserSession.setUser(<String, dynamic>{'firebaseUid': uid});
     final fn = _firstName.text.trim();
     final ln = _lastName.text.trim();
     final fullName = '$fn $ln'.trim();
@@ -226,6 +229,7 @@ class _RegisterPageState extends State<RegisterPage> {
     try {
       final localDigits = _phoneLocal.text.replaceAll(RegExp(r'\D'), '');
       final phone = '+962$localDigits';
+      await FirebaseAuth.instance.currentUser?.getIdToken(true);
       // ignore: avoid_print
       print('🔥 CALLING /auth/register');
       // ignore: avoid_print
