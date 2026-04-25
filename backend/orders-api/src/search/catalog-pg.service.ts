@@ -1,4 +1,4 @@
-import { Injectable, OnModuleDestroy } from '@nestjs/common';
+import { OnModuleDestroy } from '@nestjs/common';
 import { Pool, type PoolClient } from 'pg';
 import type { IProductService } from '../architecture/contracts/i-product.service';
 import { DomainId } from '../architecture/domain-id';
@@ -24,7 +24,6 @@ function createDefaultCatalogPool(): Pool | null {
 /**
  * PostgreSQL access for `catalog_products` (same DATABASE_URL as orders).
  */
-@Injectable()
 export class CatalogPgService implements OnModuleDestroy, IProductService {
   readonly domainId = DomainId.Search;
   private pool: Pool | null = null;
