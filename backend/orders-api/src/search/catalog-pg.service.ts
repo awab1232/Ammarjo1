@@ -4,6 +4,23 @@ import type { IProductService } from '../architecture/contracts/i-product.servic
 import { DomainId } from '../architecture/domain-id';
 import type { CatalogProductRow } from './product-search.types';
 
+function createDefaultCatalogPool(): Pool | null {
+  const url = process.env.DATABASE_URL?.trim();
+  if (!url) {
+    return null;
+  }
+  try {
+    return new Pool({
+      connectionString: url,
+      max: Number(process.env.CATALOG_PG_POOL_MAX || 5),
+      idleTimeoutMillis: 30_000,
+    });
+  } catch (e) {
+    console.error('[CatalogPgService] pool init failed:', e);
+    return null;
+  }
+}
+
 /**
  * PostgreSQL access for `catalog_products` (same DATABASE_URL as orders).
  */
@@ -11,21 +28,16 @@ import type { CatalogProductRow } from './product-search.types';
 export class CatalogPgService implements OnModuleDestroy, IProductService {
   readonly domainId = DomainId.Search;
   private pool: Pool | null = null;
+  /** When false, [pool] is owned by the caller; do not end on destroy. */
+  private readonly ownsPool: boolean;
 
-  constructor() {
-    const url = process.env.DATABASE_URL?.trim();
-    if (!url) {
-      return;
-    }
-    try {
-      this.pool = new Pool({
-        connectionString: url,
-        max: Number(process.env.CATALOG_PG_POOL_MAX || 5),
-        idleTimeoutMillis: 30_000,
-      });
-    } catch (e) {
-      console.error('[CatalogPgService] pool init failed:', e);
-      this.pool = null;
+  constructor(optionalPool?: Pool) {
+    if (optionalPool) {
+      this.pool = optionalPool;
+      this.ownsPool = false;
+    } else {
+      this.pool = createDefaultCatalogPool();
+      this.ownsPool = true;
     }
   }
 
@@ -38,7 +50,7 @@ export class CatalogPgService implements OnModuleDestroy, IProductService {
   }
 
   async onModuleDestroy(): Promise<void> {
-    if (this.pool) {
+    if (this.ownsPool && this.pool) {
       await this.pool.end();
       this.pool = null;
     }

@@ -2,9 +2,9 @@ import 'package:flutter/foundation.dart' show debugPrint, kReleaseMode;
 
 import '../logging/backend_fallback_logger.dart';
 
-// RELEASE BUILD COMMAND:
-// flutter build apk \
-//   --dart-define=BACKEND_ORDERS_BASE_URL=https://api.ammarjo.org \
+// RELEASE BUILD:
+// flutter build apk
+//   --dart-define=BACKEND_ORDERS_BASE_URL=https://api.ammarjo.org
 //   --dart-define=STAGING_MODE=false
 
 /// NestJS orders API — backend-only; no Firestore/catalog fallback.
@@ -17,7 +17,8 @@ abstract final class BackendOrdersConfig {
   /// Debug fallback when `BACKEND_ORDERS_BASE_URL` is unset — same as production so real devices
   /// (Android/iOS) load stores without `--dart-define` (emulator localhost was causing empty home).
   static const String _debugDefaultBackendUrl = defaultBaseUrl;
-  static const bool stagingMode = bool.fromEnvironment('STAGING_MODE', defaultValue: false);
+  static const bool stagingMode =
+      bool.fromEnvironment('STAGING_MODE', defaultValue: false);
   /// In release, these compile-time `true` defaults keep business flows on NestJS
   /// ([useBackendCart], [useBackendOrders], [useBackendStoreReads], [useBackendProductsReads],
   /// [useBackendOwnerWrites]) without `--dart-define`, unless you override with `USE_*` envs.
@@ -130,8 +131,7 @@ abstract final class BackendOrdersConfig {
     if (!stagingMode) {
       return;
     }
-    final b = baseUrl.trim();
-    if (b.isEmpty || _isLocalhostUrl(b)) {
+    if (baseUrl.trim().isEmpty) {
       throw StateError('STAGING_BACKEND_REQUIRED');
     }
   }

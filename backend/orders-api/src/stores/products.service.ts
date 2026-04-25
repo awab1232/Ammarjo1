@@ -29,7 +29,7 @@ export class ProductsService {
       );
     }
     this.pool = new Pool({ connectionString });
-    this.catalogPg = new CatalogPgService();
+    this.catalogPg = new CatalogPgService(this.pool);
   }
 
   private actor() {
