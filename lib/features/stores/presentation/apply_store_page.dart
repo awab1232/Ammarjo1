@@ -143,7 +143,7 @@ class _ApplyStorePageState extends State<ApplyStorePage> {
       final applyState = await StoresRepository.instance.applyForStore({
         'applicantId': uid,
         'applicantName': _applicantName(profile),
-        'applicantEmail': (profile?.email ?? FirebaseAuth.instance.currentUser?.email ?? '').trim().toLowerCase(),
+        'applicantEmail': (profile?.email ?? '').trim().toLowerCase(),
         'storeName': _storeName.text.trim(),
         'phone': _phone.text.trim(),
         'storeTypeId': _selectedStoreTypeId,

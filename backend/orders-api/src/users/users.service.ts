@@ -205,6 +205,21 @@ export class UsersService {
     });
   }
 
+  async findByEmail(email: string): Promise<{ firebase_uid: string } | null> {
+    const normalized = email.trim().toLowerCase();
+    if (!normalized) return null;
+    return this.withClient(async (client) => {
+      const r = await client.query<{ firebase_uid: string }>(
+        `SELECT firebase_uid FROM users WHERE lower(trim(email)) = $1 LIMIT 1`,
+        [normalized],
+      );
+      if (r.rows.length === 0) return null;
+      const uid = String(r.rows[0].firebase_uid ?? '').trim();
+      if (!uid) return null;
+      return { firebase_uid: uid };
+    });
+  }
+
   /**
    * Lightweight lookup for session-token auth path (no Firebase decoded token available).
    * Returns null when DB is unavailable or row is missing.

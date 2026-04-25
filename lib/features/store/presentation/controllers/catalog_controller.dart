@@ -36,9 +36,6 @@ class CatalogController extends ChangeNotifier {
   List<Product> bannerProducts = <Product>[];
   List<WpHomeBannerSlide> wpHomeBanners = <WpHomeBannerSlide>[];
 
-  bool _useFirestoreCatalog = false;
-  bool get useFirestoreCatalog => _useFirestoreCatalog;
-
   ShippingPolicy shippingPolicy = ShippingPolicy.defaults;
 
   static const int _bannerMax = 5;
@@ -109,12 +106,7 @@ class CatalogController extends ChangeNotifier {
     homeNewArrivals = list.take(_homeSectionPerPage).toList();
   }
 
-  Future<void> resolveCatalogSource() async {
-    _useFirestoreCatalog = false;
-  }
-
   Future<void> reloadCatalogAfterMigration() async {
-    await resolveCatalogSource();
     notifyListeners();
   }
 

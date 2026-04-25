@@ -48,12 +48,12 @@ abstract final class UsersRepository {
   static Stream<FeatureState<List<FavoriteProduct>>> watchFavorites(String userId) =>
       _repo.watchFavorites(userId);
 
-  static Future<void> migrateLocalFavoritesToFirestore({
+  static Future<void> migrateFavoritesToBackend({
     required String userId,
     required Set<int> localIds,
     required Product? Function(int productId) resolveProduct,
   }) =>
-      _repo.migrateLocalFavoritesToFirestore(
+      _repo.migrateFavoritesToBackend(
         userId: userId,
         localIds: localIds,
         resolveProduct: resolveProduct,

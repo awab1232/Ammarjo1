@@ -37,7 +37,7 @@ abstract class UserRepository {
 
   Stream<FeatureState<List<FavoriteProduct>>> watchFavorites(String userId);
 
-  Future<void> migrateLocalFavoritesToFirestore({
+  Future<void> migrateFavoritesToBackend({
     required String userId,
     required Set<int> localIds,
     required Product? Function(int productId) resolveProduct,
@@ -170,7 +170,7 @@ class BackendUserRepository implements UserRepository {
   }
 
   @override
-  Future<void> migrateLocalFavoritesToFirestore({
+  Future<void> migrateFavoritesToBackend({
     required String userId,
     required Set<int> localIds,
     required Product? Function(int productId) resolveProduct,

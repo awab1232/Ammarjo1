@@ -155,8 +155,6 @@ class StoreController extends ChangeNotifier {
     notifyListeners();
   }
 
-  bool get useFirestoreCatalog => catalog.useFirestoreCatalog;
-
   String get searchQuery => search.searchQuery;
   List<Product> get searchResults => search.searchResults;
   bool get isSearching => search.isSearching;
@@ -269,13 +267,13 @@ class StoreController extends ChangeNotifier {
       return;
     }
     try {
-      await UsersRepository.migrateLocalFavoritesToFirestore(
+      await UsersRepository.migrateFavoritesToBackend(
         userId: uid,
         localIds: favoriteProductIds,
         resolveProduct: _findProductById,
       );
     } on Object {
-      debugPrint('[StoreController] migrateLocalFavoritesToFirestore failed');
+      debugPrint('[StoreController] migrateFavoritesToBackend failed');
     }
     _detachFavoritesListener();
     _favoritesSub = UsersRepository.watchFavorites(uid).listen(
@@ -386,7 +384,6 @@ class StoreController extends ChangeNotifier {
       debugPrint('⏱️ bootstrap cart load: ${swCart.elapsedMilliseconds}ms');
 
       favoriteProductIds = await _local.getFavoriteIds();
-      await catalog.resolveCatalogSource();
       if (Firebase.apps.isNotEmpty) {
         catalog.attachFirestoreStreams();
         final swInitial = Stopwatch()..start();

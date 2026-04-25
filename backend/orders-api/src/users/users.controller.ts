@@ -10,6 +10,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UnauthorizedException,
   UseGuards,
@@ -32,6 +33,20 @@ export class UsersController {
   private readonly logger = new Logger(UsersController.name);
 
   constructor(private readonly users: UsersService) {}
+
+  @Get('auth/resolve-uid')
+  @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
+  @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 120 } })
+  @RequirePermissions('orders.read')
+  async resolveUidByEmail(@Query('email') email: string) {
+    const normalized = (email ?? '').trim().toLowerCase();
+    if (!normalized) {
+      throw new BadRequestException('email is required');
+    }
+    const user = await this.users.findByEmail(normalized);
+    if (!user) return { firebase_uid: null };
+    return { firebase_uid: user.firebase_uid };
+  }
 
   /** Shapes `users` row + tenant context. Canonical id is `internalUserId` / `users.id`; Firebase UID is `firebaseUid`. */
   private buildUserProfileResponse(found: {
