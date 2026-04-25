@@ -268,6 +268,10 @@ class ServiceRequestsRepository {
       await _httpPostJson('/service-requests/$id/start', <String, dynamic>{});
       return;
     }
+    if (st == 'rejected' || st == 'reject') {
+      await _httpPostJson('/service-requests/$id/reject', <String, dynamic>{});
+      return;
+    }
     if (st == 'completed' || st == 'complete') {
       await _httpPostJson('/service-requests/$id/complete', <String, dynamic>{});
       return;

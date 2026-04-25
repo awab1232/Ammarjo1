@@ -1,4 +1,5 @@
 ﻿import 'dart:typed_data';
+import 'dart:async';
 
 import '../../../core/contracts/feature_state.dart';
 import '../../../core/services/backend_tender_client.dart';
@@ -110,7 +111,52 @@ class TenderRepository {
     required String storeId,
     String? storeOwnerUid,
   }) async* {
-    yield FeatureState.failure('Submitted offers endpoint is not wired yet.');
+    final controller = StreamController<FeatureState<List<StoreSubmittedOfferRow>>>();
+    Timer? timer;
+    var closed = false;
+
+    Future<void> load() async {
+      try {
+        final state = await BackendTenderClient.instance.fetchStoreOffers(limit: 150);
+        if (closed) return;
+        if (state is! FeatureSuccess<List<Map<String, dynamic>>>) {
+          switch (state) {
+            case FeatureFailure(:final message, :final cause):
+              controller.add(FeatureState.failure(message, cause));
+            default:
+              controller.add(FeatureState.failure('Failed to load submitted offers.'));
+          }
+          return;
+        }
+        final out = <StoreSubmittedOfferRow>[];
+        for (final row in state.data) {
+          final offerStoreId = row['storeId']?.toString() ?? row['store_id_uuid']?.toString() ?? '';
+          if (offerStoreId.trim() != storeId.trim()) continue;
+          try {
+            out.add(
+              StoreSubmittedOfferRow.fromMap(
+                row['tenderId']?.toString() ?? row['tender_id']?.toString() ?? '',
+                row['id']?.toString() ?? '',
+                row,
+              ),
+            );
+          } on Object {
+            continue;
+          }
+        }
+        controller.add(FeatureState.success(out));
+      } on Object {
+        if (!closed) controller.add(FeatureState.failure('Failed to load submitted offers.'));
+      }
+    }
+
+    await load();
+    timer = Timer.periodic(const Duration(seconds: 10), (_) => load());
+    controller.onCancel = () {
+      closed = true;
+      timer?.cancel();
+    };
+    yield* controller.stream;
   }
 
   Stream<FeatureState<List<TenderOffer>>> watchOffers(String tenderId) async* {

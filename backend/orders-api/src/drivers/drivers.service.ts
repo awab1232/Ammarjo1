@@ -575,6 +575,13 @@ export class DriversService {
     if (driver.auth_uid) {
       this.notifications.notifyDriverNewOrder(driver.auth_uid, order.order_id);
     }
+    void this.notifications
+      .sendPushToUser(order.user_id, {
+        title: 'جاري توصيل طلبك',
+        body: 'تم تعيين سائق لطلبك',
+        data: { orderId: order.order_id, type: 'driver_assigned' },
+      })
+      .catch((err: unknown) => console.error('[DriversService] notify customer failed:', err));
 
     return {
       success: true,

@@ -374,6 +374,85 @@ class _CompactStoreTile extends StatelessWidget {
   }
 }
 
+class StoresHomeTopRatedStrip extends StatelessWidget {
+  const StoresHomeTopRatedStrip({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return FutureBuilder<List<Map<String, dynamic>>?>(
+      future: BackendOrdersClient.instance.fetchTopRatedStores(limit: 10),
+      builder: (context, snap) {
+        if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
+          return const HomeStoreChipsSkeleton(count: 6);
+        }
+        if (snap.hasError || !snap.hasData) return const SizedBox.shrink();
+        final rows = snap.data ?? const <Map<String, dynamic>>[];
+        if (rows.isEmpty) return const SizedBox.shrink();
+        return SizedBox(
+          height: 160,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            physics: const BouncingScrollPhysics(),
+            padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
+            itemCount: rows.length,
+            separatorBuilder: (context, index) => const SizedBox(width: 10),
+            itemBuilder: (context, i) {
+              final row = rows[i];
+              final logo = webSafeImageUrl((row['logoUrl'] ?? '').toString());
+              final name = (row['name'] ?? '').toString();
+              final rating = (row['rating'] as num?)?.toDouble() ?? 0;
+              final reviewCount = (row['reviewCount'] as num?)?.toInt() ?? 0;
+              return Container(
+                width: 148,
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: AppColors.border),
+                ),
+                child: Column(
+                  children: [
+                    ClipOval(
+                      child: logo.isEmpty
+                          ? CircleAvatar(radius: 24, backgroundColor: AppColors.lightOrange, child: Icon(Icons.store, color: AppColors.primaryOrange))
+                          : AmmarCachedImage(imageUrl: logo, width: 48, height: 48, fit: BoxFit.cover),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      name.isEmpty ? 'متجر' : name,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.tajawal(fontWeight: FontWeight.w700, fontSize: 12),
+                    ),
+                    const SizedBox(height: 8),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List<Widget>.generate(
+                        5,
+                        (idx) => Icon(
+                          idx < rating.round().clamp(0, 5) ? Icons.star_rounded : Icons.star_border_rounded,
+                          size: 14,
+                          color: AppColors.primaryOrange,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      '($reviewCount)',
+                      style: GoogleFonts.tajawal(fontSize: 11, color: AppColors.textSecondary),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+}
+
 /// Featured / boosted stores first, then alphabetical cap at [maxItems].
 class StoresHomeMostRequestedStrip extends StatelessWidget {
   const StoresHomeMostRequestedStrip({

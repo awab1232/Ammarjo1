@@ -46,6 +46,7 @@ import { DomainId } from '../architecture/domain-id';
 import { StoreCommissionsService } from '../stores/store-commissions.service';
 import { UsersService } from '../users/users.service';
 import { resolveDeliveryCoordinates } from './delivery-coordinates.util';
+import { NotificationsService } from '../notifications/notifications.service';
 
 const AMOUNT_EPS = 0.001;
 
@@ -81,6 +82,7 @@ export class OrdersService implements IOrderService {
     private readonly pg: OrdersPgService,
     private readonly domainEvents: DomainEventEmitterService,
     private readonly users: UsersService,
+    private readonly notificationsService: NotificationsService,
     @Optional() private readonly consistencyPolicy?: ConsistencyPolicyService,
     @Optional() private readonly storeCommissions?: StoreCommissionsService,
     @Optional() @Inject(forwardRef(() => DriversService)) private readonly driversService?: DriversService,
@@ -311,6 +313,23 @@ export class OrdersService implements IOrderService {
       void this.driversService.autoAssignDriver(orderId).catch((err: unknown) =>
         console.error('[OrdersService] autoAssign failed:', err),
       );
+    }
+    if (pgOp === 'insert' && this.pool && storeId) {
+      void this.pool
+        .query<{ owner_id: string }>(
+          `SELECT owner_id FROM stores WHERE id = $1::uuid LIMIT 1`,
+          [storeId],
+        )
+        .then((r) => {
+          const storeOwnerId = String(r.rows[0]?.owner_id ?? '').trim();
+          if (!storeOwnerId) return;
+          return this.notificationsService.sendPushToUser(storeOwnerId, {
+            title: 'طلب جديد',
+            body: 'لديك طلب جديد في متجرك',
+            data: { orderId: order.orderId, type: 'new_order' },
+          });
+        })
+        .catch((err: unknown) => console.error('[OrdersService] notify store failed:', err));
     }
 
     return { order, validation, storageCheck };

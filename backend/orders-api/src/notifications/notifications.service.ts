@@ -187,6 +187,20 @@ export class NotificationsService {
     void this.dispatchToUser(targetUserId, payload, 'notification_rating_received');
   }
 
+  sendPushToUser(
+    userId: string,
+    p: { title: string; body: string; data?: Record<string, string> },
+  ): Promise<void> {
+    const uid = userId?.trim();
+    if (!uid) return Promise.resolve();
+    const payload: NotificationPayload = {
+      title: p.title,
+      body: p.body,
+      data: p.data ?? {},
+    };
+    return this.dispatchToUser(uid, payload, 'notification_direct_user_push');
+  }
+
   /**
    * Resolves store owner Firebase UID and enqueues push + inbox. Fire-and-forget.
    */

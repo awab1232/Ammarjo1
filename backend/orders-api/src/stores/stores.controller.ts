@@ -99,6 +99,11 @@ export class StoresPublicController {
     return this.stores.listPublic(Number(limit ?? 50));
   }
 
+  @Get('top-rated')
+  topRated(@Query('limit') limit?: string) {
+    return this.stores.listTopRated(Number(limit ?? 10));
+  }
+
   @Get('by-subcategory/:id')
   bySubCategory(@Param('id') id: string) {
     return this.stores.bySubCategory(id);

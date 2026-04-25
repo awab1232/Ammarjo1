@@ -505,7 +505,38 @@ class _RequestTile extends StatelessWidget {
                   elevation: 0,
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                 ),
-                onPressed: () => onAction('cancel'),
+                onPressed: () async {
+                  final ok = await showDialog<bool>(
+                    context: context,
+                    builder: (ctx) => AlertDialog(
+                      title: Text('رفض الطلب', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
+                      content: Text(
+                        'هل أنت متأكد من رفض هذا الطلب؟ سيتم محاولة تعيين فني آخر.',
+                        style: GoogleFonts.tajawal(),
+                        textAlign: TextAlign.right,
+                      ),
+                      actions: [
+                        TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: Text('إلغاء', style: GoogleFonts.tajawal()),
+                        ),
+                        FilledButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          style: FilledButton.styleFrom(backgroundColor: Colors.red.shade700),
+                          child: Text('رفض الطلب', style: GoogleFonts.tajawal(color: Colors.white)),
+                        ),
+                      ],
+                    ),
+                  );
+                  if (ok == true) {
+                    await onAction('rejected');
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('تم رفض الطلب بنجاح', style: GoogleFonts.tajawal())),
+                      );
+                    }
+                  }
+                },
                 child: Text('رفض', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
               ),
               const SizedBox(width: 6),

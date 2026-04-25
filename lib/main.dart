@@ -37,6 +37,7 @@ import 'core/startup/staging_startup_guard.dart';
 import 'core/firebase/app_check_bootstrap.dart';
 import 'core/firebase/fcm_bootstrap.dart';
 import 'core/firebase/local_chat_notification_service.dart';
+import 'core/services/notification_preferences.dart';
 import 'core/services/gemini_ai_service.dart';
 import 'core/services/firebase_backend_session_service.dart';
 import 'core/navigation/app_navigator.dart';
@@ -248,6 +249,12 @@ Future<void> _appMain() async {
       );
       await FcmBootstrap.registerIfSignedIn();
       FirebaseMessaging.onMessage.listen((message) {
+        final type = (message.data['type'] ?? '').toString();
+        NotificationPreferences.allowsNotificationType(type).then((allowed) {
+          if (!allowed && kDebugMode) {
+            developer.log('FCM message filtered by user notification settings', name: 'FCM', error: type);
+          }
+        });
         if (kDebugMode) {
           developer.log(
             'FCM foreground message',

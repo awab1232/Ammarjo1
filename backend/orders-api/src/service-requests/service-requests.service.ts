@@ -14,6 +14,7 @@ import { DomainEventNames } from '../events/domain-event-names';
 import { buildPgPoolConfig } from '../infrastructure/database/pg-ssl';
 import { TenantContextService } from '../identity/tenant-context.service';
 import { MatchingService } from '../matching/matching.service';
+import { NotificationsService } from '../notifications/notifications.service';
 import type { ServiceRequestRecord, ServiceRequestStatus } from './service-requests.types';
 
 type CreateRequestInput = {
@@ -45,6 +46,7 @@ export class ServiceRequestsService {
   constructor(
     private readonly events: DomainEventEmitterService,
     private readonly matching: MatchingService,
+    private readonly notifications: NotificationsService,
     @Optional() private readonly tenant?: TenantContextService,
   ) {
     const url = process.env.DATABASE_URL?.trim();
@@ -416,6 +418,82 @@ export class ServiceRequestsService {
     return this.updateStatus(requestId, 'completed', actor, {
       eventName: DomainEventNames.SERVICE_REQUEST_COMPLETED,
     });
+  }
+
+  async rejectRequest(requestId: string): Promise<ServiceRequestRecord> {
+    const actor = this.actorIdOrThrow();
+    const actorEmail = this.actorEmail();
+    const rejected = await this.withClient(async (client) => {
+      await client.query('BEGIN');
+      try {
+        const current = await client.query(
+          `SELECT ${this.serviceRequestColumns} FROM service_requests WHERE id = $1::uuid LIMIT 1`,
+          [requestId.trim()],
+        );
+        if (current.rows.length === 0) throw new NotFoundException('Service request not found');
+        const mapped = this.mapRow(current.rows[0] as Record<string, unknown>);
+        if (!this.technicianIdMatchesActor(mapped.technicianId, actor, actorEmail)) {
+          throw new ForbiddenException('Only assigned technician can reject this request');
+        }
+        const upd = await client.query(
+          `UPDATE service_requests
+           SET status = 'rejected',
+               technician_id = NULL,
+               technician_email = NULL,
+               updated_at = NOW()
+           WHERE id = $1::uuid
+           RETURNING ${this.serviceRequestColumns}`,
+          [requestId.trim()],
+        );
+        await client.query(
+          `INSERT INTO service_request_status_history (request_id, status, changed_by, created_at)
+           VALUES ($1::uuid, $2, $3, NOW())`,
+          [requestId.trim(), 'rejected', actor],
+        );
+        const next = this.mapRow(upd.rows[0] as Record<string, unknown>);
+        await this.events.enqueueInTransaction(client, DomainEventNames.SERVICE_REQUEST_CANCELLED, next.id, {
+          requestId: next.id,
+          conversationId: next.conversationId,
+          customerId: next.customerId,
+          technicianId: null,
+          previousStatus: String(mapped.status ?? ''),
+          status: next.status,
+          changedBy: actor,
+        });
+        await client.query('COMMIT');
+        return next;
+      } catch (e) {
+        await client.query('ROLLBACK');
+        throw e;
+      }
+    });
+    if (rejected.customerId) {
+      void this.notifications
+        .sendPushToUser(rejected.customerId, {
+          title: 'طلب الخدمة',
+          body: 'رفض الفني طلبك، سيتم تعيين فني آخر',
+          data: { requestId: rejected.id, type: 'service_request.rejected' },
+        })
+        .catch((e: unknown) =>
+          this.logger.warn(
+            JSON.stringify({
+              kind: 'service_request_reject_notify_failed',
+              requestId: rejected.id,
+              error: e instanceof Error ? e.message : String(e),
+            }),
+          ),
+        );
+    }
+    void this.autoAssignTechnician(rejected.id).catch((e) =>
+      this.logger.warn(
+        JSON.stringify({
+          kind: 'service_request_reassign_failed',
+          requestId: rejected.id,
+          error: e instanceof Error ? e.message : String(e),
+        }),
+      ),
+    );
+    return rejected;
   }
 
   async cancelRequest(requestId: string): Promise<ServiceRequestRecord> {

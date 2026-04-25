@@ -904,6 +904,18 @@ final class BackendOrdersClient {
     return data.items;
   }
 
+  Future<JsonList?> fetchTopRatedStores({int limit = 10}) async {
+    final body = await _publicGetJson(
+      '/stores/top-rated',
+      query: {'limit': '$limit'},
+      flow: 'stores_top_rated_public',
+    );
+    if (body == null) return <Map<String, dynamic>>[];
+    final items = body['items'];
+    if (items is! List) return <Map<String, dynamic>>[];
+    return items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList();
+  }
+
   Future<VersionedJsonList> fetchStoreTypesVersioned() async {
     try {
       final body = await _publicGetJson('/stores/store-types', flow: 'stores_types_public');

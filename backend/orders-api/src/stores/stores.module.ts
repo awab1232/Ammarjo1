@@ -7,6 +7,7 @@ import { ProductVariantsController } from './product-variants.controller';
 import { ProductVariantsService } from './product-variants.service';
 import { ProductsController, ProductsFilterPublicController, ProductsMutateController } from './products.controller';
 import { BannersController } from './banners.controller';
+import { BannersService } from './banners.service';
 import { ProductsService } from './products.service';
 import { StoreCommissionsController } from './store-commissions.controller';
 import { StoreCommissionsService } from './store-commissions.service';
@@ -45,6 +46,7 @@ import { StoreRequestsService } from './store-requests.service';
     StoreOffersService,
     StoreCommissionsService,
     StoreRequestsService,
+    BannersService,
     AlgoliaSyncService,
   ],
   exports: [

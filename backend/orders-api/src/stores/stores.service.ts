@@ -278,6 +278,40 @@ export class StoresService {
     return { data: q.rows as Array<Record<string, unknown>>, items: q.rows as Array<Record<string, unknown>>, version };
   }
 
+  async listTopRated(limit = 10): Promise<{ items: Array<Record<string, unknown>> }> {
+    await this.ensureSchema();
+    const safeLimit = Math.min(Math.max(1, Number(limit) || 10), 50);
+    const q = await this.pool.query(
+      `SELECT
+         s.id::text AS id,
+         s.name,
+         s.logo_url AS "logoUrl",
+         s.store_type AS "storeType",
+         COALESCE(ra.avg_rating, 0)::float AS rating,
+         COALESCE(ra.total_reviews, 0)::int AS "reviewCount"
+       FROM stores s
+       LEFT JOIN ratings_aggregates ra
+         ON ra.target_id = s.id::text
+        AND ra.target_type = 'store'
+       WHERE s.is_active = true
+       ORDER BY ra.avg_rating DESC NULLS LAST, ra.total_reviews DESC NULLS LAST
+       LIMIT $1`,
+      [safeLimit],
+    );
+    const items = q.rows.map((row) => {
+      const m = row as Record<string, unknown>;
+      return {
+        id: String(m['id'] ?? ''),
+        name: String(m['name'] ?? ''),
+        logoUrl: resolvePublicUrl(m['logoUrl'] as string | null | undefined),
+        storeType: String(m['storeType'] ?? 'retail'),
+        rating: Number(m['rating'] ?? 0),
+        reviewCount: Number(m['reviewCount'] ?? 0),
+      };
+    });
+    return { items };
+  }
+
   async byId(id: string): Promise<StoreRecord> {
     await this.ensureSchema();
     await this.clearExpiredBoosts();

@@ -605,14 +605,32 @@ class AdminRepository {
     required String name,
     String kind = 'general',
     String status = 'active',
+    Map<String, dynamic>? payload,
   }) async {
-    final res = await BackendAdminClient.instance.createCategory(name: name, kind: kind, status: status);
+    final res = await BackendAdminClient.instance.createCategory(
+      name: name,
+      kind: kind,
+      status: status,
+      payload: payload,
+    );
     if (res == null) return FeatureState.failure('تعذر إنشاء التصنيف');
     return FeatureState.success(FeatureUnit.value);
   }
 
-  Future<FeatureState<FeatureUnit>> updateCategory(String id, {String? name, String? kind, String? status}) async {
-    final res = await BackendAdminClient.instance.updateCategory(id, name: name, kind: kind, status: status);
+  Future<FeatureState<FeatureUnit>> updateCategory(
+    String id, {
+    String? name,
+    String? kind,
+    String? status,
+    Map<String, dynamic>? payload,
+  }) async {
+    final res = await BackendAdminClient.instance.updateCategory(
+      id,
+      name: name,
+      kind: kind,
+      status: status,
+      payload: payload,
+    );
     if (res == null) return FeatureState.failure('تعذر تحديث التصنيف');
     return FeatureState.success(FeatureUnit.value);
   }
@@ -837,6 +855,57 @@ class AdminRepository {
     final res = await BackendAdminClient.instance.patchHomeCms(body);
     if (res == null) return FeatureState.failure('تعذر حفظ إعدادات الصفحة الرئيسية');
     HomeRepository.instance.invalidateAll();
+    return FeatureState.success(FeatureUnit.value);
+  }
+
+  Future<FeatureState<List<Map<String, dynamic>>>> fetchBanners() async {
+    final raw = await BackendAdminClient.instance.fetchBanners();
+    final items = raw?['items'];
+    if (items is! List) return FeatureState.failure('تعذر تحميل البنرات');
+    return FeatureState.success(items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList());
+  }
+
+  Future<FeatureState<Map<String, dynamic>>> createBanner({
+    required String imageUrl,
+    required String title,
+    String? link,
+    int order = 0,
+    bool isActive = true,
+  }) async {
+    final raw = await BackendAdminClient.instance.createBanner(
+      imageUrl: imageUrl,
+      title: title,
+      link: link,
+      order: order,
+      isActive: isActive,
+    );
+    if (raw == null) return FeatureState.failure('تعذر إنشاء البنر');
+    return FeatureState.success(Map<String, dynamic>.from(raw));
+  }
+
+  Future<FeatureState<FeatureUnit>> updateBanner(
+    String id, {
+    String? imageUrl,
+    String? title,
+    String? link,
+    int? order,
+    bool? isActive,
+  }) async {
+    final raw = await BackendAdminClient.instance.updateBanner(
+      id,
+      imageUrl: imageUrl,
+      title: title,
+      link: link,
+      order: order,
+      isActive: isActive,
+    );
+    if (raw == null) return FeatureState.failure('تعذر تحديث البنر');
+    return FeatureState.success(FeatureUnit.value);
+  }
+
+  Future<FeatureState<FeatureUnit>> deleteBanner(String id) async {
+    final raw = await BackendAdminClient.instance.deleteBanner(id);
+    if (raw == null) return FeatureState.failure('تعذر حذف البنر');
     return FeatureState.success(FeatureUnit.value);
   }
 

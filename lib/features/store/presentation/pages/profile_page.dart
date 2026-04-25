@@ -21,6 +21,7 @@ import '../widgets/ammarjo_loyalty_gold_card.dart';
 import 'change_password_page.dart';
 import 'customer_delivery_settings_page.dart';
 import 'login_page.dart';
+import 'notification_settings_page.dart';
 import 'register_page.dart';
 
 Future<void> _deleteAccountFromProfile(BuildContext context, StoreController store) async {
@@ -224,6 +225,21 @@ class ProfilePage extends StatelessWidget {
                             MaterialPageRoute<void>(builder: (_) => const ChangePasswordPage()),
                           );
                         },
+                      ),
+                      const SizedBox(height: 12),
+                      ListTile(
+                        contentPadding: EdgeInsets.zero,
+                        leading: const Icon(Icons.notifications_active_outlined, color: AppColors.navy, size: 28),
+                        title: Text('إعدادات الإشعارات', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                        subtitle: Text(
+                          'تخصيص التنبيهات داخل التطبيق',
+                          style: GoogleFonts.tajawal(fontSize: 13, color: AppColors.textSecondary),
+                        ),
+                        trailing: const Icon(Icons.chevron_left),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12), side: const BorderSide(color: AppColors.border)),
+                        onTap: () => Navigator.of(context).push<void>(
+                          MaterialPageRoute<void>(builder: (_) => const NotificationSettingsPage()),
+                        ),
                       ),
                       if (loggedIn) ...[
                         const SizedBox(height: 12),

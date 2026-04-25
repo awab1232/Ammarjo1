@@ -85,6 +85,12 @@ export class ServiceRequestsController {
     return this.serviceRequests.completeRequest(params.id);
   }
 
+  @Post(':id/reject')
+  @RequirePermissions('orders.write')
+  reject(@Param() params: ServiceRequestIdParamDto) {
+    return this.serviceRequests.rejectRequest(params.id);
+  }
+
   @Post(':id/cancel')
   @RequirePermissions('orders.write')
   cancel(@Param() params: ServiceRequestIdParamDto) {

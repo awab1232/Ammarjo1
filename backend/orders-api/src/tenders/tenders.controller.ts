@@ -92,6 +92,14 @@ export class TendersController {
     return this.tenders.listMine(req.firebaseUid ?? '', Number(limit ?? 50));
   }
 
+  @Get('store-offers')
+  @RequirePermissions('orders.read')
+  @UseGuards(RoleGuard)
+  @Roles('store_owner', 'admin')
+  storeOffers(@Req() req: RequestWithFirebase, @Query('limit') limit?: string) {
+    return this.tenders.listStoreOffers(req.firebaseUid ?? '', Number(limit ?? 100));
+  }
+
   /**
    * Open feed for store owners to browse tenders targeted at their store type.
    * Clients pass the store's own `storeTypeId` (or `storeTypeKey`) and optional city.

@@ -144,6 +144,13 @@ final class BackendTenderClient {
     return FeatureState.success(items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList());
   }
 
+  Future<FeatureState<List<Map<String, dynamic>>>> fetchStoreOffers({int limit = 100}) async {
+    final body = await _authedGet('/tenders/store-offers', query: <String, String>{'limit': '$limit'});
+    final items = body?['items'];
+    if (items is! List) return FeatureState.failure('Invalid store offers payload.');
+    return FeatureState.success(items.whereType<Map>().map((e) => Map<String, dynamic>.from(e)).toList());
+  }
+
   Future<Map<String, dynamic>?> _authedGet(String path, {Map<String, String>? query}) async {
     final req = await _request(path, query: query);
     if (req == null) return null;

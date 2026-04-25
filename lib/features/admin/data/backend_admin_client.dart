@@ -679,6 +679,47 @@ final class BackendAdminClient {
     return _patch('/admin/rest/home-cms', body: body);
   }
 
+  Future<Map<String, dynamic>?> fetchBanners() {
+    return _get('/banners', query: {'all': 'true'});
+  }
+
+  Future<Map<String, dynamic>?> createBanner({
+    required String imageUrl,
+    required String title,
+    String? link,
+    int order = 0,
+    bool isActive = true,
+  }) {
+    return _post('/banners', body: {
+      'imageUrl': imageUrl,
+      'title': title,
+      if (link != null) 'link': link,
+      'order': order,
+      'isActive': isActive,
+    });
+  }
+
+  Future<Map<String, dynamic>?> updateBanner(
+    String id, {
+    String? imageUrl,
+    String? title,
+    String? link,
+    int? order,
+    bool? isActive,
+  }) {
+    return _patch('/banners/${Uri.encodeComponent(id.trim())}', body: {
+      if (imageUrl != null) 'imageUrl': imageUrl,
+      if (title != null) 'title': title,
+      if (link != null) 'link': link,
+      if (order != null) 'order': order,
+      if (isActive != null) 'isActive': isActive,
+    });
+  }
+
+  Future<Map<String, dynamic>?> deleteBanner(String id) {
+    return _delete('/banners/${Uri.encodeComponent(id.trim())}');
+  }
+
   Future<Map<String, dynamic>?> fetchStoreTypes() {
     return _get('/admin/rest/store-types');
   }

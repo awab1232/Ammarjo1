@@ -452,6 +452,47 @@ export class TendersService {
     });
   }
 
+  async listStoreOffers(
+    actorUid: string,
+    limit = 100,
+  ): Promise<{ items: Record<string, unknown>[] }> {
+    const actor = actorUid.trim();
+    if (!actor) throw new ForbiddenException('forbidden');
+    const lim = Math.min(300, Math.max(1, Number(limit) || 100));
+    return this.withClient(async (client) => {
+      await this.assertStrictIntegrity(client);
+      const q = await client.query(
+        `SELECT o.id::text,
+                o.tender_id::text,
+                o.store_id_uuid::text AS store_id_uuid,
+                o.store_name,
+                o.store_owner_uid,
+                o.price,
+                o.note,
+                o.status,
+                o.created_at,
+                o.updated_at,
+                t.category_id::text AS tender_category_id,
+                t.city AS tender_city,
+                t.description AS tender_description
+         FROM tender_offers o
+         JOIN tenders t ON t.id = o.tender_id
+         WHERE o.store_owner_uid = $1
+         ORDER BY o.updated_at DESC
+         LIMIT $2`,
+        [actor, lim],
+      );
+      return {
+        items: (q.rows as Record<string, unknown>[]).map((r) => ({
+          ...this.rowToOffer(r),
+          tenderCategoryId: r['tender_category_id'],
+          tenderCity: r['tender_city'],
+          tenderDescription: r['tender_description'],
+        })),
+      };
+    });
+  }
+
   async submitOffer(input: SubmitOfferInput): Promise<Record<string, unknown>> {
     const actorUid = input.actorUid.trim();
     if (!actorUid) throw new BadRequestException('missing_actor_uid');
@@ -547,6 +588,22 @@ export class TendersService {
            WHERE tender_id = $1::uuid AND id <> $2::uuid AND status = 'pending'`,
           [tenderId.trim(), offerId.trim()],
         );
+        const accepted = upd.rows[0] as Record<string, unknown>;
+        const storeOwnerId = String(accepted['store_owner_uid'] ?? '').trim();
+        const acceptedOfferId = String(accepted['id'] ?? '').trim();
+        if (storeOwnerId && acceptedOfferId) {
+          void this.notifications
+            .sendPushToUser(storeOwnerId, {
+              title: 'تم قبول عرضك',
+              body: 'قبل العميل عرضك على المناقصة',
+              data: {
+                tenderId: tenderId.trim(),
+                offerId: acceptedOfferId,
+                type: 'offer_accepted',
+              },
+            })
+            .catch((err: unknown) => console.error('[TendersService] notify store failed:', err));
+        }
       }
 
       logAuditJson('audit', {

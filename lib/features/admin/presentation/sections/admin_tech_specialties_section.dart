@@ -10,6 +10,7 @@ class AdminTechSpecialtiesSection extends StatelessWidget {
     return const AdminTaxonomySection(
       title: 'تخصصات الفنيين',
       kind: 'tech',
+      includeImageField: true,
     );
   }
 }

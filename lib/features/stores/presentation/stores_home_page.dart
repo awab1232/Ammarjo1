@@ -147,6 +147,8 @@ class _StoresHomePageState extends State<StoresHomePage> {
               const StoresHomeOffersStrip(),
               const StoresHomeMarketingSectionTitle(title: 'المتاجر الأكثر طلباً'),
               StoresHomeMostRequestedStrip(futureStores: storeFut),
+              const StoresHomeMarketingSectionTitle(title: 'أعلى المتاجر تقييماً'),
+              const StoresHomeTopRatedStrip(),
               const StoresHomeBottomMarketingBanner(),
               const SizedBox(height: 12),
             ],

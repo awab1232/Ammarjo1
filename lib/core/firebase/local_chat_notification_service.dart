@@ -8,6 +8,7 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import '../config/chat_feature_config.dart';
 import '../services/backend_notifications_client.dart';
 import '../contracts/feature_state.dart';
+import '../services/notification_preferences.dart';
 
 abstract final class LocalChatNotificationService {
   static final FlutterLocalNotificationsPlugin _local = FlutterLocalNotificationsPlugin();
@@ -56,6 +57,8 @@ abstract final class LocalChatNotificationService {
           (data['type']?.toString().contains('message') ?? false) ||
           data.containsKey('conversationId');
       if (!isChatLike) return;
+      final allowed = await NotificationPreferences.allowsNotificationType((data['type'] ?? '').toString());
+      if (!allowed) return;
       unreadBadgeCount.value = unreadBadgeCount.value + 1;
       await _showLocalNotification(
         title: message.notification?.title ?? 'رسالة جديدة',

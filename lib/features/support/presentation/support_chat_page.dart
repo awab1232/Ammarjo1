@@ -1,4 +1,6 @@
-﻿import 'package:flutter/material.dart';
+﻿import 'dart:async';
+
+import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:ammar_store/core/session/user_session.dart';
@@ -28,12 +30,66 @@ class _SupportChatPageState extends State<SupportChatPage> {
   final _scroll = ScrollController();
   bool _ending = false;
   bool _unreadResetDone = false;
+  Timer? _pollTimer;
+  SupportTicket? _ticket;
+  bool _loading = true;
+  Object? _loadError;
+  int _messagesCount = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadMessages();
+    _pollTimer = Timer.periodic(const Duration(seconds: 5), (_) {
+      _loadMessages();
+    });
+  }
 
   @override
   void dispose() {
+    _pollTimer?.cancel();
     _textCtrl.dispose();
     _scroll.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadMessages() async {
+    try {
+      final next = await SupportChatRepository.instance.fetchTicket(widget.chatId);
+      if (!mounted) return;
+      if (next == null) {
+        setState(() {
+          _loading = false;
+          _loadError = null;
+          _ticket = null;
+        });
+        return;
+      }
+      final shouldScroll = next.messages.length > _messagesCount;
+      setState(() {
+        _loading = false;
+        _loadError = null;
+        _ticket = next;
+        _messagesCount = next.messages.length;
+      });
+      if (shouldScroll) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (_scroll.hasClients) {
+            _scroll.animateTo(
+              _scroll.position.maxScrollExtent + 120,
+              duration: const Duration(milliseconds: 220),
+              curve: Curves.easeOut,
+            );
+          }
+        });
+      }
+    } on Object catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _loading = false;
+        _loadError = e;
+      });
+    }
   }
 
   Future<void> _resetUnreadOnOpen() async {
@@ -138,85 +194,80 @@ class _SupportChatPageState extends State<SupportChatPage> {
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<SupportTicket?>(
-      future: SupportChatRepository.instance.fetchTicket(widget.chatId),
-      builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
-          return Scaffold(
-            appBar: AppBar(
-              backgroundColor: const Color(0xFFFF6B00),
-              foregroundColor: Colors.white,
-              leading: const AppBarBackButton(),
-              title: Text('المساعدة والدعم', style: GoogleFonts.tajawal(color: Colors.white)),
-            ),
-            body: const Center(child: CircularProgressIndicator(color: AppColors.primaryOrange)),
-          );
-        }
-        if (snap.hasError) {
-          return Scaffold(
-            appBar: AppBar(
-              backgroundColor: const Color(0xFFFF6B00),
-              foregroundColor: Colors.white,
-              leading: const AppBarBackButton(),
-              title: Text('المساعدة والدعم', style: GoogleFonts.tajawal(color: Colors.white)),
-            ),
-            body: Center(child: Text('${snap.error}', style: GoogleFonts.tajawal())),
-          );
-        }
-        if (!snap.hasData || snap.data == null) {
-          return Scaffold(
-            appBar: AppBar(
-              backgroundColor: const Color(0xFFFF6B00),
-              foregroundColor: Colors.white,
-              leading: const AppBarBackButton(),
-              title: Text('المساعدة والدعم', style: GoogleFonts.tajawal(color: Colors.white)),
-            ),
-            body: Center(child: Text('المحادثة غير موجودة.', style: GoogleFonts.tajawal())),
-          );
-        }
-        final data = snap.data!;
-        final status = data.status;
-        final isClosed = status == 'closed';
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          _resetUnreadOnOpen();
-        });
+    if (_loading && _ticket == null) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: const Color(0xFFFF6B00),
+          foregroundColor: Colors.white,
+          leading: const AppBarBackButton(),
+          title: Text('المساعدة والدعم', style: GoogleFonts.tajawal(color: Colors.white)),
+        ),
+        body: const Center(child: CircularProgressIndicator(color: AppColors.primaryOrange)),
+      );
+    }
+    if (_loadError != null && _ticket == null) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: const Color(0xFFFF6B00),
+          foregroundColor: Colors.white,
+          leading: const AppBarBackButton(),
+          title: Text('المساعدة والدعم', style: GoogleFonts.tajawal(color: Colors.white)),
+        ),
+        body: Center(child: Text('$_loadError', style: GoogleFonts.tajawal())),
+      );
+    }
+    if (_ticket == null) {
+      return Scaffold(
+        appBar: AppBar(
+          backgroundColor: const Color(0xFFFF6B00),
+          foregroundColor: Colors.white,
+          leading: const AppBarBackButton(),
+          title: Text('المساعدة والدعم', style: GoogleFonts.tajawal(color: Colors.white)),
+        ),
+        body: Center(child: Text('المحادثة غير موجودة.', style: GoogleFonts.tajawal())),
+      );
+    }
+    final data = _ticket!;
+    final status = data.status;
+    final isClosed = status == 'closed';
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _resetUnreadOnOpen();
+    });
 
-        return Scaffold(
-          appBar: AppBar(
-            title: Text('المساعدة والدعم', style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.w700)),
-            backgroundColor: const Color(0xFFFF6B00),
-            foregroundColor: Colors.white,
-            leading: const AppBarBackButton(),
-            actions: [
-              if (!isClosed)
-                TextButton(
-                  onPressed: _ending ? null : _endChat,
-                  child: Text(
-                    'إنهاء المحادثة',
-                    style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.w700),
-                  ),
-                ),
-            ],
-          ),
-          body: Column(
-            children: [
-              if (isClosed)
-                Container(
-                  width: double.infinity,
-                  color: Colors.red[50],
-                  padding: const EdgeInsets.all(12),
-                  child: Text(
-                    'تم إنهاء هذه المحادثة. للتواصل مرة أخرى اضغط على «احصل على مساعدة».',
-                    textAlign: TextAlign.center,
-                    style: GoogleFonts.tajawal(color: Colors.red[800], fontSize: 13, height: 1.35),
-                  ),
-                ),
-              Expanded(child: _buildMessagesList(data.messages)),
-              if (!isClosed) _buildMessageInput(),
-            ],
-          ),
-        );
-      },
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('المساعدة والدعم', style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.w700)),
+        backgroundColor: const Color(0xFFFF6B00),
+        foregroundColor: Colors.white,
+        leading: const AppBarBackButton(),
+        actions: [
+          if (!isClosed)
+            TextButton(
+              onPressed: _ending ? null : _endChat,
+              child: Text(
+                'إنهاء المحادثة',
+                style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.w700),
+              ),
+            ),
+        ],
+      ),
+      body: Column(
+        children: [
+          if (isClosed)
+            Container(
+              width: double.infinity,
+              color: Colors.red[50],
+              padding: const EdgeInsets.all(12),
+              child: Text(
+                'تم إنهاء هذه المحادثة. للتواصل مرة أخرى اضغط على «احصل على مساعدة».',
+                textAlign: TextAlign.center,
+                style: GoogleFonts.tajawal(color: Colors.red[800], fontSize: 13, height: 1.35),
+              ),
+            ),
+          Expanded(child: _buildMessagesList(data.messages)),
+          if (!isClosed) _buildMessageInput(),
+        ],
+      ),
     );
   }
 
