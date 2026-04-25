@@ -18,9 +18,13 @@ class FirebaseBackendSessionException implements Exception {
 abstract final class FirebaseBackendSessionService {
   static const FlutterSecureStorage _storage = FlutterSecureStorage();
   static const String _kBackendLoggedIn = 'backend_logged_in';
+  static Map<String, dynamic>? _lastSyncPayload;
+
+  static Map<String, dynamic>? get lastSyncPayload => _lastSyncPayload == null ? null : Map<String, dynamic>.from(_lastSyncPayload!);
 
   static Future<Map<String, dynamic>> syncWithBackend({
     User? firebaseUser,
+    String? customToken,
   }) async {
     // ignore: avoid_print
     print('🔥 CALLING BACKEND SYNC');
@@ -67,6 +71,10 @@ abstract final class FirebaseBackendSessionService {
     }
 
     await _storage.write(key: _kBackendLoggedIn, value: 'true');
+    if (customToken != null && customToken.trim().isNotEmpty) {
+      await _storage.write(key: 'firebase_custom_token_last', value: customToken.trim());
+    }
+    _lastSyncPayload = Map<String, dynamic>.from(decoded);
     debugPrint('[AUTH-AUDIT] logged_in flag saved=true');
     return decoded;
   }
@@ -88,6 +96,8 @@ abstract final class FirebaseBackendSessionService {
 
   static Future<void> clear() async {
     await _storage.delete(key: _kBackendLoggedIn);
+    await _storage.delete(key: 'firebase_custom_token_last');
+    _lastSyncPayload = null;
     debugPrint('[AUTH-AUDIT] secure session cleared');
   }
 

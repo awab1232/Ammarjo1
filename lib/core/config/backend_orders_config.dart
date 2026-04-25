@@ -33,22 +33,22 @@ abstract final class BackendOrdersConfig {
   /// When `true`, signed-in users persist the store cart via `GET/POST/PATCH/DELETE /cart` (PostgreSQL).
   static bool get useBackendCart =>
       _useBackendCartDev ||
-      const bool.fromEnvironment('USE_BACKEND_CART', defaultValue: false);
+      const bool.fromEnvironment('USE_BACKEND_CART', defaultValue: true);
 
   /// Backend order pipeline enabled (`USE_BACKEND_ORDERS` or dev defaults).
   static bool get useBackendOrders =>
       _useBackendOrdersDev ||
-      const bool.fromEnvironment('USE_BACKEND_ORDERS', defaultValue: false);
+      const bool.fromEnvironment('USE_BACKEND_ORDERS', defaultValue: true);
 
   /// Backend order reads (`USE_BACKEND_ORDERS_READ`).
   static bool get useBackendOrdersRead =>
       _useBackendOrdersReadDev ||
-      const bool.fromEnvironment('USE_BACKEND_ORDERS_READ', defaultValue: false);
+      const bool.fromEnvironment('USE_BACKEND_ORDERS_READ', defaultValue: true);
 
   /// Backend-primary order creation (`USE_BACKEND_ORDERS_WRITE`).
   static bool get useBackendOrdersWrite =>
       _useBackendOrdersWriteDev ||
-      const bool.fromEnvironment('USE_BACKEND_ORDERS_WRITE', defaultValue: false);
+      const bool.fromEnvironment('USE_BACKEND_ORDERS_WRITE', defaultValue: true);
 
   /// Backend reads for stores and store categories.
   static bool get useBackendStoreReads =>
@@ -63,7 +63,7 @@ abstract final class BackendOrdersConfig {
   /// Owner writes are routed to backend or disabled on Firebase write paths.
   static bool get useBackendOwnerWrites =>
       _useBackendOwnerWritesDev ||
-      const bool.fromEnvironment('USE_BACKEND_OWNER_WRITES', defaultValue: false);
+      const bool.fromEnvironment('USE_BACKEND_OWNER_WRITES', defaultValue: true);
 
   /// 1–100: fraction of (uid, orderId) pairs that attempt backend read when [useBackendOrdersRead] is true.
   /// Use `100` for full rollout; lower for gradual adoption. Invalid values are treated as `100`.

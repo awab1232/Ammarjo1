@@ -123,10 +123,17 @@ class PhonePasswordAuthService {
       throw const PhonePasswordAuthException('login_no_token', 'تعذر إكمال تسجيل الدخول من الخادم.');
     }
     final cred = await FirebaseAuth.instance.signInWithCustomToken(customToken);
+    final firebaseUser = cred.user;
+    if (firebaseUser == null) {
+      throw const PhonePasswordAuthException('login_no_firebase_user', 'تعذر إنشاء جلسة Firebase بعد تسجيل الدخول.');
+    }
     _lastRole = m['role']?.toString().trim();
     _lastUserId = m['userId']?.toString().trim() ?? m['firebaseUid']?.toString().trim();
     try {
-      await FirebaseBackendSessionService.syncWithBackend(firebaseUser: cred.user);
+      await FirebaseBackendSessionService.syncWithBackend(
+        firebaseUser: firebaseUser,
+        customToken: customToken,
+      );
     } on Object {
       // best effort — session is still a valid Firebase custom-token session
     }

@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
 import 'package:ammar_store/core/session/user_session.dart';
 
@@ -261,7 +262,7 @@ class _TenderRequestScreenState extends State<TenderRequestScreen> {
       return;
     }
 
-    if (!UserSession.isLoggedIn) {
+    if (FirebaseAuth.instance.currentUser == null) {
       _showError('يرجى تسجيل الدخول أولاً');
       return;
     }
@@ -324,7 +325,7 @@ Widget buildTenderFab(BuildContext context) {
       style: GoogleFonts.tajawal(color: Colors.white, fontWeight: FontWeight.bold),
     ),
     onPressed: () {
-      if (!UserSession.isLoggedIn) {
+      if (FirebaseAuth.instance.currentUser == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('يرجى تسجيل الدخول أولاً', style: GoogleFonts.tajawal()),
