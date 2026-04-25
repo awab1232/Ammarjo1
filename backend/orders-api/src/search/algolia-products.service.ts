@@ -1,4 +1,4 @@
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Injectable, Logger, OnModuleInit, Optional } from '@nestjs/common';
 import { ConsistencyPolicyService } from '../architecture/consistency/consistency-policy.service';
 import algoliasearch from 'algoliasearch';
 import type { SearchIndex } from 'algoliasearch';
@@ -29,10 +29,10 @@ function rowToAlgolia(r: CatalogProductRow): AlgoliaProductRecord {
 }
 
 @Injectable()
-export class AlgoliaProductsService {
+export class AlgoliaProductsService implements OnModuleInit {
   private readonly logger = new Logger(AlgoliaProductsService.name);
   private client: ReturnType<typeof algoliasearch> | null = null;
-  private readonly enabled: boolean;
+  private enabled: boolean;
   private readonly appId: string | null;
   private readonly searchKey: string | null;
   private readonly adminKey: string | null;
@@ -46,20 +46,26 @@ export class AlgoliaProductsService {
       process.env.ALGOLIA_WRITE_API_KEY?.trim() ||
       process.env.ALGOLIA_ADMIN_API_KEY?.trim() ||
       null;
-    if (!this.enabled) {
-      this.logger.log('Algolia disabled - skipping sync');
-      return;
-    }
-    if (!this.appId || !this.adminKey) {
-      throw new Error('ALGOLIA_ENABLED=true but ALGOLIA_APP_ID/ALGOLIA_API_KEY are missing');
-    }
-    if (this.appId && this.adminKey) {
-      try {
-        this.client = algoliasearch(this.appId, this.adminKey);
-      } catch (e) {
-        console.error('[AlgoliaProductsService] client init failed:', e);
-        this.client = null;
+  }
+
+  async onModuleInit(): Promise<void> {
+    try {
+      if (!this.enabled) {
+        console.log('[Algolia] disabled — skipping init');
+        return;
       }
+      if (!this.appId || !this.adminKey) {
+        throw new Error('ALGOLIA_ENABLED=true but ALGOLIA_APP_ID/ALGOLIA_API_KEY are missing');
+      }
+      this.client = algoliasearch(this.appId, this.adminKey);
+      console.log(`[Algolia] expected products index: ${this.indexName()}`);
+      await this.client.initIndex(this.indexName()).search('', { hitsPerPage: 1 });
+      console.log('[Algolia] ✅ initialized successfully');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      console.error('[Algolia] ❌ init failed — disabling:', message);
+      this.enabled = false;
+      this.client = null;
     }
   }
 
