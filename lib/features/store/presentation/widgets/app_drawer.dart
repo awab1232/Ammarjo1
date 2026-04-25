@@ -5,9 +5,9 @@ import 'package:provider/provider.dart';
 
 import '../../../../core/contracts/feature_state.dart';
 import '../../../../core/data/repositories/store_repository.dart';
+import '../../../../core/session/user_session.dart';
 import '../../../../core/session/backend_identity_controller.dart';
 import '../../../../core/theme/app_colors.dart';
-import '../../../admin/data/admin_repository.dart';
 import '../../../admin/presentation/pages/admin_dashboard_screen.dart';
 import '../../../store_owner/presentation/store_owner_dashboard.dart';
 import '../../../wholesale/presentation/pages/wholesale_apply_page.dart';
@@ -231,16 +231,13 @@ class _AppDrawerBody extends StatelessWidget {
   }
 
   Widget _buildSignedInDrawer(BuildContext context, String uid) {
-    return StreamBuilder<FullAdminDrawerState>(
-      stream: AdminRepository.instance.watchFullAdminDrawerState(),
-      builder: (context, adminSnap) {
-        return ListenableBuilder(
-          listenable: BackendIdentityController.instance,
-          builder: (context, _) {
+    return ListenableBuilder(
+      listenable: BackendIdentityController.instance,
+      builder: (context, _) {
             final me = BackendIdentityController.instance.me;
             final role = me?.role.trim() ?? '';
             final storeType = me?.storeType?.trim() ?? '';
-            final showAdmin = adminSnap.data?.showAdminLink ?? false;
+            final showAdmin = UserSession.role == 'admin';
             final roleResolved = role.isNotEmpty ? role : 'customer';
             final storeTypeResolved = storeType;
 
@@ -341,8 +338,6 @@ class _AppDrawerBody extends StatelessWidget {
                   padding: EdgeInsets.zero,
                   children: children,
                 );
-          },
-        );
       },
     );
   }

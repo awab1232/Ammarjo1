@@ -103,9 +103,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
 
     try {
       await BackendIdentityController.instance.refresh();
-      final role = BackendIdentityController.instance.me?.role ?? '';
-      final normalized = PermissionService.normalizeRole(role);
-      if (normalized != PermissionService.roleAdmin && normalized != PermissionService.roleSystemInternal) {
+      if (UserSession.role != 'admin') {
         if (!mounted) return;
         redirectToHome();
       }
@@ -119,10 +117,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
   /// لوحة الإدارة **كاملة** — يُسمح بالوصول للمستخدمين ذوي الدور `admin` أو `system_internal` فقط من `/auth/me`.
   bool _canAccessAdminDashboard(Map<String, dynamic>? data, String uid) {
     if (uid.isEmpty) return false;
-    if (!BackendIdentityController.instance.isBackendFullAdmin) return false;
-    final role = BackendIdentityController.instance.me?.role;
-    final normalized = PermissionService.normalizeRole(role);
-    return normalized == PermissionService.roleAdmin || normalized == PermissionService.roleSystemInternal;
+    return UserSession.role == 'admin';
   }
 
   List<_AdminNavGroup> _filteredNavGroups(String role) {

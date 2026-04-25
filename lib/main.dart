@@ -1,5 +1,6 @@
 import 'dart:developer' as developer;
 import 'dart:async';
+import 'dart:convert';
 
 import 'core/session/backend_identity_controller.dart';
 import 'core/session/user_session.dart';
@@ -7,6 +8,7 @@ import 'core/session/user_session.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:http/http.dart' as http;
 import 'package:flutter/foundation.dart' show debugPrint, defaultTargetPlatform, kDebugMode, kIsWeb;
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:sentry_flutter/sentry_flutter.dart';
@@ -215,11 +217,37 @@ Future<void> _appMain() async {
   }
   BackendOrdersConfig.warnIfBackendBaseUrlMissing('app_startup');
   if (Firebase.apps.isNotEmpty) {
+    Future<void> syncRoleFromBackend(User user) async {
+      try {
+        final token = await user.getIdToken();
+        final me = await http.get(
+          Uri.parse('${BackendOrdersConfig.baseUrl.trim().replaceAll(RegExp(r'/$'), '')}/auth/me'),
+          headers: {'Authorization': 'Bearer $token'},
+        );
+        if (me.statusCode >= 200 && me.statusCode < 300) {
+          final decoded = jsonDecode(me.body);
+          if (decoded is Map) {
+            final role = decoded['role']?.toString() ?? 'customer';
+            await UserSession.setRole(role);
+          } else {
+            await UserSession.setRole('customer');
+          }
+        } else {
+          await UserSession.setRole('customer');
+        }
+      } on Object catch (e) {
+        // ignore: avoid_print
+        print('[Auth] Failed to fetch role: $e');
+      }
+    }
+
     FirebaseAuth.instance.authStateChanges().listen((User? u) async {
       final c = BackendIdentityController.instance;
       if (u != null) {
         // ignore: avoid_print
         print('🔥 USER SIGNED IN');
+        UserSession.setCurrentUser(u.uid);
+        await syncRoleFromBackend(u);
         try {
           await FirebaseBackendSessionService.syncWithBackend(firebaseUser: u);
           // ignore: avoid_print
@@ -232,6 +260,7 @@ Future<void> _appMain() async {
         await c.refresh();
       } else {
         await FirebaseBackendSessionService.clear().onError((_, _) => null);
+        await UserSession.clear().onError((_, _) => null);
         c.clear();
       }
     });
