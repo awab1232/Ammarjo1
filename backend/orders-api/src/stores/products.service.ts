@@ -3,6 +3,8 @@ import { randomUUID } from 'node:crypto';
 import { Pool } from 'pg';
 import { TenantContextService } from '../identity/tenant-context.service';
 import { AlgoliaSyncService } from '../search/algolia-sync.service';
+import { CatalogPgService } from '../search/catalog-pg.service';
+import type { CatalogProductRow } from '../search/product-search.types';
 import { ProductVariantsService } from './product-variants.service';
 import type { StoreProductRecord } from './stores.types';
 import { logAuditJson } from '../common/audit-log';
@@ -12,6 +14,7 @@ import { resolvePublicUrl } from '../common/public-url';
 export class ProductsService {
   private readonly logger = new Logger(ProductsService.name);
   private readonly pool: Pool;
+  private readonly catalogPg: CatalogPgService;
   private schemaReady = false;
 
   constructor(
@@ -26,6 +29,7 @@ export class ProductsService {
       );
     }
     this.pool = new Pool({ connectionString });
+    this.catalogPg = new CatalogPgService();
   }
 
   private actor() {
@@ -150,6 +154,121 @@ export class ProductsService {
     };
   }
 
+  private buildCatalogSearchableText(name: string, description: string): string {
+    return `${name} ${description}`.trim().slice(0, 8000);
+  }
+
+  private async findCatalogProductIdByStoreAndName(storeId: string, name: string): Promise<number | null> {
+    if (!name.trim()) {
+      return null;
+    }
+    const r = await this.pool.query(
+      `SELECT product_id::int AS product_id
+         FROM catalog_products
+        WHERE store_id = $1 AND lower(btrim(name)) = lower(btrim($2))
+        LIMIT 1`,
+      [storeId.trim(), name],
+    );
+    const raw = r.rows[0]?.['product_id'];
+    if (raw == null) {
+      return null;
+    }
+    const n = Number(raw);
+    return Number.isFinite(n) && n > 0 && Math.floor(n) === n ? n : null;
+  }
+
+  private async nextCatalogProductId(): Promise<number> {
+    const r = await this.pool.query(`SELECT COALESCE(MAX(product_id), 0) + 1::int AS n FROM catalog_products`);
+    const n = Number((r.rows[0] as Record<string, unknown> | undefined)?.['n'] ?? 0);
+    if (!Number.isFinite(n) || n < 1) {
+      return 1;
+    }
+    return Math.floor(n);
+  }
+
+  private async resolveCatalogIntegerId(
+    storeId: string,
+    nameBefore: string | null,
+    nameAfter: string,
+  ): Promise<number> {
+    if (nameBefore && nameBefore !== nameAfter) {
+      const byOld = await this.findCatalogProductIdByStoreAndName(storeId, nameBefore);
+      if (byOld != null) {
+        return byOld;
+      }
+    }
+    const byNew = await this.findCatalogProductIdByStoreAndName(storeId, nameAfter);
+    if (byNew != null) {
+      return byNew;
+    }
+    return this.nextCatalogProductId();
+  }
+
+  private stockStatusForCatalogFromDisplayStock(dStock: number): 'in_stock' | 'outofstock' {
+    if (dStock < 0) {
+      return 'in_stock';
+    }
+    return dStock > 0 ? 'in_stock' : 'outofstock';
+  }
+
+  /** `product_variants` has no image — use the product row; list() already maps `image_url` into [record]. */
+  private async resolveImageUrlForCatalog(
+    productId: string,
+    recordUrls: string[],
+  ): Promise<string | null> {
+    if (recordUrls.length > 0 && recordUrls[0]!.trim().length > 0) {
+      return recordUrls[0]!.trim();
+    }
+    const v = await this.pool.query(
+      `SELECT COALESCE(NULLIF(TRIM(COALESCE(p.image, '')), ''), NULLIF(TRIM(COALESCE(p.image_url, '')), '')) AS u
+         FROM products p
+        WHERE p.id = $1::uuid
+        LIMIT 1`,
+      [productId.trim()],
+    );
+    const u = (v.rows[0] as Record<string, unknown> | undefined)?.['u'];
+    if (u == null) {
+      return null;
+    }
+    const t = String(u).trim();
+    return t.length > 0 ? t : null;
+  }
+
+  private async safeUpsertCatalogFromStoreRecord(
+    record: StoreProductRecord,
+    nameBefore: string | null,
+  ): Promise<void> {
+    if (!this.catalogPg.isEnabled()) {
+      return;
+    }
+    try {
+      const catalogId = await this.resolveCatalogIntegerId(record.storeId, nameBefore, record.name);
+      const imageUrl = await this.resolveImageUrlForCatalog(record.id, record.images);
+      const dStock = record.stock;
+      const row: CatalogProductRow = {
+        product_id: catalogId,
+        store_id: record.storeId,
+        name: record.name,
+        description: record.description,
+        price_numeric: Number.isFinite(record.price) ? record.price : 0,
+        currency: 'SAR',
+        category_ids: [],
+        image_url: imageUrl,
+        stock_status: this.stockStatusForCatalogFromDisplayStock(dStock),
+        searchable_text: this.buildCatalogSearchableText(record.name, record.description),
+      };
+      await this.catalogPg.upsert(row);
+    } catch (e) {
+      this.logger.warn(
+        JSON.stringify({
+          kind: 'catalog_product_sync_skipped',
+          productId: record.id,
+          error: e instanceof Error ? e.message : String(e),
+        }),
+      );
+    }
+  }
+
   async list(storeId: string): Promise<{ items: StoreProductRecord[] }> {
     await this.ensureEnhancedSchema();
     await this.ensureStoreAccess(storeId, 'read');
@@ -238,6 +357,7 @@ export class ProductsService {
       price: created.price,
       createdAt: created.createdAt,
     });
+    await this.safeUpsertCatalogFromStoreRecord(created, null);
     this.logSensitiveAudit('CREATE_PRODUCT', 'product', created.id);
     return created;
   }
@@ -263,6 +383,12 @@ export class ProductsService {
   ): Promise<StoreProductRecord> {
     await this.ensureEnhancedSchema();
     await this.ensureWriteStoreOwnership(storeId, 'update');
+    const nameBeforeQ = await this.pool.query(
+      `SELECT name::text AS name FROM products WHERE id = $1::uuid AND store_id = $2::uuid LIMIT 1`,
+      [productId.trim(), storeId.trim()],
+    );
+    const nameBeforeUpdate =
+      nameBeforeQ.rows[0] != null ? String((nameBeforeQ.rows[0] as Record<string, unknown>)['name'] ?? '') : '';
     const currentQ = await this.pool.query(
       `SELECT has_variants FROM products WHERE id = $1::uuid AND store_id = $2::uuid LIMIT 1`,
       [productId.trim(), storeId.trim()],
@@ -323,6 +449,7 @@ export class ProductsService {
       price: patched.price,
       createdAt: patched.createdAt,
     });
+    await this.safeUpsertCatalogFromStoreRecord(patched, nameBeforeUpdate);
     this.logSensitiveAudit('UPDATE_PRODUCT', 'product', patched.id);
     return patched;
   }
