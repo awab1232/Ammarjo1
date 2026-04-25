@@ -57,6 +57,8 @@ import 'features/maintenance/presentation/pages/technician_dashboard_page.dart';
 import 'features/store_owner/presentation/store_owner_dashboard.dart';
 import 'features/store/presentation/pages/main_navigation_page.dart';
 import 'features/stores/presentation/stores_list_page.dart';
+import 'features/driver/pages/driver_dashboard_page.dart';
+import 'features/driver/pages/driver_register_page.dart';
 import 'core/monitoring/sentry_safe.dart';
 
 @pragma('vm:entry-point')
@@ -258,6 +260,10 @@ Future<void> _appMain() async {
           print('🔥 BACKEND SYNC FAILED (authState listener): $e');
         }
         await c.refresh();
+        final role = UserSession.role.trim().toLowerCase();
+        if (role == 'driver') {
+          appNavigatorKey.currentState?.pushReplacementNamed('/driver');
+        }
       } else {
         await FirebaseBackendSessionService.clear().onError((_, _) => null);
         await UserSession.clear().onError((_, _) => null);
@@ -421,6 +427,8 @@ class AmmarStoreApp extends StatelessWidget {
         '/home': (_) => const MainNavigationPage(),
         '/admin': (_) => const AdminDashboardScreen(),
         '/store': (_) => const StoreOwnerDashboard(),
+        '/driver': (_) => const DriverDashboardPage(),
+        '/driver/register': (_) => const DriverRegisterPage(),
         '/technician': (_) => const TechnicianDashboardPage(),
         '/main': (_) => const MainNavigationPage(),
         '/privacy': (_) => const PrivacyPolicyPage(),

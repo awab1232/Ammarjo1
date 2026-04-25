@@ -265,6 +265,7 @@ export class DriversService {
     if (!rid) {
       throw new BadRequestException('request id required');
     }
+    let firebaseUid = '';
     await this.pg.withWriteClient(async (c) => {
       await c.query('BEGIN');
       try {
@@ -281,6 +282,7 @@ export class DriversService {
         if (!req) {
           throw new NotFoundException('driver_request_not_found');
         }
+        firebaseUid = req.auth_uid.trim();
         if (req.status !== 'pending') {
           throw new BadRequestException('not_pending');
         }
@@ -298,12 +300,26 @@ export class DriversService {
            WHERE id = $1::uuid`,
           [rid, adminUid.trim()],
         );
+        await c.query(
+          `UPDATE users SET role = 'driver'
+           WHERE firebase_uid = $1`,
+          [firebaseUid],
+        );
         await c.query('COMMIT');
       } catch (e) {
         await c.query('ROLLBACK');
         throw e;
       }
     });
+    if (firebaseUid.length > 0) {
+      void this.notifications
+        .sendPushToUser(firebaseUid, {
+          title: 'تم قبول طلبك كسائق',
+          body: 'يمكنك الآن تسجيل الدخول ومتابعة الطلبات',
+          data: { type: 'driver_approved' },
+        })
+        .catch((err: unknown) => console.error('[DriversService] notify failed:', err));
+    }
     return { ok: true };
   }
 

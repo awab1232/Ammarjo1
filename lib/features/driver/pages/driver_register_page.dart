@@ -215,13 +215,13 @@ class _DriverRegisterPageState extends State<DriverRegisterPage> {
             const Icon(Icons.check_circle_outline, color: AppColors.orange, size: 56),
             const SizedBox(height: 16),
             Text(
-              'تم إرسال الطلب، سيتم مراجعته',
+              'تم إرسال طلبك بنجاح. سيتم مراجعته من قبل الإدارة',
               textAlign: TextAlign.center,
               style: GoogleFonts.tajawal(fontSize: 18, fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 12),
             Text(
-              'ستصلك لوحة السائق بعد الموافقة من الإدارة.',
+              'وستصلك إشعار عند الموافقة',
               textAlign: TextAlign.center,
               style: GoogleFonts.tajawal(color: AppColors.textSecondary, height: 1.5),
             ),

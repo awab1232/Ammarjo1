@@ -272,6 +272,44 @@ class _AppDrawerBody extends StatelessWidget {
               );
             }
 
+            if (roleResolved == 'driver') {
+              return ListView(
+                key: const ValueKey<String>('drawer-driver'),
+                padding: EdgeInsets.zero,
+                children: [
+                  drawerItem(
+                    context,
+                    icon: Icons.delivery_dining_outlined,
+                    title: 'لوحة السائق',
+                    color: const Color(0xFFFF6B00),
+                    onTap: () => popThen(context, () => Navigator.of(context).pushNamed('/driver')),
+                  ),
+                  const Divider(indent: 16, endIndent: 16),
+                  drawerItem(
+                    context,
+                    icon: Icons.support_agent_outlined,
+                    title: 'احصل على مساعدة',
+                    color: const Color(0xFFFF6B00),
+                    onTap: () => popThen(context, () => openSupportChat(context)),
+                  ),
+                  const Divider(indent: 16, endIndent: 16),
+                  ..._legal(context),
+                  const Divider(indent: 16, endIndent: 16),
+                  drawerItem(
+                    context,
+                    icon: Icons.logout,
+                    title: 'تسجيل الخروج',
+                    color: Colors.red,
+                    onTap: () async {
+                      Navigator.pop(context);
+                      await context.read<StoreController>().logout();
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                ],
+              );
+            }
+
             final children = <Widget>[
               ..._customerCore(context),
               const Divider(indent: 16, endIndent: 16),
