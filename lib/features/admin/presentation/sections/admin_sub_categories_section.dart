@@ -10,12 +10,15 @@ class AdminSubCategoriesSection extends StatefulWidget {
   const AdminSubCategoriesSection({super.key});
 
   @override
-  State<AdminSubCategoriesSection> createState() => _AdminSubCategoriesSectionState();
+  State<AdminSubCategoriesSection> createState() =>
+      _AdminSubCategoriesSectionState();
 }
 
 class _AdminSubCategoriesSectionState extends State<AdminSubCategoriesSection> {
   String _activeSectionId = '';
-  List<Map<String, dynamic>> _homeSections = List<Map<String, dynamic>>.empty(growable: false);
+  List<Map<String, dynamic>> _homeSections = List<Map<String, dynamic>>.empty(
+    growable: false,
+  );
   bool _loadingSections = true;
 
   @override
@@ -80,7 +83,9 @@ class _AdminSubCategoriesSectionState extends State<AdminSubCategoriesSection> {
         ),
         Expanded(
           child: _loadingSections
-              ? const Center(child: CircularProgressIndicator(color: AppColors.orange))
+              ? const Center(
+                  child: CircularProgressIndicator(color: AppColors.orange),
+                )
               : _activeSectionId.isEmpty
               ? Center(
                   child: Text(
@@ -92,29 +97,43 @@ class _AdminSubCategoriesSectionState extends State<AdminSubCategoriesSection> {
                   key: ValueKey<String>(_activeSectionId),
                   title: 'إدارة الأقسام الفرعية',
                   fields: const [
-                    CrudFieldDef(key: 'homeSectionId', label: 'Home Section ID', required: true, readItemKey: 'home_section_id'),
                     CrudFieldDef(key: 'name', label: 'الاسم', required: true),
                     CrudFieldDef(key: 'image', label: 'الصورة'),
-                    CrudFieldDef(key: 'sortOrder', label: 'sortOrder', readItemKey: 'sortOrder'),
-                    CrudFieldDef(key: 'isActive', label: 'isActive (true/false)', readItemKey: 'isActive'),
+                    CrudFieldDef(
+                      key: 'sortOrder',
+                      label: 'sortOrder',
+                      readItemKey: 'sortOrder',
+                    ),
+                    CrudFieldDef(
+                      key: 'isActive',
+                      label: 'isActive (true/false)',
+                      readItemKey: 'isActive',
+                    ),
                   ],
-                  loadItems: () => AdminRepository.instance.fetchSubCategories(sectionId: _activeSectionId),
+                  loadItems: () => AdminRepository.instance.fetchSubCategories(
+                    sectionId: _activeSectionId,
+                  ),
                   onCreate: (v) => AdminRepository.instance.createSubCategory(
-                    homeSectionId: (v['homeSectionId'] ?? '').isEmpty ? _activeSectionId : (v['homeSectionId'] ?? ''),
+                    homeSectionId: _activeSectionId,
                     name: v['name'] ?? '',
                     image: (v['image'] ?? '').isEmpty ? null : v['image'],
                     sortOrder: int.tryParse(v['sortOrder'] ?? '') ?? 0,
-                    isActive: (v['isActive'] ?? 'true').trim().toLowerCase() != 'false',
+                    isActive:
+                        (v['isActive'] ?? 'true').trim().toLowerCase() !=
+                        'false',
                   ),
-                  onUpdate: (item, v) => AdminRepository.instance.updateSubCategory(
-                    item['id'].toString(),
-                    homeSectionId: (v['homeSectionId'] ?? '').isEmpty ? null : v['homeSectionId'],
-                    name: v['name'],
-                    image: (v['image'] ?? '').isEmpty ? null : v['image'],
-                    sortOrder: int.tryParse(v['sortOrder'] ?? ''),
-                    isActive: (v['isActive'] ?? '').isEmpty ? null : (v['isActive']!.trim().toLowerCase() == 'true'),
-                  ),
-                  onDelete: (item) => AdminRepository.instance.deleteSubCategory(item['id'].toString()),
+                  onUpdate: (item, v) =>
+                      AdminRepository.instance.updateSubCategory(
+                        item['id'].toString(),
+                        name: v['name'],
+                        image: (v['image'] ?? '').isEmpty ? null : v['image'],
+                        sortOrder: int.tryParse(v['sortOrder'] ?? ''),
+                        isActive: (v['isActive'] ?? '').isEmpty
+                            ? null
+                            : (v['isActive']!.trim().toLowerCase() == 'true'),
+                      ),
+                  onDelete: (item) => AdminRepository.instance
+                      .deleteSubCategory(item['id'].toString()),
                 ),
         ),
       ],

@@ -23,7 +23,9 @@ class StoreCategoryEntry {
   factory StoreCategoryEntry.fromBackendMap(Map<String, dynamic> d, int index) {
     final o = (d['order'] as num?)?.toInt() ?? (index + 1);
     return StoreCategoryEntry(
-      id: d['id']?.toString().trim().isNotEmpty == true ? d['id'].toString().trim() : 'cat_$index',
+      id: d['id']?.toString().trim().isNotEmpty == true
+          ? d['id'].toString().trim()
+          : 'cat_$index',
       name: d['name']?.toString().trim() ?? 'Category',
       imageUrl: d['imageUrl']?.toString().trim() ?? '',
       order: o,
@@ -45,7 +47,34 @@ const List<String> kStoresCategoryFallbackImageUrls = <String>[
 ];
 
 /// Store category chips — **backend stores list only**. Falls back to public list; empty OK.
-Future<FeatureState<List<StoreCategoryEntry>>> fetchStoreCategoriesFromFirestore() async {
+Future<FeatureState<List<StoreCategoryEntry>>>
+fetchStoreCategoriesFromFirestore() async {
+  try {
+    final sectionsState = await BackendOrdersClient.instance
+        .fetchHomeSections();
+    if (sectionsState case FeatureSuccess(:final data)) {
+      final out = <StoreCategoryEntry>[];
+      for (var i = 0; i < data.length; i++) {
+        final s = data[i];
+        out.add(
+          StoreCategoryEntry(
+            id: s.id,
+            name: s.name,
+            imageUrl: s.image?.trim() ?? '',
+            order: i + 1,
+            isActive: true,
+          ),
+        );
+      }
+      if (out.isNotEmpty) {
+        return FeatureState.success(out);
+      }
+    }
+  } on Object catch (e) {
+    debugPrint('[StoreCategories] home sections failed: $e');
+  }
+
+  // Fallback from stores list to keep compatibility when home sections are unavailable.
   List<Map<String, dynamic>>? stores;
   try {
     stores = await BackendOrdersClient.instance.fetchStores(limit: 200);
@@ -62,17 +91,26 @@ Future<FeatureState<List<StoreCategoryEntry>>> fetchStoreCategoriesFromFirestore
   for (final s in stores) {
     final raw = (s['category']?.toString() ?? '').trim();
     if (raw.isEmpty || !seen.add(raw)) continue;
-    out.add(StoreCategoryEntry.fromBackendMap({'id': raw, 'name': raw, 'isActive': true}, index));
+    out.add(
+      StoreCategoryEntry.fromBackendMap({
+        'id': raw,
+        'name': raw,
+        'isActive': true,
+      }, index),
+    );
     index++;
   }
   return FeatureState.success(out);
 }
 
 Stream<FeatureState<List<StoreCategoryEntry>>> watchActiveStoreCategories() {
-  return Stream<FeatureState<List<StoreCategoryEntry>>>.fromFuture(fetchStoreCategoriesFromFirestore());
+  return Stream<FeatureState<List<StoreCategoryEntry>>>.fromFuture(
+    fetchStoreCategoriesFromFirestore(),
+  );
 }
 
 /// @deprecated Use [watchActiveStoreCategories] — kept for a single call site; identical stream (no silent error swallow).
-Stream<FeatureState<List<StoreCategoryEntry>>> watchActiveStoreCategoriesWithFallback() {
+Stream<FeatureState<List<StoreCategoryEntry>>>
+watchActiveStoreCategoriesWithFallback() {
   return watchActiveStoreCategories();
 }

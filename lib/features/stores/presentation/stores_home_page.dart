@@ -10,7 +10,6 @@ import '../../../core/contracts/feature_state.dart';
 import '../../../core/data/repositories/product_repository.dart';
 import '../../../core/widgets/feature_state_builder.dart';
 import '../../../core/theme/app_colors.dart';
-import '../../../core/seo/seo_routes.dart';
 import '../../../core/seo/seo_service.dart';
 import '../../../core/utils/web_image_url.dart';
 import '../../../core/widgets/empty_state_widget.dart';
@@ -29,6 +28,7 @@ import 'store_detail_page.dart';
 import 'widgets/store_card.dart';
 import 'widgets/stores_home_marketing_sections.dart';
 import '../../tenders/presentation/pages/tender_request_screen.dart';
+import 'pages/category_page.dart';
 
 /// صور تصنيفات (شبكة المتاجر) — روابط ثابتة لعرض حقيقي.
 const List<String> kStoresCategoryImageUrls = <String>[
@@ -88,9 +88,7 @@ class _StoresHomePageState extends State<StoresHomePage> {
       return child;
     } on Object catch (e) {
       debugPrint('HOME BUILD CRASH: $e');
-      return const Scaffold(
-        body: Center(child: Text('حدث خطأ في العرض')),
-      );
+      return const Scaffold(body: Center(child: Text('حدث خطأ في العرض')));
     }
   }
 
@@ -103,9 +101,12 @@ class _StoresHomePageState extends State<StoresHomePage> {
     return FutureBuilder<FeatureState<List<StoreModel>>>(
       future: storeFut,
       builder: (context, storeSnap) {
-        if (storeSnap.connectionState == ConnectionState.waiting && !storeSnap.hasData) {
+        if (storeSnap.connectionState == ConnectionState.waiting &&
+            !storeSnap.hasData) {
           return ListView(
-            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
             children: const [
               SizedBox(height: 4),
               SizedBox(height: 218, child: HomeBannerSkeleton()),
@@ -126,12 +127,16 @@ class _StoresHomePageState extends State<StoresHomePage> {
         final bottomPad = MediaQuery.paddingOf(context).bottom + 24;
         return ListView(
           padding: EdgeInsets.only(bottom: bottomPad),
-          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+          physics: const AlwaysScrollableScrollPhysics(
+            parent: BouncingScrollPhysics(),
+          ),
           children: [
             const SizedBox(height: 4),
             SizedBox(
               height: 218,
-              child: _StoresHomePageBannerCarousel(page: widget.homeBannersPageKey),
+              child: _StoresHomePageBannerCarousel(
+                page: widget.homeBannersPageKey,
+              ),
             ),
             if (widget.storeCategoryFilter == null) ...[
               _sectionHeader('أقسام المتاجر'),
@@ -145,19 +150,33 @@ class _StoresHomePageState extends State<StoresHomePage> {
                     Text(
                       'التصنيفات',
                       textAlign: TextAlign.right,
-                      style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 18, color: AppColors.textPrimary),
+                      style: GoogleFonts.tajawal(
+                        fontWeight: FontWeight.w800,
+                        fontSize: 18,
+                        color: AppColors.textPrimary,
+                      ),
                     ),
                     const SizedBox(height: 4),
                     Row(
                       mainAxisAlignment: MainAxisAlignment.end,
                       children: [
-                        Icon(Icons.swipe_rounded, size: 14, color: AppColors.primaryOrange.withValues(alpha: 0.85)),
+                        Icon(
+                          Icons.swipe_rounded,
+                          size: 14,
+                          color: AppColors.primaryOrange.withValues(
+                            alpha: 0.85,
+                          ),
+                        ),
                         const SizedBox(width: 6),
                         Expanded(
                           child: Text(
                             'اسحب للاطلاع على كل التصنيفات',
                             textAlign: TextAlign.right,
-                            style: GoogleFonts.tajawal(fontSize: 11, color: AppColors.textSecondary, fontWeight: FontWeight.w600),
+                            style: GoogleFonts.tajawal(
+                              fontSize: 11,
+                              color: AppColors.textSecondary,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
                         ),
                       ],
@@ -188,11 +207,15 @@ class _StoresHomePageState extends State<StoresHomePage> {
                     final maps = <Map<String, dynamic>>[];
                     for (var index = 0; index < cats.length; index++) {
                       final cat = cats[index];
-                      final fallbackImg = index < kStoresCategoryImageUrls.length
+                      final fallbackImg =
+                          index < kStoresCategoryImageUrls.length
                           ? kStoresCategoryImageUrls[index]
                           : kStoresCategoryImageUrls[0];
-                      final imgRaw = cat.imageUrl.trim().isNotEmpty ? cat.imageUrl : fallbackImg;
+                      final imgRaw = cat.imageUrl.trim().isNotEmpty
+                          ? cat.imageUrl
+                          : fallbackImg;
                       maps.add(<String, dynamic>{
+                        'id': cat.id,
                         'name': cat.name,
                         'imageUrl': webSafeImageUrl(imgRaw),
                       });
@@ -202,7 +225,18 @@ class _StoresHomePageState extends State<StoresHomePage> {
                       selectedName: _selectedStoreCategoryName,
                       onSelect: (name, _) {
                         setState(() => _selectedStoreCategoryName = name);
-                        Navigator.of(context).pushNamed(SeoRoutes.category(name));
+                        final category = cats.firstWhere(
+                          (c) => c.name == name,
+                          orElse: () => cats.first,
+                        );
+                        Navigator.of(context).push<void>(
+                          MaterialPageRoute<void>(
+                            builder: (_) => CategoryPage(
+                              categoryId: category.id,
+                              categoryName: category.name,
+                            ),
+                          ),
+                        );
                       },
                     );
                   },
@@ -236,7 +270,11 @@ class _StoresHomePageState extends State<StoresHomePage> {
                       Text(
                         'هل أنت صاحب متجر؟ انضم إلينا',
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 16, color: AppColors.textPrimary),
+                        style: GoogleFonts.tajawal(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 16,
+                          color: AppColors.textPrimary,
+                        ),
                       ),
                       const SizedBox(height: 14),
                       FilledButton(
@@ -244,16 +282,24 @@ class _StoresHomePageState extends State<StoresHomePage> {
                           backgroundColor: AppColors.primaryOrange,
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 14),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
                         ),
                         onPressed: () {
                           Navigator.of(context).push<void>(
                             MaterialPageRoute<void>(
-                              builder: (_) => const ApplyStorePage(lockedCategory: null),
+                              builder: (_) =>
+                                  const ApplyStorePage(lockedCategory: null),
                             ),
                           );
                         },
-                        child: Text('تقديم طلب', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                        child: Text(
+                          'تقديم طلب',
+                          style: GoogleFonts.tajawal(
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
                       ),
                     ],
                   ),
@@ -273,49 +319,75 @@ class _StoresHomePageState extends State<StoresHomePage> {
     FeatureState<List<StoreModel>> st,
   ) {
     return switch (st) {
-      FeatureSuccess(:final data) => _groupedStoreListWidgets(context, storeController, data),
+      FeatureSuccess(:final data) => _groupedStoreListWidgets(
+        context,
+        storeController,
+        data,
+      ),
       FeatureFailure(:final message) => <Widget>[
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text('تعذر تحميل المتاجر', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
-                const SizedBox(height: 8),
-                Text(message, style: GoogleFonts.tajawal(fontSize: 12, color: AppColors.textSecondary)),
-                const SizedBox(height: 16),
-                FilledButton(
-                  onPressed: () => setState(() => _storesReloadNonce++),
-                  style: FilledButton.styleFrom(backgroundColor: AppColors.primaryOrange),
-                  child: Text('إعادة المحاولة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+        Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'تعذر تحميل المتاجر',
+                style: GoogleFonts.tajawal(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                message,
+                style: GoogleFonts.tajawal(
+                  fontSize: 12,
+                  color: AppColors.textSecondary,
                 ),
-              ],
-            ),
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () => setState(() => _storesReloadNonce++),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primaryOrange,
+                ),
+                child: Text(
+                  'إعادة المحاولة',
+                  style: GoogleFonts.tajawal(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
+      ],
       FeatureCriticalPublicDataFailure() => <Widget>[
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text('تعذر الاتصال بالخادم', style: GoogleFonts.tajawal(fontWeight: FontWeight.w800)),
-                const SizedBox(height: 16),
-                FilledButton(
-                  onPressed: () => setState(() => _storesReloadNonce++),
-                  style: FilledButton.styleFrom(backgroundColor: AppColors.primaryOrange),
-                  child: Text('إعادة المحاولة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+        Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Text(
+                'تعذر الاتصال بالخادم',
+                style: GoogleFonts.tajawal(fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 16),
+              FilledButton(
+                onPressed: () => setState(() => _storesReloadNonce++),
+                style: FilledButton.styleFrom(
+                  backgroundColor: AppColors.primaryOrange,
                 ),
-              ],
-            ),
+                child: Text(
+                  'إعادة المحاولة',
+                  style: GoogleFonts.tajawal(fontWeight: FontWeight.w700),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
+      ],
       _ => <Widget>[
-          Padding(
-            padding: const EdgeInsets.all(24),
-            child: Text('المتاجر غير متاحة', style: GoogleFonts.tajawal()),
-          ),
-        ],
+        Padding(
+          padding: const EdgeInsets.all(24),
+          child: Text('المتاجر غير متاحة', style: GoogleFonts.tajawal()),
+        ),
+      ],
     };
   }
 
@@ -327,7 +399,8 @@ class _StoresHomePageState extends State<StoresHomePage> {
     var all = List<StoreModel>.from(allStores);
     all.sort((a, b) => a.name.toLowerCase().compareTo(b.name.toLowerCase()));
     final userCity = storeController.profile?.city?.trim();
-    final showRegionalEmpty = userCity != null && userCity.isNotEmpty && all.isEmpty;
+    final showRegionalEmpty =
+        userCity != null && userCity.isNotEmpty && all.isEmpty;
     final out = <Widget>[];
     if (showRegionalEmpty) {
       out.add(
@@ -338,7 +411,9 @@ class _StoresHomePageState extends State<StoresHomePage> {
             customTitle: 'لا توجد متاجر في منطقتك',
             onAction: () {
               Navigator.of(context).push<void>(
-                MaterialPageRoute<void>(builder: (_) => const CustomerDeliverySettingsPage()),
+                MaterialPageRoute<void>(
+                  builder: (_) => const CustomerDeliverySettingsPage(),
+                ),
               );
             },
             actionLabel: 'تغيير المنطقة',
@@ -352,7 +427,8 @@ class _StoresHomePageState extends State<StoresHomePage> {
       final key = s.category.trim().isEmpty ? 'أخرى' : s.category.trim();
       byCategory.putIfAbsent(key, () => <StoreModel>[]).add(s);
     }
-    final keys = byCategory.keys.toList()..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
+    final keys = byCategory.keys.toList()
+      ..sort((a, b) => a.toLowerCase().compareTo(b.toLowerCase()));
     for (final cat in keys) {
       final list = byCategory[cat]!;
       out.add(
@@ -361,7 +437,11 @@ class _StoresHomePageState extends State<StoresHomePage> {
           child: Text(
             cat,
             textAlign: TextAlign.right,
-            style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 15, color: AppColors.textPrimary),
+            style: GoogleFonts.tajawal(
+              fontWeight: FontWeight.w800,
+              fontSize: 15,
+              color: AppColors.textPrimary,
+            ),
           ),
         ),
       );
@@ -371,7 +451,9 @@ class _StoresHomePageState extends State<StoresHomePage> {
             store: s,
             onTap: () {
               Navigator.of(context).push<void>(
-                MaterialPageRoute<void>(builder: (_) => StoreDetailPage(store: s)),
+                MaterialPageRoute<void>(
+                  builder: (_) => StoreDetailPage(store: s),
+                ),
               );
             },
           ),
@@ -392,7 +474,8 @@ class _StoresHomePageState extends State<StoresHomePage> {
   @override
   void initState() {
     super.initState();
-    _categoriesStream = watchActiveStoreCategoriesWithFallback().asBroadcastStream();
+    _categoriesStream = watchActiveStoreCategoriesWithFallback()
+        .asBroadcastStream();
     _loadStoreTypes();
   }
 
@@ -426,8 +509,14 @@ class _StoresHomePageState extends State<StoresHomePage> {
         onChanged: (_) => setState(() {}),
         decoration: InputDecoration(
           hintText: 'ابحث عن متجر أو منتج…',
-          hintStyle: GoogleFonts.tajawal(color: AppColors.textSecondary, fontSize: 15),
-          prefixIcon: const Icon(Icons.search_rounded, color: AppColors.primaryOrange),
+          hintStyle: GoogleFonts.tajawal(
+            color: AppColors.textSecondary,
+            fontSize: 15,
+          ),
+          prefixIcon: const Icon(
+            Icons.search_rounded,
+            color: AppColors.primaryOrange,
+          ),
           suffixIcon: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -440,17 +529,39 @@ class _StoresHomePageState extends State<StoresHomePage> {
                   },
                 ),
               IconButton(
-                icon: const Icon(Icons.mic_none_rounded, color: AppColors.primaryOrange),
+                icon: const Icon(
+                  Icons.mic_none_rounded,
+                  color: AppColors.primaryOrange,
+                ),
                 onPressed: () {},
               ),
             ],
           ),
           filled: true,
           fillColor: Colors.white,
-          contentPadding: const EdgeInsets.symmetric(vertical: 14, horizontal: 12),
-          border: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.6))),
-          enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: BorderSide(color: AppColors.border.withValues(alpha: 0.6))),
-          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(14), borderSide: const BorderSide(color: AppColors.primaryOrange, width: 1.5)),
+          contentPadding: const EdgeInsets.symmetric(
+            vertical: 14,
+            horizontal: 12,
+          ),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(
+              color: AppColors.border.withValues(alpha: 0.6),
+            ),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: BorderSide(
+              color: AppColors.border.withValues(alpha: 0.6),
+            ),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(14),
+            borderSide: const BorderSide(
+              color: AppColors.primaryOrange,
+              width: 1.5,
+            ),
+          ),
         ),
       ),
     );
@@ -504,9 +615,13 @@ class _StoresHomePageState extends State<StoresHomePage> {
         itemCount: _storeTypes.length + 1,
         itemBuilder: (context, i) {
           final isAll = i == 0;
-          final selected = isAll ? _selectedStoreTypeId == null : _selectedStoreTypeId == _storeTypes[i - 1].id;
+          final selected = isAll
+              ? _selectedStoreTypeId == null
+              : _selectedStoreTypeId == _storeTypes[i - 1].id;
           final String name = isAll ? 'كل الأنواع' : _storeTypes[i - 1].name;
-          final String? imageUrl = isAll ? null : webSafeImageUrl(_storeTypes[i - 1].image?.trim() ?? '');
+          final String? imageUrl = isAll
+              ? null
+              : webSafeImageUrl(_storeTypes[i - 1].image?.trim() ?? '');
           return GestureDetector(
             onTap: () {
               setState(() {
@@ -579,14 +694,20 @@ class _StoresHomePageState extends State<StoresHomePage> {
         if (snap.connectionState == ConnectionState.waiting) {
           return ListView(
             padding: const EdgeInsets.fromLTRB(0, 8, 0, 24),
-            physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
+            physics: const AlwaysScrollableScrollPhysics(
+              parent: BouncingScrollPhysics(),
+            ),
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                 child: Text(
                   'جاري تحميل النتائج…',
                   textAlign: TextAlign.right,
-                  style: GoogleFonts.tajawal(fontWeight: FontWeight.w700, fontSize: 15, color: AppColors.textSecondary),
+                  style: GoogleFonts.tajawal(
+                    fontWeight: FontWeight.w700,
+                    fontSize: 15,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ),
               const HomeStoreListSkeleton(rows: 5),
@@ -606,37 +727,47 @@ class _StoresHomePageState extends State<StoresHomePage> {
           state: snap.data!,
           onRetry: () => setState(() => _storesReloadNonce++),
           dataBuilder: (ctx, allStores) {
-        final stores = allStores.where((s) => s.name.toLowerCase().contains(q)).toList();
-        return ListView(
-          padding: const EdgeInsets.fromLTRB(0, 8, 0, 24),
-          physics: const AlwaysScrollableScrollPhysics(parent: BouncingScrollPhysics()),
-          children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
-              child: Text(
-                'المتاجر',
-                textAlign: TextAlign.right,
-                style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, fontSize: 18, color: AppColors.textPrimary),
+            final stores = allStores
+                .where((s) => s.name.toLowerCase().contains(q))
+                .toList();
+            return ListView(
+              padding: const EdgeInsets.fromLTRB(0, 8, 0, 24),
+              physics: const AlwaysScrollableScrollPhysics(
+                parent: BouncingScrollPhysics(),
               ),
-            ),
-            if (stores.isEmpty)
-              const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                child: EmptyStateWidget(type: EmptyStateType.stores),
-              )
-            else
-              ...stores.map(
-                (s) => StoreCard(
-                  store: s,
-                  onTap: () {
-                    Navigator.of(context).push<void>(
-                      MaterialPageRoute<void>(builder: (_) => StoreDetailPage(store: s)),
-                    );
-                  },
+              children: [
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: Text(
+                    'المتاجر',
+                    textAlign: TextAlign.right,
+                    style: GoogleFonts.tajawal(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 18,
+                      color: AppColors.textPrimary,
+                    ),
+                  ),
                 ),
-              ),
-          ],
-        );
+                if (stores.isEmpty)
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                    child: EmptyStateWidget(type: EmptyStateType.stores),
+                  )
+                else
+                  ...stores.map(
+                    (s) => StoreCard(
+                      store: s,
+                      onTap: () {
+                        Navigator.of(context).push<void>(
+                          MaterialPageRoute<void>(
+                            builder: (_) => StoreDetailPage(store: s),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+              ],
+            );
           },
         );
       },
@@ -649,7 +780,8 @@ class _StoresHomePageState extends State<StoresHomePage> {
     final storeController = context.watch<StoreController>();
     final city = storeController.profile?.city?.trim();
     final authMode = storeController.isLoggedIn ? 'authed' : 'public';
-    final storeKey = '${city ?? ''}|${widget.storeCategoryFilter}|$_selectedStoreTypeId|$_storesReloadNonce|$authMode';
+    final storeKey =
+        '${city ?? ''}|${widget.storeCategoryFilter}|$_selectedStoreTypeId|$_storesReloadNonce|$authMode';
     if (_storesFetchKey != storeKey) {
       _storesFetchKey = storeKey;
       _storesFetchMemo = StoresRepository.instance.fetchApprovedStores(
@@ -660,37 +792,56 @@ class _StoresHomePageState extends State<StoresHomePage> {
     }
     final storeListFuture = _storesFetchMemo!;
 
-    return safeHome(Scaffold(
-      backgroundColor: AppColors.background,
-      extendBody: false,
-      appBar: AppBar(
-        backgroundColor: AppColors.primaryOrange,
-        foregroundColor: Colors.white,
-        elevation: 0,
-        scrolledUnderElevation: 1,
-        surfaceTintColor: Colors.transparent,
-        leading: widget.onOpenDrawer != null
-            ? IconButton(icon: const Icon(Icons.menu_rounded), onPressed: widget.onOpenDrawer)
-            : null,
-        title: Text(widget.appBarTitle, style: GoogleFonts.tajawal(fontWeight: FontWeight.w800, color: Colors.white)),
-        centerTitle: true,
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          const SizedBox(height: 8),
-          _buildSearchField(),
-          const SizedBox(height: 8),
-          Expanded(
-            child: _hasSearchQuery
-                ? _buildSearchResults(context, storeController, storeListFuture)
-                : _buildHomeStoreDirectoryList(context, storeController, storeListFuture),
+    return safeHome(
+      Scaffold(
+        backgroundColor: AppColors.background,
+        extendBody: false,
+        appBar: AppBar(
+          backgroundColor: AppColors.primaryOrange,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          scrolledUnderElevation: 1,
+          surfaceTintColor: Colors.transparent,
+          leading: widget.onOpenDrawer != null
+              ? IconButton(
+                  icon: const Icon(Icons.menu_rounded),
+                  onPressed: widget.onOpenDrawer,
+                )
+              : null,
+          title: Text(
+            widget.appBarTitle,
+            style: GoogleFonts.tajawal(
+              fontWeight: FontWeight.w800,
+              color: Colors.white,
+            ),
           ),
-        ],
+          centerTitle: true,
+        ),
+        body: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            const SizedBox(height: 8),
+            _buildSearchField(),
+            const SizedBox(height: 8),
+            Expanded(
+              child: _hasSearchQuery
+                  ? _buildSearchResults(
+                      context,
+                      storeController,
+                      storeListFuture,
+                    )
+                  : _buildHomeStoreDirectoryList(
+                      context,
+                      storeController,
+                      storeListFuture,
+                    ),
+            ),
+          ],
+        ),
+        floatingActionButton: buildTenderFab(context),
+        floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
       ),
-      floatingActionButton: buildTenderFab(context),
-      floatingActionButtonLocation: FloatingActionButtonLocation.startFloat,
-    ));
+    );
   }
 }
 
@@ -702,20 +853,36 @@ class _StoresHomePageBannerCarousel extends StatefulWidget {
   final String page;
 
   @override
-  State<_StoresHomePageBannerCarousel> createState() => _StoresHomePageBannerCarouselState();
+  State<_StoresHomePageBannerCarousel> createState() =>
+      _StoresHomePageBannerCarouselState();
 }
 
-class _StoresHomePageBannerCarouselState extends State<_StoresHomePageBannerCarousel> {
+class _StoresHomePageBannerCarouselState
+    extends State<_StoresHomePageBannerCarousel> {
   Future<FeatureState<List<WpHomeBannerSlide>>>? _future;
 
-  Future<FeatureState<List<WpHomeBannerSlide>>> _safeFetchBanners({bool forceRefresh = false}) async {
-    final state = await context.read<ProductRepository>().fetchHomeBanners(forceRefresh: forceRefresh);
+  Future<FeatureState<List<WpHomeBannerSlide>>> _safeFetchBanners({
+    bool forceRefresh = false,
+  }) async {
+    final state = await context.read<ProductRepository>().fetchHomeBanners(
+      forceRefresh: forceRefresh,
+    );
     return switch (state) {
-      FeatureSuccess<List<WpHomeBannerSlide>>(:final data) => FeatureState.success(data),
-      FeatureFailure(:final message, :final cause) => FeatureState.failure(message, cause),
-      FeatureMissingBackend(:final featureName) => FeatureState.failure('Missing backend: $featureName'),
-      FeatureAdminNotWired(:final featureName) => FeatureState.failure('Feature not wired: $featureName'),
-      FeatureAdminMissingEndpoint(:final featureName) => FeatureState.failure('Missing endpoint: $featureName'),
+      FeatureSuccess<List<WpHomeBannerSlide>>(:final data) =>
+        FeatureState.success(data),
+      FeatureFailure(:final message, :final cause) => FeatureState.failure(
+        message,
+        cause,
+      ),
+      FeatureMissingBackend(:final featureName) => FeatureState.failure(
+        'Missing backend: $featureName',
+      ),
+      FeatureAdminNotWired(:final featureName) => FeatureState.failure(
+        'Feature not wired: $featureName',
+      ),
+      FeatureAdminMissingEndpoint(:final featureName) => FeatureState.failure(
+        'Missing endpoint: $featureName',
+      ),
       FeatureCriticalPublicDataFailure(:final featureName, :final cause) =>
         FeatureState.failure('Critical failure: $featureName', cause),
     };
@@ -774,7 +941,8 @@ class _StoresHomePageBannerCarouselState extends State<_StoresHomePageBannerCaro
         key: ValueKey<String>(widget.page),
         future: _future,
         builder: (context, snap) {
-          if (snap.connectionState == ConnectionState.waiting || _future == null) {
+          if (snap.connectionState == ConnectionState.waiting ||
+              _future == null) {
             return const HomeBannerSkeleton();
           }
           if (snap.hasError) {
@@ -861,7 +1029,10 @@ class _PremiumBannerCarouselState extends State<_PremiumBannerCarousel> {
               return AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
                 curve: Curves.easeOutCubic,
-                margin: EdgeInsets.symmetric(horizontal: 6, vertical: selected ? 0 : 8),
+                margin: EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: selected ? 0 : 8,
+                ),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(20),
                   boxShadow: [
@@ -882,15 +1053,23 @@ class _PremiumBannerCarouselState extends State<_PremiumBannerCarousel> {
                         duration: const Duration(milliseconds: 350),
                         builder: (context, t, child) {
                           final dx = (1 - t) * 10;
-                          return Transform.translate(offset: Offset(dx, 0), child: child);
+                          return Transform.translate(
+                            offset: Offset(dx, 0),
+                            child: child,
+                          );
                         },
                         child: CachedNetworkImage(
                           imageUrl: imageUrl,
                           fit: BoxFit.cover,
-                          errorWidget: (context, error, stackTrace) => Container(
-                            color: const Color(0xFFF5F5F5),
-                            child: const Icon(Icons.image_not_supported_outlined, color: Color(0xFFE8471A), size: 42),
-                          ),
+                          errorWidget: (context, error, stackTrace) =>
+                              Container(
+                                color: const Color(0xFFF5F5F5),
+                                child: const Icon(
+                                  Icons.image_not_supported_outlined,
+                                  color: Color(0xFFE8471A),
+                                  size: 42,
+                                ),
+                              ),
                         ),
                       ),
                       Container(
@@ -962,7 +1141,8 @@ class _StoresHomeBannerUnavailable extends StatelessWidget {
 
   final VoidCallback? onRetry;
 
-  static const String _placeholder = 'https://placehold.co/600x200/e2e8f0/94a3b8/png?text=AmmarJo';
+  static const String _placeholder =
+      'https://placehold.co/600x200/e2e8f0/94a3b8/png?text=AmmarJo';
 
   @override
   Widget build(BuildContext context) {
@@ -984,7 +1164,10 @@ class _StoresHomeBannerUnavailable extends StatelessWidget {
                 alignment: Alignment.center,
                 child: Text(
                   'عرض خاص',
-                  style: GoogleFonts.tajawal(fontWeight: FontWeight.w700, color: AppColors.textSecondary),
+                  style: GoogleFonts.tajawal(
+                    fontWeight: FontWeight.w700,
+                    color: AppColors.textSecondary,
+                  ),
                 ),
               ),
             ),
@@ -1002,15 +1185,26 @@ class _StoresHomeBannerUnavailable extends StatelessWidget {
                       color: Colors.white,
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
-                      shadows: const [Shadow(offset: Offset(0, 1), blurRadius: 4, color: Colors.black54)],
+                      shadows: const [
+                        Shadow(
+                          offset: Offset(0, 1),
+                          blurRadius: 4,
+                          color: Colors.black54,
+                        ),
+                      ],
                     ),
                   ),
                   if (onRetry != null) ...[
                     const SizedBox(height: 8),
                     FilledButton.tonal(
                       onPressed: onRetry,
-                      style: FilledButton.styleFrom(foregroundColor: AppColors.primaryOrange),
-                      child: Text('إعادة المحاولة', style: GoogleFonts.tajawal(fontWeight: FontWeight.w700)),
+                      style: FilledButton.styleFrom(
+                        foregroundColor: AppColors.primaryOrange,
+                      ),
+                      child: Text(
+                        'إعادة المحاولة',
+                        style: GoogleFonts.tajawal(fontWeight: FontWeight.w700),
+                      ),
                     ),
                   ],
                 ],
