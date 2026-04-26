@@ -24,6 +24,15 @@ class _AdminCommissionPerCategorySectionState
       <String, TextEditingController>{};
   final Set<String> _savingIds = <String>{};
 
+  double _asDouble(dynamic value, {double fallback = 0}) {
+    if (value is num) return value.toDouble();
+    if (value is String) {
+      final parsed = double.tryParse(value.trim());
+      if (parsed != null) return parsed;
+    }
+    return fallback;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -50,7 +59,7 @@ class _AdminCommissionPerCategorySectionState
           final map = payload is Map
               ? Map<String, dynamic>.from(payload)
               : <String, dynamic>{};
-          final pct = (map['commissionPercent'] as num?)?.toDouble() ?? 0;
+          final pct = _asDouble(map['commissionPercent']);
           _commissionCtrls[id] = TextEditingController(
             text: pct.toStringAsFixed(2),
           );
@@ -157,7 +166,7 @@ class _AdminCommissionPerCategorySectionState
           final map = payload is Map
               ? Map<String, dynamic>.from(payload)
               : <String, dynamic>{};
-          final pct = (map['commissionPercent'] as num?)?.toDouble() ?? 0;
+          final pct = _asDouble(map['commissionPercent']);
           final ctrl = _commissionCtrls[id];
           if (ctrl == null) return const SizedBox.shrink();
           final saving = _savingIds.contains(id);

@@ -145,7 +145,12 @@ class _PendingTabState extends State<_PendingTab> {
     _reload();
   }
 
-  void _reload() => setState(() => _future = _loadAllStores());
+  void _reload() {
+    final nextFuture = _loadAllStores();
+    setState(() {
+      _future = nextFuture;
+    });
+  }
 
   Future<String?> _askRejectionReason(BuildContext context) async {
     final ctrl = TextEditingController();
@@ -418,7 +423,12 @@ class _ApprovedTabState extends State<_ApprovedTab> {
     _reload();
   }
 
-  void _reload() => setState(() => _future = _loadAllStores());
+  void _reload() {
+    final nextFuture = _loadAllStores();
+    setState(() {
+      _future = nextFuture;
+    });
+  }
 
   @override
   Widget build(BuildContext context) {

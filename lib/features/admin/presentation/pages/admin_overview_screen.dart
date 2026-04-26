@@ -7,6 +7,15 @@ import '../../data/admin_overview_metrics.dart';
 import '../../data/admin_repository.dart';
 import 'admin_order_detail_screen.dart';
 
+double _safeToDouble(dynamic value, {double fallback = 0}) {
+  if (value is num) return value.toDouble();
+  if (value is String) {
+    final parsed = double.tryParse(value.trim());
+    if (parsed != null) return parsed;
+  }
+  return fallback;
+}
+
 /// لوحة مؤشرات تحليلية — استعلامات محدودة (≤100 وثيقة) + تجميعات count.
 class AdminOverviewScreen extends StatefulWidget {
   const AdminOverviewScreen({super.key});
@@ -152,7 +161,7 @@ class _AdminOverviewScreenState extends State<AdminOverviewScreen> {
             SelectableText('الهاتف: ${m['phone'] ?? '—'}', style: GoogleFonts.tajawal()),
             const SizedBox(height: 6),
             Text(
-              'المحفظة: ${((m['wallet_balance'] as num?)?.toDouble() ?? 0).toStringAsFixed(3)} JD',
+              'المحفظة: ${_safeToDouble(m['wallet_balance']).toStringAsFixed(3)} JD',
               style: GoogleFonts.tajawal(),
             ),
             const SizedBox(height: 16),

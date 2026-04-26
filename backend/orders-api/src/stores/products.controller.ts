@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, InternalServerErrorException, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, InternalServerErrorException, Logger, Param, Patch, Post, Query, UseGuards } from '@nestjs/common';
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { ApiPolicy } from '../gateway/api-policy.decorator';
 import { ApiPolicyGuard } from '../gateway/api-policy.guard';
@@ -140,6 +140,7 @@ export class ProductsMutateController {
 @ApiPolicy({ auth: false, tenant: 'optional', rateLimit: { rpm: 180 } })
 export class ProductsFilterPublicController {
   constructor(private readonly products: ProductsService) {}
+  private readonly logger = new Logger(ProductsFilterPublicController.name);
 
   @Get()
   async listPublic(
@@ -152,27 +153,34 @@ export class ProductsFilterPublicController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
-    if (subCategoryId || storeId || sectionId || search || minPrice || maxPrice || limit || offset) {
-      const out = await this.products.filterProducts({
-        subCategoryId,
-        storeId,
-        sectionId,
-        search,
-        minPrice: minPrice != null ? Number(minPrice) : undefined,
-        maxPrice: maxPrice != null ? Number(maxPrice) : undefined,
-        limit: limit != null ? Number(limit) : undefined,
-        offset: offset != null ? Number(offset) : undefined,
-      });
-      if (!Array.isArray(out.items)) {
+    try {
+      if (subCategoryId || storeId || sectionId || search || minPrice || maxPrice || limit || offset) {
+        const out = await this.products.filterProducts({
+          subCategoryId,
+          storeId,
+          sectionId,
+          search,
+          minPrice: minPrice != null ? Number(minPrice) : undefined,
+          maxPrice: maxPrice != null ? Number(maxPrice) : undefined,
+          limit: limit != null ? Number(limit) : undefined,
+          offset: offset != null ? Number(offset) : undefined,
+        });
+        if (!Array.isArray(out.items)) {
+          throw new InternalServerErrorException('Invalid products payload');
+        }
+        return out.items;
+      }
+      const data = await this.products.listPublic(200);
+      if (!Array.isArray(data.items)) {
         throw new InternalServerErrorException('Invalid products payload');
       }
-      return out.items;
+      return data.items;
+    } catch (error) {
+      this.logger.warn(
+        `products listPublic failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return [];
     }
-    const data = await this.products.listPublic(200);
-    if (!Array.isArray(data.items)) {
-      throw new InternalServerErrorException('Invalid products payload');
-    }
-    return data.items;
   }
 
   @Get(':id')
@@ -191,19 +199,26 @@ export class ProductsFilterPublicController {
     @Query('limit') limit?: string,
     @Query('offset') offset?: string,
   ) {
-    const out = await this.products.filterProducts({
-      subCategoryId,
-      storeId,
-      sectionId,
-      search,
-      minPrice: minPrice != null ? Number(minPrice) : undefined,
-      maxPrice: maxPrice != null ? Number(maxPrice) : undefined,
-      limit: limit != null ? Number(limit) : undefined,
-      offset: offset != null ? Number(offset) : undefined,
-    });
-    if (!Array.isArray(out.items)) {
-      throw new InternalServerErrorException('Invalid products payload');
+    try {
+      const out = await this.products.filterProducts({
+        subCategoryId,
+        storeId,
+        sectionId,
+        search,
+        minPrice: minPrice != null ? Number(minPrice) : undefined,
+        maxPrice: maxPrice != null ? Number(maxPrice) : undefined,
+        limit: limit != null ? Number(limit) : undefined,
+        offset: offset != null ? Number(offset) : undefined,
+      });
+      if (!Array.isArray(out.items)) {
+        throw new InternalServerErrorException('Invalid products payload');
+      }
+      return { items: out.items, total: Number(out.total) || 0 };
+    } catch (error) {
+      this.logger.warn(
+        `products filter failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      return { items: [], total: 0 };
     }
-    return { items: out.items, total: Number(out.total) || 0 };
   }
 }

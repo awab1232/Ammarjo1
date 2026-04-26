@@ -47,8 +47,10 @@ export class ProductsService {
       ALTER TABLE products ADD COLUMN IF NOT EXISTS is_active boolean DEFAULT TRUE;
       ALTER TABLE products ADD COLUMN IF NOT EXISTS stock int DEFAULT 0;
       ALTER TABLE products ADD COLUMN IF NOT EXISTS image text;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS image_url text;
       ALTER TABLE products ADD COLUMN IF NOT EXISTS is_boosted boolean NOT NULL DEFAULT false;
       ALTER TABLE products ADD COLUMN IF NOT EXISTS is_trending boolean NOT NULL DEFAULT false;
+      ALTER TABLE products ADD COLUMN IF NOT EXISTS description text DEFAULT '';
       ALTER TABLE products ADD COLUMN IF NOT EXISTS created_at timestamp DEFAULT NOW();
       CREATE INDEX IF NOT EXISTS idx_products_store ON products(store_id);
       CREATE INDEX IF NOT EXISTS idx_products_subcategory ON products(sub_category_id);

@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Logger, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { FirebaseAuthGuard, type RequestWithFirebase } from '../auth/firebase-auth.guard';
 import { ApiPolicy } from '../gateway/api-policy.decorator';
 import { ApiPolicyGuard } from '../gateway/api-policy.guard';
@@ -29,6 +29,8 @@ class UnregisterDeviceTokenDto {
 @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
 @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 240 } })
 export class NotificationsController {
+  private readonly logger = new Logger(NotificationsController.name);
+
   constructor(
     private readonly notifications: NotificationsService,
     private readonly inbox: NotificationInboxService,
@@ -57,7 +59,16 @@ export class NotificationsController {
   ) {
     const limit = limitRaw != null && limitRaw.trim() !== '' ? Number.parseInt(limitRaw, 10) : 50;
     const offset = offsetRaw != null && offsetRaw.trim() !== '' ? Number.parseInt(offsetRaw, 10) : 0;
-    return this.inbox.list(req.firebaseUid!, Number.isFinite(limit) ? limit : 50, Number.isFinite(offset) ? offset : 0);
+    return this.inbox
+      .list(req.firebaseUid!, Number.isFinite(limit) ? limit : 50, Number.isFinite(offset) ? offset : 0)
+      .catch((error: unknown) => {
+        this.logger.warn(
+          `notifications list failed for uid=${req.firebaseUid ?? 'unknown'}: ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+        return { items: [], total: 0 };
+      });
   }
 
   @Patch(':id/read')

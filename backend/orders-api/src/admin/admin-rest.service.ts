@@ -867,6 +867,14 @@ export class AdminRestService {
     const lim = Math.min(Math.max(1, limit), 100);
     const off = Math.max(0, offset);
     return this.withClient(async (client) => {
+      await client.query(`
+        ALTER TABLE orders ADD COLUMN IF NOT EXISTS driver_id uuid;
+        ALTER TABLE orders ADD COLUMN IF NOT EXISTS delivery_status text;
+        ALTER TABLE orders ADD COLUMN IF NOT EXISTS eta_minutes int;
+        ALTER TABLE orders ADD COLUMN IF NOT EXISTS payload jsonb DEFAULT '{}'::jsonb;
+        ALTER TABLE orders ADD COLUMN IF NOT EXISTS total_numeric numeric(12,2) DEFAULT 0;
+        ALTER TABLE orders ADD COLUMN IF NOT EXISTS store_id_uuid uuid;
+      `);
       const conds: string[] = ['1=1'];
       const vals: unknown[] = [];
       let i = 1;

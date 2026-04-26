@@ -7,6 +7,15 @@ import '../../data/backend_admin_client.dart';
 import 'admin_commission_per_category_section.dart';
 import '../widgets/admin_list_widgets.dart';
 
+double _parseNumericDouble(dynamic value, {double fallback = 0}) {
+  if (value is num) return value.toDouble();
+  if (value is String) {
+    final parsed = double.tryParse(value.trim());
+    if (parsed != null) return parsed;
+  }
+  return fallback;
+}
+
 /// عمولات المتاجر — لقطة من `/stores/:storeId/commissions` + تسجيل دفعة عبر REST.
 class AdminCommissionsSection extends StatefulWidget {
   const AdminCommissionsSection({super.key});
@@ -72,7 +81,14 @@ class _AdminCommissionsSectionState extends State<AdminCommissionsSection>
         if (e is Map) _stores.add(Map<String, dynamic>.from(e));
       }
     }
-    _nextOffset = (res?['nextOffset'] as num?)?.toInt();
+    final rawNext = res?['nextOffset'];
+    if (rawNext is num) {
+      _nextOffset = rawNext.toInt();
+    } else if (rawNext is String) {
+      _nextOffset = int.tryParse(rawNext.trim());
+    } else {
+      _nextOffset = null;
+    }
   }
 
   Future<void> _loadMore() async {
@@ -132,7 +148,7 @@ class _AdminCommissionsSectionState extends State<AdminCommissionsSection>
     if (_error != null) return AdminErrorRetryBody(onRetry: _refresh);
     double total = 0;
     for (final s in _stores) {
-      total += (s['commissionPercent'] as num?)?.toDouble() ?? 0;
+      total += _parseNumericDouble(s['commissionPercent']);
     }
     return RefreshIndicator(
       onRefresh: _refresh,
@@ -486,9 +502,9 @@ class _StoreCommissionTileState extends State<_StoreCommissionTile> {
           );
         }
         final data = snap.data;
-        final totalComm = (data?['totalCommission'] as num?)?.toDouble() ?? 0;
-        final totalPaid = (data?['totalPaid'] as num?)?.toDouble() ?? 0;
-        final balance = (data?['balance'] as num?)?.toDouble() ?? 0;
+        final totalComm = _parseNumericDouble(data?['totalCommission']);
+        final totalPaid = _parseNumericDouble(data?['totalPaid']);
+        final balance = _parseNumericDouble(data?['balance']);
         final orders = data?['orders'];
         final orderList = orders is List
             ? List<dynamic>.from(orders)
@@ -496,7 +512,7 @@ class _StoreCommissionTileState extends State<_StoreCommissionTile> {
         var salesSum = 0.0;
         for (final o in orderList) {
           if (o is Map) {
-            salesSum += (o['orderTotal'] as num?)?.toDouble() ?? 0;
+            salesSum += _parseNumericDouble(o['orderTotal']);
           }
         }
 
@@ -685,10 +701,10 @@ class _StoreCommissionTileState extends State<_StoreCommissionTile> {
                         final shortId = oid.length > 8
                             ? oid.substring(0, 8)
                             : oid;
-                        final orderTotal =
-                            (o['orderTotal'] as num?)?.toDouble() ?? 0.0;
-                        final comm =
-                            (o['commissionAmount'] as num?)?.toDouble() ?? 0.0;
+                        final orderTotal = _parseNumericDouble(o['orderTotal']);
+                        final comm = _parseNumericDouble(
+                          o['commissionAmount'],
+                        );
                         return ListTile(
                           dense: true,
                           leading: const Icon(

@@ -48,6 +48,34 @@ class _ChartBuildResult {
   final bool sufficient;
 }
 
+double _toDouble(dynamic value, {double fallback = 0}) {
+  if (value is num) return value.toDouble();
+  if (value is String) {
+    final parsed = double.tryParse(value.trim());
+    if (parsed != null) return parsed;
+  }
+  return fallback;
+}
+
+double? _toNullableDouble(dynamic value) {
+  if (value is num) return value.toDouble();
+  if (value is String) {
+    return double.tryParse(value.trim());
+  }
+  return null;
+}
+
+int _toInt(dynamic value, {int fallback = 0}) {
+  if (value is num) return value.toInt();
+  if (value is String) {
+    final parsed = int.tryParse(value.trim());
+    if (parsed != null) return parsed;
+    final parsedDouble = double.tryParse(value.trim());
+    if (parsedDouble != null) return parsedDouble.toInt();
+  }
+  return fallback;
+}
+
 _ChartBuildResult _buildDailyBucketsLast7Days(List<Map<String, dynamic>> orderRows) {
   final now = DateTime.now();
   final start = DateTime(now.year, now.month, now.day).subtract(const Duration(days: 6));
@@ -125,9 +153,9 @@ Future<AdminOverviewMetrics> loadAdminOverviewMetrics() async {
     final ord = await BackendAdminClient.instance.fetchOrders(limit: kAdminOverviewOrdersSample, offset: 0);
     final usr = await BackendAdminClient.instance.fetchUsers(limit: kAdminOverviewUsersSample, offset: 0);
 
-    final totalOrders = (o?['orders_count'] as num?)?.toInt() ?? 0;
-    final totalUsers = (o?['users_count'] as num?)?.toInt() ?? 0;
-    final unpaidCommissions = (fin?['outstanding_balance'] as num?)?.toDouble() ?? 0;
+    final totalOrders = _toInt(o?['orders_count']);
+    final totalUsers = _toInt(o?['users_count']);
+    final unpaidCommissions = _toDouble(fin?['outstanding_balance']);
 
     final orderItems = ord?['items'];
     final orderRows = <Map<String, dynamic>>[];
@@ -140,7 +168,7 @@ Future<AdminOverviewMetrics> loadAdminOverviewMetrics() async {
     final totalsForAvg = <double>[];
     var sampleOrdersRevenue = 0.0;
     for (final m in orderRows) {
-      final tn = (m['total_numeric'] as num?)?.toDouble();
+      final tn = _toNullableDouble(m['total_numeric']);
       if (tn != null && tn > 0) {
         totalsForAvg.add(tn);
         sampleOrdersRevenue += tn;
@@ -170,7 +198,7 @@ Future<AdminOverviewMetrics> loadAdminOverviewMetrics() async {
         chartPoints = monthly.points;
       } else {
         chartMode = AdminChartMode.empty;
-        chartPoints = [];
+        chartPoints = List<AdminChartPoint>.empty(growable: false);
       }
     }
 
@@ -195,9 +223,9 @@ Future<AdminOverviewMetrics> loadAdminOverviewMetrics() async {
       avgOrderValue: 0,
       sampleOrdersRevenue: 0,
       chartMode: AdminChartMode.empty,
-      chartPoints: [],
-      lastOrders: [],
-      recentUsers: [],
+      chartPoints: List<AdminChartPoint>.empty(growable: false),
+      lastOrders: List<Map<String, dynamic>>.empty(growable: false),
+      recentUsers: List<Map<String, dynamic>>.empty(growable: false),
       commissionsTruncated: false,
     );
   }

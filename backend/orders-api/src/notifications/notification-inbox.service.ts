@@ -17,6 +17,7 @@ export type InboxRow = {
 @Injectable()
 export class NotificationInboxService {
   private readonly pool: Pool | null;
+  private inboxSchemaReady = false;
 
   constructor() {
     const url = process.env.DATABASE_URL?.trim();
@@ -38,10 +39,35 @@ export class NotificationInboxService {
   private async withClient<T>(fn: (client: PoolClient) => Promise<T>): Promise<T> {
     const client = await this.requireDb().connect();
     try {
+      await this.ensureInboxSchema(client);
       return await fn(client);
     } finally {
       client.release();
     }
+  }
+
+  private async ensureInboxSchema(client: PoolClient): Promise<void> {
+    if (this.inboxSchemaReady) return;
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS user_notifications (
+        id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+        user_id text NOT NULL,
+        title text NOT NULL DEFAULT '',
+        body text NOT NULL DEFAULT '',
+        type text NOT NULL DEFAULT 'general',
+        event_id text,
+        read boolean NOT NULL DEFAULT false,
+        reference_id text,
+        metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+        created_at timestamptz NOT NULL DEFAULT now()
+      );
+      CREATE INDEX IF NOT EXISTS idx_user_notifications_user_created
+        ON user_notifications (user_id, created_at DESC);
+      CREATE UNIQUE INDEX IF NOT EXISTS ux_user_notifications_user_event
+        ON user_notifications (user_id, event_id)
+        WHERE event_id IS NOT NULL;
+    `);
+    this.inboxSchemaReady = true;
   }
 
   private mapRow(row: Record<string, unknown>): InboxRow {
