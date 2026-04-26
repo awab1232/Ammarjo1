@@ -168,40 +168,87 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       titleAr: 'المتاجر والمنتجات',
       items: <_AdminNavItem>[
         _AdminNavItem(index: 9, icon: Icons.store_outlined, labelAr: 'المتاجر'),
-        _AdminNavItem(index: 9, icon: Icons.how_to_reg_outlined, labelAr: 'طلبات التسجيل'),
+        _AdminNavItem(
+          index: 9,
+          icon: Icons.how_to_reg_outlined,
+          labelAr: 'طلبات التسجيل',
+        ),
         _AdminNavItem(
           index: 6,
           icon: Icons.inventory_2_outlined,
           labelAr: 'المنتجات',
         ),
-        _AdminNavItem(index: 31, icon: Icons.star_outline_rounded, labelAr: 'المتاجر المميزة'),
-        _AdminNavItem(index: 38, icon: Icons.account_tree_outlined, labelAr: 'الأقسام والتصنيفات'),
+        _AdminNavItem(
+          index: 31,
+          icon: Icons.star_outline_rounded,
+          labelAr: 'المتاجر المميزة',
+        ),
+        _AdminNavItem(
+          index: 38,
+          icon: Icons.account_tree_outlined,
+          labelAr: 'الأقسام والتصنيفات',
+        ),
       ],
     ),
     _AdminNavGroup(
       titleAr: 'الطلبات والتوصيل',
       items: <_AdminNavItem>[
-        _AdminNavItem(index: 7, icon: Icons.receipt_long_outlined, labelAr: 'الطلبات'),
-        _AdminNavItem(index: 36, icon: Icons.delivery_dining_outlined, labelAr: 'إدارة التوصيل'),
-        _AdminNavItem(index: 37, icon: Icons.local_shipping_outlined, labelAr: 'السائقون'),
+        _AdminNavItem(
+          index: 7,
+          icon: Icons.receipt_long_outlined,
+          labelAr: 'الطلبات',
+        ),
+        _AdminNavItem(
+          index: 36,
+          icon: Icons.delivery_dining_outlined,
+          labelAr: 'إدارة التوصيل',
+        ),
+        _AdminNavItem(
+          index: 37,
+          icon: Icons.local_shipping_outlined,
+          labelAr: 'السائقون',
+        ),
       ],
     ),
     _AdminNavGroup(
       titleAr: 'الفنيون',
       items: <_AdminNavItem>[
-        _AdminNavItem(index: 8, icon: Icons.person_add_alt_1_rounded, labelAr: 'طلبات الانضمام'),
-        _AdminNavItem(index: 8, icon: Icons.engineering_outlined, labelAr: 'الفنيون النشطون'),
+        _AdminNavItem(
+          index: 8,
+          icon: Icons.person_add_alt_1_rounded,
+          labelAr: 'طلبات الانضمام',
+        ),
+        _AdminNavItem(
+          index: 8,
+          icon: Icons.engineering_outlined,
+          labelAr: 'الفنيون النشطون',
+        ),
         _AdminNavItem(index: 18, icon: Icons.build, labelAr: 'طلبات الخدمة'),
-        _AdminNavItem(index: 4, icon: Icons.home_repair_service_outlined, labelAr: 'تخصصات الفنيين'),
+        _AdminNavItem(
+          index: 4,
+          icon: Icons.home_repair_service_outlined,
+          labelAr: 'تخصصات الفنيين',
+        ),
       ],
     ),
     _AdminNavGroup(
       titleAr: 'المالية',
       items: <_AdminNavItem>[
-        _AdminNavItem(index: 12, icon: Icons.percent_outlined, labelAr: 'العمولات'),
-        _AdminNavItem(index: 19, icon: Icons.discount_outlined, labelAr: 'أكواد الخصم'),
-        _AdminNavItem(index: 25, icon: Icons.local_offer_outlined, labelAr: 'العروض والترويج'),
-        _AdminNavItem(index: 21, icon: Icons.warehouse_outlined, labelAr: 'تجار الجملة'),
+        _AdminNavItem(
+          index: 12,
+          icon: Icons.percent_outlined,
+          labelAr: 'العمولات',
+        ),
+        _AdminNavItem(
+          index: 25,
+          icon: Icons.local_offer_outlined,
+          labelAr: 'العروض والخصومات',
+        ),
+        _AdminNavItem(
+          index: 21,
+          icon: Icons.warehouse_outlined,
+          labelAr: 'تجار الجملة',
+        ),
       ],
     ),
     _AdminNavGroup(
@@ -212,22 +259,61 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
           icon: Icons.view_carousel_outlined,
           labelAr: 'البنرات الرئيسية',
         ),
-        _AdminNavItem(index: 30, icon: Icons.dashboard_customize_outlined, labelAr: 'الأقسام الرئيسية'),
-        _AdminNavItem(index: 26, icon: Icons.gavel_outlined, labelAr: 'المناقصات'),
-        _AdminNavItem(index: 28, icon: Icons.web_asset_outlined, labelAr: 'المدونة'),
+        _AdminNavItem(
+          index: 26,
+          icon: Icons.gavel_outlined,
+          labelAr: 'المناقصات',
+        ),
+        _AdminNavItem(
+          index: 28,
+          icon: Icons.web_asset_outlined,
+          labelAr: 'المدونة',
+        ),
       ],
     ),
     _AdminNavGroup(
       titleAr: 'الدعم والإدارة',
       items: <_AdminNavItem>[
-        _AdminNavItem(index: 16, icon: Icons.support_agent_rounded, labelAr: 'دعم العملاء'),
-        _AdminNavItem(index: 2, icon: Icons.people_outline, labelAr: 'المستخدمون'),
-        _AdminNavItem(index: 22, icon: Icons.reviews_outlined, labelAr: 'المراجعات'),
-        _AdminNavItem(index: 23, icon: Icons.analytics_outlined, labelAr: 'التحليلات'),
-        _AdminNavItem(index: 17, icon: Icons.fact_check_outlined, labelAr: 'سجل التدقيق'),
-        _AdminNavItem(index: 39, icon: Icons.notifications_active_outlined, labelAr: 'الإشعارات'),
-        _AdminNavItem(index: 35, icon: Icons.devices_rounded, labelAr: 'الجلسات'),
-        _AdminNavItem(index: 14, icon: Icons.settings_outlined, labelAr: 'الإعدادات'),
+        _AdminNavItem(
+          index: 16,
+          icon: Icons.support_agent_rounded,
+          labelAr: 'دعم العملاء',
+        ),
+        _AdminNavItem(
+          index: 2,
+          icon: Icons.people_outline,
+          labelAr: 'المستخدمون',
+        ),
+        _AdminNavItem(
+          index: 22,
+          icon: Icons.reviews_outlined,
+          labelAr: 'المراجعات',
+        ),
+        _AdminNavItem(
+          index: 23,
+          icon: Icons.analytics_outlined,
+          labelAr: 'التحليلات',
+        ),
+        _AdminNavItem(
+          index: 17,
+          icon: Icons.fact_check_outlined,
+          labelAr: 'سجل التدقيق',
+        ),
+        _AdminNavItem(
+          index: 39,
+          icon: Icons.notifications_active_outlined,
+          labelAr: 'الإشعارات',
+        ),
+        _AdminNavItem(
+          index: 35,
+          icon: Icons.devices_rounded,
+          labelAr: 'الجلسات',
+        ),
+        _AdminNavItem(
+          index: 14,
+          icon: Icons.settings_outlined,
+          labelAr: 'الإعدادات',
+        ),
       ],
     ),
   ];
@@ -252,13 +338,13 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     'دعم العملاء',
     'سجل التدقيق',
     'طلبات الخدمة',
-    'أكواد الخصم',
+    'العروض والخصومات',
     'طلبات تسجيل جملة',
     'تجار الجملة',
     'المراجعات',
     'التقارير والتحليلات',
     'إعدادات البريد',
-    'العروض',
+    'العروض والخصومات',
     'المناقصات',
     'عمولات المناقصات',
     'بنرات المدونة',
@@ -290,7 +376,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       case 5:
         return const AdminBannerManagerSection();
       case 6:
-        return const AdminProductsScreen(initialTab: AdminProductsTabIndex.products);
+        return const AdminProductsScreen(
+          initialTab: AdminProductsTabIndex.products,
+        );
       case 7:
         return const AdminOrdersSection();
       case 36:
@@ -300,7 +388,9 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
       case 8:
         return const AdminTechniciansSection();
       case 9:
-        return const AdminStoresScreen(initialTab: AdminStoresTabIndex.storeRequests);
+        return const AdminStoresScreen(
+          initialTab: AdminStoresTabIndex.storeRequests,
+        );
       case 10:
         return const AdminHomeToolsStoresSection();
       case 11:
@@ -338,17 +428,27 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         return const AdminBlogBannersSection();
       // تطابق عناوين القائمة مع تبويبات AdminStoresScreen (انظر AdminStoresTabIndex).
       case 29:
-        return const AdminStoresScreen(initialTab: AdminStoresTabIndex.subCategories);
+        return const AdminStoresScreen(
+          initialTab: AdminStoresTabIndex.subCategories,
+        );
       case 30:
-        return const AdminStoresScreen(initialTab: AdminStoresTabIndex.homeSections);
+        return const AdminStoresScreen(
+          initialTab: AdminStoresTabIndex.homeSections,
+        );
       case 31:
-        return const AdminStoresScreen(initialTab: AdminStoresTabIndex.featuredStores);
+        return const AdminStoresScreen(
+          initialTab: AdminStoresTabIndex.featuredStores,
+        );
       case 32:
-        return const AdminProductsScreen(initialTab: AdminProductsTabIndex.productBoost);
+        return const AdminProductsScreen(
+          initialTab: AdminProductsTabIndex.productBoost,
+        );
       case 33:
         return const AdminSettingsScreen();
       case 34:
-        return const AdminStoresScreen(initialTab: AdminStoresTabIndex.storeTypes);
+        return const AdminStoresScreen(
+          initialTab: AdminStoresTabIndex.storeTypes,
+        );
       case 35:
         return const AdminSessionsSection();
       case 38:
@@ -445,10 +545,7 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
     required Color iconColor,
     required String adminRole,
   }) {
-    return _AdminNotificationBell(
-      iconColor: iconColor,
-      adminRole: adminRole,
-    );
+    return _AdminNotificationBell(iconColor: iconColor, adminRole: adminRole);
   }
 
   @override
@@ -460,123 +557,118 @@ class _AdminDashboardScreenState extends State<AdminDashboardScreen> {
         final me = BackendIdentityController.instance.me;
         final data = me == null
             ? null
-            : <String, dynamic>{
-                'role': me.role,
-                'email': me.email,
-              };
+            : <String, dynamic>{'role': me.role, 'email': me.email};
         if (!_canAccessAdminDashboard(data, authUid)) {
-              return Scaffold(
-                backgroundColor: AppColors.background,
-                appBar: AppBar(
-                  backgroundColor: AppColors.navy,
-                  foregroundColor: Colors.white,
-                  leading: const AppBarBackButton(),
-                  title: Text(
-                    'لوحة الإدارة',
-                    style: GoogleFonts.tajawal(fontWeight: FontWeight.w800),
+          return Scaffold(
+            backgroundColor: AppColors.background,
+            appBar: AppBar(
+              backgroundColor: AppColors.navy,
+              foregroundColor: Colors.white,
+              leading: const AppBarBackButton(),
+              title: Text(
+                'لوحة الإدارة',
+                style: GoogleFonts.tajawal(fontWeight: FontWeight.w800),
+              ),
+            ),
+            body: Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'غير مصرح بالوصول إلى لوحة الإدارة.',
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.tajawal(
+                    fontSize: 16,
+                    color: AppColors.textPrimary,
                   ),
                 ),
-                body: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(24),
-                    child: Text(
-                      'غير مصرح بالوصول إلى لوحة الإدارة.',
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.tajawal(
-                        fontSize: 16,
-                        color: AppColors.textPrimary,
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            }
+              ),
+            ),
+          );
+        }
 
-            final role = BackendIdentityController.instance.me?.role ?? PermissionService.roleAdmin;
-            final navGroups = _filteredNavGroups(role);
+        final role =
+            BackendIdentityController.instance.me?.role ??
+            PermissionService.roleAdmin;
+        final navGroups = _filteredNavGroups(role);
 
-            _maybeScheduleNavSync(
-              uid: authUid,
-              userData: data,
-              role: role,
-            );
+        _maybeScheduleNavSync(uid: authUid, userData: data, role: role);
 
-            final wide = MediaQuery.sizeOf(context).width >= 760;
+        final wide = MediaQuery.sizeOf(context).width >= 760;
 
-            if (wide) {
-              return Scaffold(
-                backgroundColor: AppColors.background,
-                body: Row(
-                  children: [
-                    SizedBox(width: 292, child: _buildGroupedNav(navGroups)),
-                    const VerticalDivider(width: 1, thickness: 1),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          Material(
-                            color: Colors.white,
-                            elevation: 1,
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 8,
-                              ),
-                              child: Row(
-                                children: [
-                                  const AppBarBackButton(),
-                                  _notificationBell(
-                                    iconColor: AppColors.navy,
-                                    adminRole: role,
-                                  ),
-                                  Expanded(
-                                    child: Text(
-                                      _titles[_index],
-                                      style: GoogleFonts.tajawal(
-                                        fontSize: 20,
-                                        fontWeight: FontWeight.w800,
-                                        color: AppColors.textPrimary,
-                                      ),
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
+        if (wide) {
+          return Scaffold(
+            backgroundColor: AppColors.background,
+            body: Row(
+              children: [
+                SizedBox(width: 292, child: _buildGroupedNav(navGroups)),
+                const VerticalDivider(width: 1, thickness: 1),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Material(
+                        color: Colors.white,
+                        elevation: 1,
+                        child: Padding(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 8,
                           ),
-                          Expanded(child: _body()),
-                        ],
+                          child: Row(
+                            children: [
+                              const AppBarBackButton(),
+                              _notificationBell(
+                                iconColor: AppColors.navy,
+                                adminRole: role,
+                              ),
+                              Expanded(
+                                child: Text(
+                                  _titles[_index],
+                                  style: GoogleFonts.tajawal(
+                                    fontSize: 20,
+                                    fontWeight: FontWeight.w800,
+                                    color: AppColors.textPrimary,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
                       ),
-                    ),
-                  ],
-                ),
-              );
-            }
-
-            return Scaffold(
-              backgroundColor: AppColors.background,
-              appBar: AppBar(
-                backgroundColor: AppColors.navy,
-                foregroundColor: Colors.white,
-                centerTitle: true,
-                leading: const AppBarBackButton(),
-                actions: [
-                  _notificationBell(iconColor: Colors.white, adminRole: role),
-                ],
-                title: Text(
-                  _titles[_index],
-                  style: GoogleFonts.tajawal(fontWeight: FontWeight.w800),
-                ),
-              ),
-              drawer: Drawer(
-                child: SafeArea(
-                  child: _buildGroupedNav(
-                    navGroups,
-                    onItemSelected: () => Navigator.of(context).pop(),
+                      Expanded(child: _body()),
+                    ],
                   ),
                 ),
+              ],
+            ),
+          );
+        }
+
+        return Scaffold(
+          backgroundColor: AppColors.background,
+          appBar: AppBar(
+            backgroundColor: AppColors.navy,
+            foregroundColor: Colors.white,
+            centerTitle: true,
+            leading: const AppBarBackButton(),
+            actions: [
+              _notificationBell(iconColor: Colors.white, adminRole: role),
+            ],
+            title: Text(
+              _titles[_index],
+              style: GoogleFonts.tajawal(fontWeight: FontWeight.w800),
+            ),
+          ),
+          drawer: Drawer(
+            child: SafeArea(
+              child: _buildGroupedNav(
+                navGroups,
+                onItemSelected: () => Navigator.of(context).pop(),
               ),
-              body: _body(),
-            );
+            ),
+          ),
+          body: _body(),
+        );
       },
     );
   }
@@ -634,7 +726,8 @@ class _AdminNotificationBellState extends State<_AdminNotificationBell> {
           onPressed: () async {
             await Navigator.of(context).push<void>(
               MaterialPageRoute<void>(
-                builder: (_) => AdminNotificationsScreen(adminRole: widget.adminRole),
+                builder: (_) =>
+                    AdminNotificationsScreen(adminRole: widget.adminRole),
               ),
             );
             await _refresh();

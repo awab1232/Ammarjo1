@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Logger, Param, Post, UseGuards } from '@nestjs/common';
 import { FirebaseAuthGuard } from '../auth/firebase-auth.guard';
 import { ApiPolicy } from '../gateway/api-policy.decorator';
 import { ApiPolicyGuard } from '../gateway/api-policy.guard';
@@ -12,6 +12,8 @@ import { RatingsService } from './ratings.service';
 @UseGuards(FirebaseAuthGuard, TenantContextGuard, ApiPolicyGuard, RbacGuard)
 @ApiPolicy({ auth: true, tenant: 'optional', rateLimit: { rpm: 180 } })
 export class RatingsController {
+  private readonly logger = new Logger(RatingsController.name);
+
   constructor(private readonly ratings: RatingsService) {}
 
   @Post()
@@ -22,8 +24,20 @@ export class RatingsController {
 
   @Get(':targetType/:targetId')
   @RequirePermissions('orders.read')
-  listByTarget(@Param('targetType') targetType: RatingTargetType, @Param('targetId') targetId: string) {
-    return this.ratings.getReviewsByTarget(targetType, targetId);
+  async listByTarget(
+    @Param('targetType') targetType: RatingTargetType,
+    @Param('targetId') targetId: string,
+  ) {
+    try {
+      return await this.ratings.getReviewsByTarget(targetType, targetId);
+    } catch (error) {
+      this.logger.warn(
+        `ratings list failed for ${targetType}/${targetId}: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+      return [];
+    }
   }
 
   @Get(':targetType/:targetId/aggregate')
